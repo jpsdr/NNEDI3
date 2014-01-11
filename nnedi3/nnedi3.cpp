@@ -1089,27 +1089,47 @@ unsigned __stdcall threadPool(void *ps)
 
 AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
+	bool YV16Clip;
+
 	if (!args[0].IsClip())
 		env->ThrowError("nnedi3:  arg 0 must be a clip!");
 	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
-	if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24())
-		env->ThrowError("nnedi3:  only YV12, YUY2, and RGB24 input are supported!");
+	YV16Clip=vi.IsYV16();
+	if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24() && !YV16Clip)
+		env->ThrowError("nnedi3:  only YV12, YUY2, YV16 and RGB24 input are supported!");
 	const bool dh = args[2].AsBool(false);
 	if ((vi.height&1) && !dh)
 		env->ThrowError("nnedi3:  height must be mod 2 when dh=false (%d)!", vi.height);
-	return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
-		args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),
-		args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-		args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
+	if (!YV16Clip)
+	{
+		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
+			args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),
+			args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
+			args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
+	}
+	else
+	{
+		AVSValue v = args[0].AsClip();
+		v = env->Invoke("ConvertToYUY2",v).AsClip();
+		v = new nnedi3(v.AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
+			args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),
+			args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
+			args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
+		v = env->Invoke("ConvertToYV16",v).AsClip();
+		return v;
+	}
 }
 
 AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvironment *env)
 {
+	bool YV16Clip;
+
 	if (!args[0].IsClip())
 		env->ThrowError("nnedi3_rpow2:  arg 0 must be a clip!");
 	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
-	if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24())
-		env->ThrowError("nnedi3_rpow2:  only YV12, YUY2, and RGB24 input are supported!");
+	YV16Clip=vi.IsYV16();
+	if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24() && !YV16Clip)
+		env->ThrowError("nnedi3_rpow2:  only YV12, YUY2, YV16 and RGB24 input are supported!");
 	if (vi.IsYUY2() && (vi.width&3))
 		env->ThrowError("nnedi3_rpow2:  for yuy2 input width must be mod 4 (%d)!", vi.width);
 	const int rfactor = args[1].AsInt(-1);
@@ -1192,6 +1212,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		{
 			// Unfortunately, turnleft()/turnright() can't preserve YUY2 chroma, so we convert
 			// U/V planes to Y planes in separate clips and process them that way.
+			if (YV16Clip) v = env->Invoke("ConvertToYUY2",v).AsClip();
 			AVSValue vu = env->Invoke("UtoY",v).AsClip();
 			AVSValue vv = env->Invoke("VtoY",v).AsClip();
 			for (int i=0; i<ct; ++i)
@@ -1223,6 +1244,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; ++i)
 				hshift = hshift*2.0-0.5;
 			vshift = -0.5;
+			if (YV16Clip) v = env->Invoke("ConvertToYV16",v).AsClip();
 		}
 		if (cshift[0])
 		{
