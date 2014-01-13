@@ -1182,6 +1182,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	if (fapprox < 0 || fapprox > 15)
 		env->ThrowError("nnedi3_rpow2:  fapprox must be [0,15]!\n");
 	AVSValue v = args[0].AsClip();
+	auto turnRightFunction = env->FunctionExists("FTurnRight") ? "FTurnRight" : "TurnRight";
+	auto turnLeftFunction = env->FunctionExists("FTurnLeft") ? "FTurnLeft" : "TurnLeft";
 	try 
 	{
 		double hshift = 0.0, vshift = 0.0;
@@ -1190,9 +1192,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; ++i)
 			{
 				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnRight",v).AsClip();
+				v = env->Invoke(turnRightFunction,v).AsClip();
 				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnLeft",v).AsClip();
+				v = env->Invoke(turnLeftFunction,v).AsClip();
 			}
 			hshift = vshift = -0.5;
 		}
@@ -1201,9 +1203,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; ++i)
 			{
 				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnRight",v).AsClip();
+				v = env->Invoke(turnRightFunction,v).AsClip();
 				v = new nnedi3(v.AsClip(),1,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnLeft",v).AsClip();
+				v = env->Invoke(turnLeftFunction,v).AsClip();
 			}
 			hshift = vshift = -0.5;
 		}
@@ -1212,9 +1214,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; ++i)
 			{
 				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnRight",v).AsClip();
+				v = env->Invoke(turnRightFunction,v).AsClip();
 				v = new nnedi3(v.AsClip(),1,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnLeft",v).AsClip();
+				v = env->Invoke(turnLeftFunction,v).AsClip();
 			}
 			for (int i=0; i<ct; ++i)
 				hshift = hshift*2.0-0.5;
@@ -1225,9 +1227,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; ++i)
 			{
 				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnRight",v).AsClip();
+				v = env->Invoke(turnRightFunction,v).AsClip();
 				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnLeft",v).AsClip();
+				v = env->Invoke(turnLeftFunction,v).AsClip();
 			}
 			hshift = vshift = -0.5;
 		}
@@ -1236,10 +1238,10 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; ++i)
 			{
 				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnRight",v).AsClip();
+				v = env->Invoke(turnRightFunction,v).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
 				v = new nnedi3(v.AsClip(),1,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnLeft",v).AsClip();
+				v = env->Invoke(turnLeftFunction,v).AsClip();
 			}
 			// Correct chroma shift (it's always 1/2 pixel upwards).
 			// Need a cache here because v/vc will both request from this point.
@@ -1265,26 +1267,26 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; ++i)
 			{
 				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnRight",v).AsClip();
+				v = env->Invoke(turnRightFunction,v).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
 				v = new nnedi3(v.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				v = env->Invoke("TurnLeft",v).AsClip();
+				v = env->Invoke(turnLeftFunction,v).AsClip();
 			}
 			for (int i=0; i<ct; ++i)
 			{
 				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				vu = env->Invoke("TurnRight",vu).AsClip();
+				vu = env->Invoke(turnRightFunction,vu).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
 				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				vu = env->Invoke("TurnLeft",vu).AsClip();
+				vu = env->Invoke(turnLeftFunction,vu).AsClip();
 			}
 			for (int i=0; i<ct; ++i)
 			{
 				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				vv = env->Invoke("TurnRight",vv).AsClip();
+				vv = env->Invoke(turnRightFunction,vv).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
 				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-				vv = env->Invoke("TurnLeft",vv).AsClip();
+				vv = env->Invoke(turnLeftFunction,vv).AsClip();
 			}
 			AVSValue ytouvargs[3] = { vu, vv, v };
 			v = env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();

@@ -1,6 +1,6 @@
                                                                                                     |
                                    nnedi3 for Avisynth v2.6.x                                       |
-                                     v0.9.4.2  (13/01/2014)                                         |
+                                     v0.9.4.3  (14/01/2014)                                         |
                                           by tritical                                               |
                                        modified by JPSDR                                            |
                                            HELP FILE                                                |
@@ -280,6 +280,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   14/01/2014  v0.9.4.3
+
+       + Add fturn support.
+
    13/01/2014  v0.9.4.2
 
        + Add Y8, YV16 and YV24 support.
