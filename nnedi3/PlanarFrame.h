@@ -88,7 +88,6 @@ public:
 	void PlanarFrame::copyFrom(PlanarFrame &frame);
 	void PlanarFrame::copyTo(PlanarFrame &frame);
 	void PlanarFrame::copyChromaTo(PlanarFrame &dst);
-	void PlanarFrame::copyToForBMP(PVideoFrame &dst, VideoInfo &viInfo);
 	void PlanarFrame::copyPlaneTo(PlanarFrame &dst, int plane);
 	void PlanarFrame::freePlanar();
 	unsigned char* PlanarFrame::GetPtr(int plane);

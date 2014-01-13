@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4 for Avisynth 2.5.x
+**                    nnedi3 v0.9.4.2 for Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -16,6 +16,8 @@
 **   You should have received a copy of the GNU General Public License
 **   along with this program; if not, write to the Free Software
 **   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+**
+**   Modified by JPSDR
 */
 
 #include "nnedi3.h"
@@ -86,6 +88,8 @@ nnedi3::nnedi3(PClip _child, int _field, bool _dh, bool _Y, bool _U, bool _V, in
 	Y(_Y), U(_U), V(_V), nsize(_nsize), nns(_nns), qual(_qual), etype(_etype), pscrn(_pscrn), 
 	threads(_threads), opt(_opt), fapprox(_fapprox)
 {
+	int PlaneMax=3;
+
 	if (field < -2 || field > 3)
 		env->ThrowError("nnedi3:  field must be set to -2, -1, 0, 1, 2, or 3!");
 	if (threads < 0 || threads > 16)
@@ -115,23 +119,27 @@ nnedi3::nnedi3(PClip _child, int _field, bool _dh, bool _Y, bool _U, bool _V, in
 		vi.num_frames *= 2;
 		vi.SetFPS(vi.fps_numerator*2, vi.fps_denominator);
 	}
-	if (dh)
-		vi.height *= 2;
+	if (dh) vi.height *= 2;
 	vi.SetFieldBased(false);
 	child->SetCacheHints(CACHE_25_RANGE,3);
-	if (threads == 0)
-		threads = num_processors();
+	if (threads == 0) threads = num_processors();
 	srcPF = new PlanarFrame();
-	srcPF->createPlanar(vi.height+12,(vi.IsYV12()?(vi.height>>1):vi.height)+12,
-		vi.width+64,(vi.IsRGB24()?vi.width:(vi.width>>1))+64);
+	if (vi.IsYV12()) srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64);
+	else if (vi.IsYV16() || vi.IsYUY2()) srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>1)+64);
+	else if (vi.IsYV24() || vi.IsRGB24()) srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,vi.width+64);
+	else if (vi.IsY8())
+	{
+		srcPF->createPlanar(vi.height+12,0,vi.width+64,0);
+		U = false;
+		V = false;
+		PlaneMax=1;
+	}
 	dstPF = new PlanarFrame(vi);
 	if (opt == 0)
 	{
 		const int cpuf = srcPF->cpu;
-		if (cpuf&CPU_SSE2)
-			opt = 2;
-		else
-			opt = 1;
+		if (cpuf&CPU_SSE2) opt = 2;
+		else opt = 1;
 		char buf[512];
 		sprintf(buf,"nnedi3:  auto-detected opt setting = %d (%d)\n", opt, cpuf);
 		OutputDebugString(buf);
@@ -150,17 +158,16 @@ nnedi3::nnedi3(PClip _child, int _field, bool _dh, bool _Y, bool _U, bool _V, in
 		}
 	}
 	weights0 = (float*)_aligned_malloc(max(dims0,dims0new)*sizeof(float),16);
+	for (int i=0; i<2; ++i)
+		weights1[i] = (float*)_aligned_malloc(dims1*sizeof(float),16);
 	for (int i=0; i<3; ++i)
-	{
-		if (i < 2)
-			weights1[i] = (float*)_aligned_malloc(dims1*sizeof(float),16);
+		lcount[i]=NULL;
+	for (int i=0; i<PlaneMax; ++i)
 		lcount[i] = (int*)_aligned_malloc(dstPF->GetHeight(i)*sizeof(int),16);
-	}
 	char nbuf[512];
 	GetModuleFileName((HINSTANCE)&__ImageBase,nbuf,512);
 	HMODULE hmod = GetModuleHandle(nbuf);
-	if (!hmod)
-		env->ThrowError("nnedi3:  unable to get module handle!");
+	if (!hmod) env->ThrowError("nnedi3:  unable to get module handle!");
 	HRSRC hrsrc = FindResource(hmod,MAKEINTRESOURCE(101),_T("BINARY"));
 	HGLOBAL hglob = LoadResource(hmod,hrsrc);
 	LPVOID lplock = LockResource(hglob);
@@ -352,7 +359,7 @@ nnedi3::nnedi3(PClip _child, int _field, bool _dh, bool _Y, bool _U, bool _V, in
 	pssInfo = (PS_INFO**)malloc(threads*sizeof(PS_INFO*));
 	int hslice[3], hremain[3];
 	int srow[3] = { 6, 6, 6 };
-	for (int i=0; i<3; ++i)
+	for (int i=0; i<PlaneMax; ++i)
 	{
 		const int height = srcPF->GetHeight(i)-12;
 		hslice[i] = height/threads;
@@ -379,7 +386,7 @@ nnedi3::nnedi3(PClip _child, int _field, bool _dh, bool _Y, bool _U, bool _V, in
 		pssInfo[i]->ydia = ydiaTable[nsize];
 		pssInfo[i]->asize = xdiaTable[nsize]*ydiaTable[nsize];
 		pssInfo[i]->fapprox = fapprox;
-		for (int b=0; b<3; ++b)
+		for (int b=0; b<PlaneMax; ++b)
 		{
 			pssInfo[i]->lcount[b] = lcount[b];
 			pssInfo[i]->dstp[b] = dstPF->GetPtr(b);
@@ -406,7 +413,7 @@ nnedi3::~nnedi3()
 	for (int i=0; i<2; ++i)
 		_aligned_free(weights1[i]);
 	for (int i=0; i<3; ++i)
-		_aligned_free(lcount[i]);
+		if (lcount[i]!=NULL) _aligned_free(lcount[i]);
 	for (int i=0; i<threads; ++i)
 	{
 		pssInfo[i]->type = -1;
@@ -431,6 +438,9 @@ nnedi3::~nnedi3()
 PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 {
 	int field_n;
+	int PlaneMax=3;
+
+	if (vi.IsY8()) PlaneMax=1;
 	if (field > 1)
 	{
 		if (n&1) field_n = field == 3 ? 0 : 1;
@@ -438,17 +448,17 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	}
 	else field_n = field;
 	copyPad(field>1?(n>>1):n,field_n,env);
-	for (int i=0; i<3; ++i)
+	for (int i=0; i<PlaneMax; ++i)
 		memset(lcount[i],0,dstPF->GetHeight(i)*sizeof(int));
 	PVideoFrame dst = env->NewVideoFrame(vi);
 	const int plane[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
 	for (int i=0; i<threads; ++i)
 	{
-		for (int b=0; b<3; ++b)
+		for (int b=0; b<PlaneMax; ++b)
 		{
 			const int srow = pssInfo[i]->sheight[b];
 			pssInfo[i]->field[b] = (srow&1) ? 1-field_n : field_n;
-			if (vi.IsYV12())
+			if (vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8())
 			{
 				pssInfo[i]->dstp[b] = dst->GetWritePtr(plane[b]);
 				pssInfo[i]->dst_pitch[b] = dst->GetPitch(plane[b]);
@@ -460,7 +470,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	}
 	for (int i=0; i<threads; ++i)
 		WaitForSingleObject(pssInfo[i]->jobFinished,INFINITE);
-	calcStartEnd2(vi.IsYV12()?dst:NULL);
+	calcStartEnd2((vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8())?dst:NULL);
 	for (int i=0; i<threads; ++i)
 	{
 		pssInfo[i]->type = 1;
@@ -469,8 +479,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	}
 	for (int i=0; i<threads; ++i)
 		WaitForSingleObject(pssInfo[i]->jobFinished,INFINITE);
-	if (!vi.IsYV12())
-		dstPF->copyTo(dst, vi);
+	if (!(vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8())) dstPF->copyTo(dst, vi);
 	return dst;
 }
 
@@ -478,9 +487,10 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 {
 	const int off = 1-fn;
 	PVideoFrame src = child->GetFrame(n, env);
+	
 	if (!dh)
 	{
-		if (vi.IsYV12())
+		if (vi.IsYV12() || vi.IsYV16() || vi.IsYV24())
 		{
 			const int plane[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
 			for (int b=0; b<3; ++b)
@@ -489,6 +499,14 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 					src->GetReadPtr(plane[b])+src->GetPitch(plane[b])*off,
 					src->GetPitch(plane[b])*2,src->GetRowSize(plane[b]),
 					src->GetHeight(plane[b])>>1);
+		}
+		else if (vi.IsY8())
+		{
+			env->BitBlt(srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
+				srcPF->GetPitch(0)*2,
+				src->GetReadPtr(PLANAR_Y)+src->GetPitch(PLANAR_Y)*off,
+				src->GetPitch(PLANAR_Y)*2,src->GetRowSize(PLANAR_Y),
+				src->GetHeight(PLANAR_Y)>>1);
 		}
 		else if (vi.IsYUY2())
 		{
@@ -499,7 +517,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 				src->GetPitch()*2,srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
 				vi.width,vi.height>>1);
 		}
-		else
+		else if (vi.IsRGB24())
 		{
 			srcPF->convRGB24to444(src->GetReadPtr()+(vi.height-1-off)*src->GetPitch(),
 				srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
@@ -511,7 +529,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 	}
 	else
 	{
-		if (vi.IsYV12())
+		if (vi.IsYV12() || vi.IsYV16() || vi.IsYV24())
 		{
 			const int plane[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
 			for (int b=0; b<3; ++b)
@@ -519,6 +537,13 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 					srcPF->GetPitch(b)*2,src->GetReadPtr(plane[b]),
 					src->GetPitch(plane[b]),src->GetRowSize(plane[b]),
 					src->GetHeight(plane[b]));
+		}
+		else if (vi.IsY8())
+		{
+			env->BitBlt(srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
+				srcPF->GetPitch(0)*2,src->GetReadPtr(PLANAR_Y),
+				src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),
+				src->GetHeight(PLANAR_Y));
 		}
 		else if (vi.IsYUY2())
 		{
@@ -529,7 +554,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 				src->GetPitch(),srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
 				vi.width,vi.height>>1);
 		}
-		else
+		else if (vi.IsRGB24())
 		{
 			srcPF->convRGB24to444(src->GetReadPtr()+((vi.height>>1)-1)*src->GetPitch(),
 				srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
@@ -539,7 +564,11 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 				vi.width,vi.height>>1);
 		}
 	}
-	for (int b=0; b<3; ++b)
+
+	int PlaneMax=3;
+	if (vi.IsY8()) PlaneMax=1;
+
+	for (int b=0; b<PlaneMax; ++b)
 	{
 		unsigned char *dstp = srcPF->GetPtr(b);
 		const int dst_pitch = srcPF->GetPitch(b);
@@ -569,28 +598,28 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 void nnedi3::calcStartEnd2(PVideoFrame dst)
 {
 	const int plane[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
+
 	for (int b=0; b<3; ++b)
 	{
-		if ((b == 0 && !Y) || (b == 1 && !U) || (b == 2 && !V))
-			continue;
+		if (((b==0) && !Y) || ((b==1) && !U) || ((b==2) && !V)) continue;
+
 		const unsigned char *mskp = dst ? dst->GetReadPtr(plane[b]) : dstPF->GetPtr(b);
 		const int pitch = dst ? dst->GetPitch(plane[b]) : dstPF->GetPitch(b);
 		const int width = dstPF->GetWidth(b);
 		const int height = dstPF->GetHeight(b);
 		int total = 0, fl = -1, ll = 0;
+
 		for (int j=0; j<height; ++j)
 		{ 
 			total += lcount[b][j];
 			if (fl < 0 && lcount[b][j] > 0) fl = j;
 		}
-		if (total == 0)
-			fl = height;
+		if (total == 0) fl = height;
 		else
 		{
 			for (int j=height-1; j>=0; --j)
 			{
-				if (lcount[b][j])
-					break;
+				if (lcount[b][j]) break;
 				++ll;
 			}
 		}
@@ -603,8 +632,7 @@ void nnedi3::calcStartEnd2(PVideoFrame dst)
 			{
 				pssInfo[th]->sheight2[b] = yl;
 				countt += count;
-				if (countt == total)
-					y = height-ll;
+				if (countt == total) y = height-ll;
 				pssInfo[th]->eheight2[b] = y;
 				while (y < height-ll && lcount[b][y] == 0)
 					++y;
@@ -617,8 +645,7 @@ void nnedi3::calcStartEnd2(PVideoFrame dst)
 		{
 			pssInfo[th]->sheight2[b] = yl;
 			countt += count;
-			if (countt == total)
-				y = height-ll;
+			if (countt == total) y = height-ll;
 			pssInfo[th]->eheight2[b] = y;
 			++th;
 		}
@@ -767,6 +794,7 @@ void evalFunc_0(void *ps)
 	void (*uc2s)(const unsigned char*, const int, float*);
 	void (*computeNetwork0)(const float*, const float*, unsigned char *d);
 	int (*processLine0)(const unsigned char*, int, unsigned char*, const unsigned char*, const int);
+
 	if (opt == 1) processLine0 = processLine0_C;
 	else processLine0 = processLine0_SSE2;
 	if (pscrn < 2) // original prescreener
@@ -796,10 +824,8 @@ void evalFunc_0(void *ps)
 	}
 	for (int b=0; b<3; ++b)
 	{
-		if ((b == 0 && !pss->Y) || 
-			(b == 1 && !pss->U) ||
-			(b == 2 && !pss->V))
-			continue;
+		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V)) continue;
+
 		const unsigned char *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -810,6 +836,7 @@ void evalFunc_0(void *ps)
 			src_pitch*2,width-64,(pss->eheight[b]-pss->sheight[b]+pss->field[b])>>1);
 		const int ystart = pss->sheight[b]+pss->field[b];
 		const int ystop = pss->eheight[b];
+
 		srcp += ystart*src_pitch;
 		dstp += (ystart-6)*dst_pitch-32;
 		const unsigned char *src3p = srcp-src_pitch*3;
@@ -998,6 +1025,7 @@ void evalFunc_1(void *ps)
 	void (*dotProd)(const float*, const float*, float*, const int, const int, const float*);
 	void (*expf)(float *, const int);
 	void (*wae5)(const float*, const int, float*);
+
 	if (opt == 1) wae5 = weightedAvgElliottMul5_m16_C;
 	else wae5 = weightedAvgElliottMul5_m16_SSE2;
 	if (fapprox&2) // use int16 dot products
@@ -1031,10 +1059,8 @@ void evalFunc_1(void *ps)
 	}
 	for (int b=0; b<3; ++b)
 	{
-		if ((b == 0 && !pss->Y) || 
-			(b == 1 && !pss->U) ||
-			(b == 2 && !pss->V))
-			continue;
+		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V)) continue;
+
 		const unsigned char *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -1042,6 +1068,7 @@ void evalFunc_1(void *ps)
 		const int dst_pitch = pss->dst_pitch[b];
 		const int ystart = pss->sheight2[b];
 		const int ystop = pss->eheight2[b];
+
 		srcp += (ystart+6)*src_pitch;
 		dstp += ystart*dst_pitch-32;
 		const unsigned char *srcpp = srcp-(ydia-1)*src_pitch-xdiad2m1;
@@ -1089,49 +1116,35 @@ unsigned __stdcall threadPool(void *ps)
 
 AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-	bool YV16Clip;
-
 	if (!args[0].IsClip())
 		env->ThrowError("nnedi3:  arg 0 must be a clip!");
 	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
-	YV16Clip=vi.IsYV16();
-	if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24() && !YV16Clip)
-		env->ThrowError("nnedi3:  only YV12, YUY2, YV16 and RGB24 input are supported!");
+	if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24() && !vi.IsYV16() && !vi.IsYV24() && !vi.IsY8())
+		env->ThrowError("nnedi3:  only YV12, YUY2, YV16, YV24, Y8 and RGB24 input are supported!");
 	const bool dh = args[2].AsBool(false);
 	if ((vi.height&1) && !dh)
 		env->ThrowError("nnedi3:  height must be mod 2 when dh=false (%d)!", vi.height);
-	if (!YV16Clip)
-	{
+	if (!vi.IsY8())
 		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
-			args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),
-			args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-			args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
-	}
+				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),
+				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
+				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
 	else
-	{
-		AVSValue v = args[0].AsClip();
-		v = env->Invoke("ConvertToYUY2",v).AsClip();
-		v = new nnedi3(v.AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
-			args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),
-			args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-			args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
-		v = env->Invoke("ConvertToYV16",v).AsClip();
-		return v;
-	}
+		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
+				args[3].AsBool(true),false,false,
+				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
+				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
 }
 
 AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvironment *env)
 {
-	bool YV16Clip;
-
 	if (!args[0].IsClip())
 		env->ThrowError("nnedi3_rpow2:  arg 0 must be a clip!");
 	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
-	YV16Clip=vi.IsYV16();
-	if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24() && !YV16Clip)
-		env->ThrowError("nnedi3_rpow2:  only YV12, YUY2, YV16 and RGB24 input are supported!");
-	if (vi.IsYUY2() && (vi.width&3))
-		env->ThrowError("nnedi3_rpow2:  for yuy2 input width must be mod 4 (%d)!", vi.width);
+	if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24() && !vi.IsYV16() && !vi.IsYV24() && !vi.IsY8())
+		env->ThrowError("nnedi3_rpow2:  only YV12, YUY2, YV16, YV24, Y8 and RGB24 input are supported!");
+	if ((vi.IsYUY2() || vi.IsYV16()) && (vi.width&3))
+		env->ThrowError("nnedi3_rpow2:  for YUY2 & YV16 input width must be mod 4 (%d)!", vi.width);
 	const int rfactor = args[1].AsInt(-1);
 	const int nsize = args[2].AsInt(0);
 	const int nns = args[3].AsInt(3);
@@ -1183,6 +1196,41 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			hshift = vshift = -0.5;
 		}
+		else if (vi.IsYV24())
+		{
+			for (int i=0; i<ct; ++i)
+			{
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = env->Invoke("TurnRight",v).AsClip();
+				v = new nnedi3(v.AsClip(),1,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = env->Invoke("TurnLeft",v).AsClip();
+			}
+			hshift = vshift = -0.5;
+		}
+		else if (vi.IsYV16())
+		{
+			for (int i=0; i<ct; ++i)
+			{
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = env->Invoke("TurnRight",v).AsClip();
+				v = new nnedi3(v.AsClip(),1,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = env->Invoke("TurnLeft",v).AsClip();
+			}
+			for (int i=0; i<ct; ++i)
+				hshift = hshift*2.0-0.5;
+			vshift = -0.5;
+		}
+		else if (vi.IsY8())
+		{
+			for (int i=0; i<ct; ++i)
+			{
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = env->Invoke("TurnRight",v).AsClip();
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = env->Invoke("TurnLeft",v).AsClip();
+			}
+			hshift = vshift = -0.5;
+		}
 		else if (vi.IsYV12())
 		{
 			for (int i=0; i<ct; ++i)
@@ -1208,11 +1256,10 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				hshift = hshift*2.0-0.5;
 			vshift = -0.5;
 		}
-		else
+		else if (vi.IsYUY2())
 		{
 			// Unfortunately, turnleft()/turnright() can't preserve YUY2 chroma, so we convert
 			// U/V planes to Y planes in separate clips and process them that way.
-			if (YV16Clip) v = env->Invoke("ConvertToYUY2",v).AsClip();
 			AVSValue vu = env->Invoke("UtoY",v).AsClip();
 			AVSValue vv = env->Invoke("VtoY",v).AsClip();
 			for (int i=0; i<ct; ++i)
@@ -1244,7 +1291,6 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; ++i)
 				hshift = hshift*2.0-0.5;
 			vshift = -0.5;
-			if (YV16Clip) v = env->Invoke("ConvertToYV16",v).AsClip();
 		}
 		if (cshift[0])
 		{
