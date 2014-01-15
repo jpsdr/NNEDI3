@@ -25,14 +25,16 @@
 #include <process.h>
 #include <float.h>
 #include <stdio.h>
+#include <stdint.h>
 #include "avisynth.h"
 #include "PlanarFrame.h"
 
 #define NUM_NSIZE 7
 #define NUM_NNS 5
-const int xdiaTable[NUM_NSIZE] = { 8, 16, 32, 48, 8, 16, 32 };
-const int ydiaTable[NUM_NSIZE] = { 6, 6, 6, 6, 4, 4, 4 };
-const int nnsTable[NUM_NNS] = { 16, 32, 64, 128, 256 };
+const int xdiaTable[NUM_NSIZE] = {8,16,32,48,8,16,32};
+const int ydiaTable[NUM_NSIZE] = {6,6,6,6,4,4,4};
+const int nnsTable[NUM_NNS] = {16,32,64,128,256};
+const int nnsTablePow2[NUM_NNS] = {4,5,6,7,8};
 
 #define CB2(n) max(min((n),254),0)
 
@@ -40,17 +42,17 @@ unsigned __stdcall threadPool(void *ps);
 
 struct PS_INFO {
 	int field[3], type, ident;
-	const unsigned char *srcp[3];
-	unsigned char *dstp[3];
-	int src_pitch[3], dst_pitch[3];
-	int height[3], width[3];
-	int sheight[3], eheight[3];
-	int sheight2[3], eheight2[3];
-	int *lcount[3], opt, qual;
-	float *input, *temp;
-	float *weights0, **weights1;
-	int asize, nns, xdia, ydia, fapprox;
-	bool Y, U, V;
+	const uint8_t *srcp[3];
+	uint8_t *dstp[3];
+	int src_pitch[3],dst_pitch[3];
+	int height[3],width[3];
+	int sheight[3],eheight[3];
+	int sheight2[3],eheight2[3];
+	int *lcount[3],opt,qual;
+	float *input,*temp;
+	float *weights0,**weights1;
+	int asize,nns,xdia,ydia,fapprox;
+	bool Y,U,V;
 	int pscrn;
 	IScriptEnvironment *env;
 	HANDLE nextJob, jobFinished;
@@ -59,28 +61,25 @@ struct PS_INFO {
 class nnedi3 : public GenericVideoFilter
 {
 private:
-	bool dh, Y, U, V;
+	bool dh,Y,U,V;
 	int pscrn;
-	int field, threads, opt, nns, etype;
-	int *lcount[3], qual, nsize, fapprox;
-	PlanarFrame *srcPF, *dstPF;
+	int field,threads,opt,nns,etype;
+	int *lcount[3],qual,nsize,fapprox;
+	PlanarFrame *srcPF,*dstPF;
 	PS_INFO **pssInfo;
 	unsigned *tids;
 	HANDLE *thds;
-	float *weights0, *weights1[2];
+	float *weights0,*weights1[2];
 	void nnedi3::calcStartEnd2(PVideoFrame dst);
-	void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env);
+	void nnedi3::copyPad(int n,int fn,IScriptEnvironment *env);
 
 public:
-	nnedi3::nnedi3(PClip _child, int _field, bool _dh, bool _Y, bool _U, bool _V, 
-		int _nsize, int _nns, int _qual, int _etype, int _pscrn, int _threads, 
-		int _opt, int _fapprox, IScriptEnvironment *env);
+	nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsize,int _nns,int _qual,int _etype,
+		int _pscrn,int _threads,int _opt,int _fapprox,IScriptEnvironment *env);
 	nnedi3::~nnedi3();
-	PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env);
+	PVideoFrame __stdcall nnedi3::GetFrame(int n,IScriptEnvironment *env);
 };
 
 // new prescreener functions
-void uc2s64_C(const unsigned char *t, const int pitch, float *p);
-//void uc2s64_SSE2(const unsigned char *t, const int pitch, float *p);
-void computeNetwork0new_C(const float *datai, const float *weights, unsigned char *d);
-//void computeNetwork0new_SSE2(const float *datai, const float *weights, unsigned char *d);
+void uc2s64_C(const uint8_t *t,const int pitch,float *p);
+void computeNetwork0new_C(const float *datai,const float *weights,uint8_t *d);

@@ -280,6 +280,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   15/01/2014  v0.9.4.4
+       + Some few little optimizations.
+       * Trick YV16 support in nnedi3_rpow2 by working internaly in YUY2 mode to speed-up.
+
    14/01/2014  v0.9.4.3
 
        + Add fturn support.
