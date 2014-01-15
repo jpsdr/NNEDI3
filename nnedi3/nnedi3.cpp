@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.4 for Avisynth 2.6.x
+**                    nnedi3 v0.9.4.5 for Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1284,6 +1284,7 @@ unsigned __stdcall threadPool(void *ps)
 	}
 }
 
+
 AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
 	if (!args[0].IsClip())
@@ -1295,31 +1296,17 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	if ((vi.height&1) && !dh)
 		env->ThrowError("nnedi3:  height must be mod 2 when dh=false (%d)!", vi.height);
 	if (!vi.IsY8())
-	{
-//		if (!vi.IsYV16())
-			return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
-					args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),
-					args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-					args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
-/*		else
-		{
-			AVSValue v = args[0].AsClip();
-
-			v = env->Invoke("ConvertToYUY2",v).AsClip();
-			v = new nnedi3(v.AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
-					args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),
-					args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-					args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
-			v = env->Invoke("ConvertToYV16",v).AsClip();
-			return v;
-		}*/
-	}
+		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
+				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),
+				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
+				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
 	else
 		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),false,false,
 				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
 				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
 }
+
 
 AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvironment *env)
 {
@@ -1345,7 +1332,6 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const int fapprox = args[14].AsInt(15);
 	if (rfactor < 2 || rfactor > 1024) env->ThrowError("nnedi3_rpow2:  2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	int rf = 1, ct = 0;
-	bool YV16Clip=vi.IsYV16();
 
 	while (rf < rfactor)
 	{
@@ -1402,22 +1388,47 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else
 			{
-/*				if (vi.IsYV16())
+				if (vi.IsYV16())
 				{
+					// Turnleft/right resample chroma in YV16, horribly slow !!
+					// So, each plane is extracted and process separately.
+					AVSValue vy = env->Invoke("ConvertToY8",v).AsClip();
+					AVSValue vu = env->Invoke("UtoY",v).AsClip();
+					vu = env->Invoke("ConvertToY8",vu).AsClip();
+					AVSValue vv = env->Invoke("VtoY",v).AsClip();
+					vv = env->Invoke("ConvertToY8",vv).AsClip();
 					for (int i=0; i<ct; ++i)
 					{
-						v = new nnedi3(v.AsClip(),i==0?1:0,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-						v = env->Invoke(turnRightFunction,v).AsClip();
+						vy = new nnedi3(vy.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+						vy = env->Invoke(turnRightFunction,vy).AsClip();
 						// always use field=1 to keep chroma/luma horizontal alignment
-						v = new nnedi3(v.AsClip(),1,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-						v = env->Invoke(turnLeftFunction,v).AsClip();
+						vy = new nnedi3(vy.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+						vy = env->Invoke(turnLeftFunction,vy).AsClip();
 					}
+					for (int i=0; i<ct; ++i)
+					{
+						vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+						vu = env->Invoke(turnRightFunction,vu).AsClip();
+						// always use field=1 to keep chroma/luma horizontal alignment
+						vu = new nnedi3(vu.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+						vu = env->Invoke(turnLeftFunction,vu).AsClip();
+					}
+					for (int i=0; i<ct; ++i)
+					{
+						vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+						vv = env->Invoke(turnRightFunction,vv).AsClip();
+						// always use field=1 to keep chroma/luma horizontal alignment
+						vv = new nnedi3(vv.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+						vv = env->Invoke(turnLeftFunction,vv).AsClip();
+					}
+					AVSValue ytouvargs[3] = {vu,vv,vy};
+					v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
 					for (int i=0; i<ct; ++i)
 						hshift = hshift*2.0-0.5;
 					vshift = -0.5;
 				}
 				else
-				{*/
+				{
 					if (vi.IsY8())
 					{
 						for (int i=0; i<ct; ++i)
@@ -1458,10 +1469,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 						}
 						else
 						{
-							if (vi.IsYUY2() || YV16Clip)
-//							if (vi.IsYUY2())
+							if (vi.IsYUY2())
 							{
-								if (YV16Clip) v = env->Invoke("ConvertToYUY2",v).AsClip();
 								// Unfortunately, turnleft()/turnright() can't preserve YUY2 chroma, so we convert
 								// U/V planes to Y planes in separate clips and process them that way.
 								AVSValue vu = env->Invoke("UtoY",v).AsClip();
@@ -1492,14 +1501,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 								}
 								AVSValue ytouvargs[3] = {vu,vv,v};
 								v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
-								if (YV16Clip) v=env->Invoke("ConvertToYV16",v).AsClip();
 								for (int i=0; i<ct; ++i)
 									hshift = hshift*2.0-0.5;
 								vshift = -0.5;
 							}
 						}
 					}
-//				}
+				}
 			}
 		}
 		if (cshift[0])
