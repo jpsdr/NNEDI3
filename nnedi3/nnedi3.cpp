@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.5 for Avisynth 2.6.x
+**                    nnedi3 v0.9.4.6 for Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1390,20 +1390,18 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				if (vi.IsYV16())
 				{
-					// Turnleft/right resample chroma in YV16, horribly slow !!
+					// Turnleft/right resample chroma in YV16, very slow and not lossless !!
 					// So, each plane is extracted and process separately.
-					AVSValue vy = env->Invoke("ConvertToY8",v).AsClip();
-					AVSValue vu = env->Invoke("UtoY",v).AsClip();
-					vu = env->Invoke("ConvertToY8",vu).AsClip();
-					AVSValue vv = env->Invoke("VtoY",v).AsClip();
-					vv = env->Invoke("ConvertToY8",vv).AsClip();
+					AVSValue vu = env->Invoke("UtoY8",v).AsClip();
+					AVSValue vv = env->Invoke("VtoY8",v).AsClip();
+					v = env->Invoke("ConvertToY8",v).AsClip();
 					for (int i=0; i<ct; ++i)
 					{
-						vy = new nnedi3(vy.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-						vy = env->Invoke(turnRightFunction,vy).AsClip();
+						v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+						v = env->Invoke(turnRightFunction,v).AsClip();
 						// always use field=1 to keep chroma/luma horizontal alignment
-						vy = new nnedi3(vy.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
-						vy = env->Invoke(turnLeftFunction,vy).AsClip();
+						v = new nnedi3(v.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+						v = env->Invoke(turnLeftFunction,v).AsClip();
 					}
 					for (int i=0; i<ct; ++i)
 					{
@@ -1421,7 +1419,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 						vv = new nnedi3(vv.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
 						vv = env->Invoke(turnLeftFunction,vv).AsClip();
 					}
-					AVSValue ytouvargs[3] = {vu,vv,vy};
+					AVSValue ytouvargs[3] = {vu,vv,v};
 					v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
 					for (int i=0; i<ct; ++i)
 						hshift = hshift*2.0-0.5;

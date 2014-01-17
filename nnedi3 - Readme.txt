@@ -1,8 +1,7 @@
                                                                                                     |
-                                   nnedi3 for Avisynth v2.6.x                                       |
-                                     v0.9.4.5  (16/01/2014)                                         |
-                                          by tritical                                               |
+                                nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
+                                     v0.9.4.6 (17/01/2014)                                          |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -280,6 +279,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   17/01/2014  v0.9.4.6
+
+       + Little YV16 optimization.
+
    16/01/2014  v0.9.4.5
 
        * Updated YV16 support for nnedi3_rpow2, now fast and direct, not tweaked by going to YUY2.
