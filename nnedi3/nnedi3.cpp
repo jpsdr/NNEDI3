@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.6 for Avisynth 2.6.x
+**                    nnedi3 v0.9.4.7 for Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1380,8 +1380,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				{
 					v = new nnedi3(v.AsClip(),i==0?1:0,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
 					v = env->Invoke(turnRightFunction,v).AsClip();
-					// always use field=1 to keep chroma/luma horizontal alignment
-					v = new nnedi3(v.AsClip(),1,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+					v = new nnedi3(v.AsClip(),i==0?1:0,true,true,true,true,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
 					v = env->Invoke(turnLeftFunction,v).AsClip();
 				}
 				hshift = vshift = -0.5;
@@ -1433,8 +1432,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 						{
 							v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
 							v = env->Invoke(turnRightFunction,v).AsClip();
-							// always use field=1 to keep chroma/luma horizontal alignment
-							v = new nnedi3(v.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+							v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
 							v = env->Invoke(turnLeftFunction,v).AsClip();
 						}
 						hshift = vshift = -0.5;
