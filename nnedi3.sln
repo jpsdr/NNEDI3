@@ -9,6 +9,8 @@ Global
 		Debug|x64 = Debug|x64
 		Release_Intel_SSE4.2|Win32 = Release_Intel_SSE4.2|Win32
 		Release_Intel_SSE4.2|x64 = Release_Intel_SSE4.2|x64
+		Release_Intel_XP_Core2_AVX2|Win32 = Release_Intel_XP_Core2_AVX2|Win32
+		Release_Intel_XP_Core2_AVX2|x64 = Release_Intel_XP_Core2_AVX2|x64
 		Release|Win32 = Release|Win32
 		Release|x64 = Release|x64
 	EndGlobalSection
@@ -21,6 +23,10 @@ Global
 		{03456684-151D-49B2-BA66-037255A57811}.Release_Intel_SSE4.2|Win32.Build.0 = Release_Intel_SSE4.2|Win32
 		{03456684-151D-49B2-BA66-037255A57811}.Release_Intel_SSE4.2|x64.ActiveCfg = Release_Intel_SSE4.2|x64
 		{03456684-151D-49B2-BA66-037255A57811}.Release_Intel_SSE4.2|x64.Build.0 = Release_Intel_SSE4.2|x64
+		{03456684-151D-49B2-BA66-037255A57811}.Release_Intel_XP_Core2_AVX2|Win32.ActiveCfg = Release_Intel_XP_Core2_AVX2|Win32
+		{03456684-151D-49B2-BA66-037255A57811}.Release_Intel_XP_Core2_AVX2|Win32.Build.0 = Release_Intel_XP_Core2_AVX2|Win32
+		{03456684-151D-49B2-BA66-037255A57811}.Release_Intel_XP_Core2_AVX2|x64.ActiveCfg = Release_Intel_XP_Core2_AVX2|x64
+		{03456684-151D-49B2-BA66-037255A57811}.Release_Intel_XP_Core2_AVX2|x64.Build.0 = Release_Intel_XP_Core2_AVX2|x64
 		{03456684-151D-49B2-BA66-037255A57811}.Release|Win32.ActiveCfg = Release|Win32
 		{03456684-151D-49B2-BA66-037255A57811}.Release|Win32.Build.0 = Release|Win32
 		{03456684-151D-49B2-BA66-037255A57811}.Release|x64.ActiveCfg = Release|x64
