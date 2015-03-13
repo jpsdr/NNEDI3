@@ -118,7 +118,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	}
 	if (dh) vi.height*=2;
 	vi.SetFieldBased(false);
-	child->SetCacheHints(CACHE_25_RANGE,3);
+	child->SetCacheHints(CACHE_GET_WINDOW,3);
 	if (threads==0) threads=num_processors();
 	srcPF = new PlanarFrame();
 	if (vi.IsYV12()) srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64);
@@ -148,7 +148,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		if ((cpuf&CPU_SSE2)!=0) opt=2;
 		else opt=1;
 		char buf[512];
-		sprintf(buf,"nnedi3:  auto-detected opt setting = %d (%d)\n",opt,cpuf);
+		sprintf_s(buf,512,"nnedi3:  auto-detected opt setting = %d (%d)\n",opt,cpuf);
 		OutputDebugString(buf);
 	}
 	const int dims0 = 49*4+5*4+9*4;
@@ -1452,7 +1452,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 							// Correct chroma shift (it's always 1/2 pixel upwards).
 							// Need a cache here because v/vc will both request from this point.
 							v = env->Invoke("InternalCache",v).AsClip();
-							v.AsClip()->SetCacheHints(CACHE_25_RANGE,2);
+							v.AsClip()->SetCacheHints(CACHE_GET_WINDOW,2);
 							AVSValue sargs[7]={v,vi.width*rfactor,vi.height*rfactor,0.0,-0.5,
 								vi.width*rfactor,vi.height*rfactor};
 							const char *nargs[7]={0,0,0,"src_left","src_top","src_width","src_height"};
