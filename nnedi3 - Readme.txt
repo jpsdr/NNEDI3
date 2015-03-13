@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.7 (26/01/2014)                                          |
+                                     v0.9.4.8 (13/03/2015)                                          |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -279,6 +279,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   13/03/2015  v0.9.4.8
+
+       + Update to last AVS+ header files.
+
    26/01/2014  v0.9.4.7
 
        + Little correction in YV24 and Y8 support for nnedi3_rpow2.
