@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.8 (13/03/2015)                                          |
+                                     v0.9.4.9 (09/05/2015)                                          |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -279,6 +279,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   09/05/2015  v0.9.4.9
+
+       + Bug correction in x64 ASM file, thanks to jackoneill for pointing out.
+
    13/03/2015  v0.9.4.8
 
        + Update to last AVS+ header files.

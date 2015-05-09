@@ -1411,7 +1411,7 @@ lloop_2:
 		shufps xmm0,xmm2,136
 		shufps xmm6,xmm2,221
 		addps xmm6,xmm0
-		movaps [eax],xmm6
+		movaps [rax],xmm6
 		add rax,r11
 		sub rbx,r10
 		jnz nloop_2
