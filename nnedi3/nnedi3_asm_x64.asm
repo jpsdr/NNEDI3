@@ -925,9 +925,9 @@ xloop_2:
 		add rdx,r12
 		cmp rcx,rdi
 		jl xloop_2
-		lea eax,[rax+rbx*4]
-		lea esi,[rsi+rbx*4]
-		lea edx,[rdx+rdi*2]
+		lea rax,[rax+rbx*4]
+		lea rsi,[rsi+rbx*4]
+		lea rdx,[rdx+rdi*2]
 		sub r8d,r10d
 		jnz yloop
 		movhlps xmm1,xmm5

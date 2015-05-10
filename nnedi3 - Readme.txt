@@ -279,9 +279,9 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
-   09/05/2015  v0.9.4.9
+   10/05/2015  v0.9.4.9
 
-       + Bug correction in x64 ASM file, thanks to jackoneill for pointing out.
+       + Bug correction in x64 ASM file, thanks to jackoneill and HolyWu.
 
    13/03/2015  v0.9.4.8
 
