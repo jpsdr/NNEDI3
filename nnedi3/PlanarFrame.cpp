@@ -1,7 +1,7 @@
 /*
 **   My PlanarFrame class... fast mmx/sse2 YUY2 packed to planar and planar 
 **   to packed conversions, and always gives 16 bit alignment for all
-**   planes.  Supports YV12/YUY2/RGB24 frames from avisynth, can do any planar
+**   planes.  Supports Y8/YV12/YV16/YV24/YUY2/RGB24 frames from avisynth, can do any planar
 **   format internally.
 **
 **   Copyright (C) 2005-2010 Kevin Stone
@@ -68,16 +68,16 @@ PlanarFrame::PlanarFrame(VideoInfo &viInfo)
 
 PlanarFrame::~PlanarFrame()
 {
-	if (y != NULL) { _aligned_free(y); y = NULL; }
-	if (u != NULL) { _aligned_free(u); u = NULL; }
 	if (v != NULL) { _aligned_free(v); v = NULL; }
+	if (u != NULL) { _aligned_free(u); u = NULL; }
+	if (y != NULL) { _aligned_free(y); y = NULL; }
 }
 
 bool PlanarFrame::allocSpace(VideoInfo &viInfo)
 {
-	if (y != NULL) { _aligned_free(y); y = NULL; }
-	if (u != NULL) { _aligned_free(u); u = NULL; }
 	if (v != NULL) { _aligned_free(v); v = NULL; }
+	if (u != NULL) { _aligned_free(u); u = NULL; }
+	if (y != NULL) { _aligned_free(y); y = NULL; }
 	ypitch = uvpitch = 0;
 	ywidth = uvwidth = 0;
 	yheight = uvheight = 0;
@@ -130,13 +130,13 @@ bool PlanarFrame::allocSpace(VideoInfo &viInfo)
 			}
 		}
 	}
-	y = (unsigned char*)_aligned_malloc(ypitch*yheight,MIN_ALIGNMENT);
+	y = (unsigned char*)_aligned_malloc((size_t)ypitch*(size_t)yheight,MIN_ALIGNMENT);
 	if (y == NULL) return false;
 	if ((uvpitch!=0) && (uvheight!=0))
 	{
-		u = (unsigned char*)_aligned_malloc(uvpitch*uvheight,MIN_ALIGNMENT);
+		u = (unsigned char*)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
 		if (u == NULL) return false;
-		v = (unsigned char*)_aligned_malloc(uvpitch*uvheight,MIN_ALIGNMENT);
+		v = (unsigned char*)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
 		if (v == NULL) return false;
 	}
 	return true;
@@ -144,9 +144,9 @@ bool PlanarFrame::allocSpace(VideoInfo &viInfo)
 
 bool PlanarFrame::allocSpace(int specs[4])
 {
-	if (y != NULL) { _aligned_free(y); y = NULL; }
-	if (u != NULL) { _aligned_free(u); u = NULL; }
 	if (v != NULL) { _aligned_free(v); v = NULL; }
+	if (u != NULL) { _aligned_free(u); u = NULL; }
+	if (y != NULL) { _aligned_free(y); y = NULL; }
 	ypitch = uvpitch = 0;
 	ywidth = uvwidth = 0;
 	yheight = uvheight = 0;
@@ -165,13 +165,13 @@ bool PlanarFrame::allocSpace(int specs[4])
 		uvwidth = width;
 		uvheight = height;
 	}
-	y = (unsigned char*)_aligned_malloc(ypitch*yheight,MIN_ALIGNMENT);
+	y = (unsigned char*)_aligned_malloc((size_t)ypitch*(size_t)yheight,MIN_ALIGNMENT);
 	if (y == NULL) return false;
 	if ((uvpitch!=0) && (uvheight!=0))
 	{
-		u = (unsigned char*)_aligned_malloc(uvpitch*uvheight,MIN_ALIGNMENT);
+		u = (unsigned char*)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
 		if (u == NULL) return false;
-		v = (unsigned char*)_aligned_malloc(uvpitch*uvheight,MIN_ALIGNMENT);
+		v = (unsigned char*)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
 		if (v == NULL) return false;
 	}
 	return true;
@@ -327,9 +327,9 @@ int PlanarFrame::GetPitch(uint8_t plane)
 
 void PlanarFrame::freePlanar()
 {
-	if (y != NULL) { _aligned_free(y); y = NULL; }
-	if (u != NULL) { _aligned_free(u); u = NULL; }
 	if (v != NULL) { _aligned_free(v); v = NULL; }
+	if (u != NULL) { _aligned_free(u); u = NULL; }
+	if (y != NULL) { _aligned_free(y); y = NULL; }
 	ypitch = uvpitch = 0;
 	ywidth = uvwidth = 0;
 	yheight = uvheight = 0;

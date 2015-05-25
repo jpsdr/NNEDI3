@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.9 (10/05/2015)                                          |
+                                     v0.9.4.10 (25/05/2015)                                          |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -279,6 +279,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   25/05/2015  v0.9.4.10
+
+       + Integration of commits coming from Vapoursynth version, thanks to Myrsloik.
+
    10/05/2015  v0.9.4.9
 
        + Bug correction in x64 ASM file, thanks to jackoneill and HolyWu.

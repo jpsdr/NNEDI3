@@ -1,7 +1,7 @@
 /*
 **   My PlanarFrame class... fast mmx/sse2 YUY2 packed to planar and planar 
 **   to packed conversions, and always gives 16 bit alignment for all
-**   planes.  Supports YV12/YUY2 frames from avisynth, can do any planar format 
+**   planes.  Supports Y8/YV12/YV16/YV24/YUY2/RGB24 frames from avisynth, can do any planar format 
 **   internally.
 **
 **   Copyright (C) 2005-2006 Kevin Stone

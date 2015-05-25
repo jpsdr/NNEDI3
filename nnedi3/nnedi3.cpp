@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.9 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.10 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -463,12 +463,13 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		hslice[i] = height/threads;
 		hremain[i] = height%threads;
 	}
+	size_t temp_size = max((size_t)srcPF->GetWidth(0), 512 * sizeof(float));
 	for (int i=0; i<threads; ++i)
 	{
 		pssInfo[i] = (PS_INFO*)malloc(sizeof(PS_INFO));
 		pssInfo[i]->type = 0;
 		pssInfo[i]->input = (float*)_aligned_malloc(512*sizeof(float),16);
-		pssInfo[i]->temp = (float*)_aligned_malloc(2048*sizeof(float),16);
+		pssInfo[i]->temp = (float*)_aligned_malloc(temp_size, 16);
 		pssInfo[i]->weights0 = weights0;
 		pssInfo[i]->weights1 = weights1;
 		pssInfo[i]->ident = i;
