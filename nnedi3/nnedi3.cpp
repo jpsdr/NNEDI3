@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.11 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.12 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1361,8 +1361,10 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		env->ThrowError("nnedi3_rpow2:  fapprox must be [0,15]!\n");
 
 	AVSValue v = args[0].AsClip();
-	auto turnRightFunction = env->FunctionExists("FTurnRight") ? "FTurnRight" : "TurnRight";
-	auto turnLeftFunction = env->FunctionExists("FTurnLeft") ? "FTurnLeft" : "TurnLeft";
+	auto turnRightFunction = (env->FunctionExists("FTurnRight") &&
+		((env->GetCPUFlags() & CPUF_SSE2)!=0) && !vi.IsRGB24() ) ? "FTurnRight" : "TurnRight";
+	auto turnLeftFunction = (env->FunctionExists("FTurnLeft") &&
+		((env->GetCPUFlags() & CPUF_SSE2)!=0) && !vi.IsRGB24() ) ? "FTurnLeft" : "TurnLeft";
 
 	try 
 	{
@@ -1499,6 +1501,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 					AVSValue ytouvargs[3] = {vu,vv,v};
 					v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
+
+					if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
 				}
 			}
 			else if (type != 3 || min(ep0,ep1) == -FLT_MAX)
@@ -1543,6 +1547,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 					AVSValue ytouvargs[3] = {vu,vv,v};
 					v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
+
+					if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
 				}
 			}
 			else
@@ -1586,6 +1592,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 					AVSValue ytouvargs[3] = {vu,vv,v};
 					v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
+
+					if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
 				}
 			}
 		}
@@ -1606,6 +1614,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 				AVSValue ytouvargs[3] = {vu,vv,v};
 				v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
+
+				if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
 			}
 		}
 	}

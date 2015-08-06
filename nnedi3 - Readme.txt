@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.11 (31/07/2015)                                          |
+                                     v0.9.4.12 (06/08/2015)                                          |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -279,6 +279,11 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   06/08/2015  v0.9.4.12
+
+       + More checks on use of FTurn.
+       + Fix regression on YUY2 introduced in previous release.
+
    31/07/2015  v0.9.4.11
 
        + Correction of chroma shift value for 4:2:x color modes.
