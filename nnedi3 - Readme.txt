@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.13 (08/08/2015)                                          |
+                                     v0.9.4.14 (09/08/2015)                                          |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -22,7 +22,8 @@ INFO:
            int pscrn, int threads, int opt, int fapprox)
 
     nnedi3_rpow2(int rfactor, int nsize, int nns, int qual, int etype, int pscrn, string cshift,
-                 int fwidth, int fheight, float ep0, float ep1, int threads, int opt, int fapprox)
+                 int fwidth, int fheight, float ep0, float ep1, int threads, int opt, int fapprox,
+                 bool mpeg2)
 
 
 
@@ -255,6 +256,14 @@ PARAMETERS (nnedi3_rpow2):
 
       Same as corresponding parameters in nnedi3. However, nnedi3_rpow2 uses nsize=0 and
       nns=3 by default (versus nsize=6 and nns=1 in nnedi3()).
+      
+   mpeg2
+     
+      Specify chroma alignment for YV12. If true, chroma subsampling follow MPEG-2
+      alignment, and a shift correction is made on the chroma according the resize.
+      If false, chroma subsampling for YV12 is MPEG-1, and so no shift is made.
+      
+      Default: True
 
 
 
@@ -279,6 +288,12 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   09/08/2015  v0.9.4.14
+
+       + Add resize adjustment chroma shift in case of MPEG-2 subsampling.
+       + Faster RGB24 mode always.
+       + Add mpeg2 parameter.
+
    08/08/2015  v0.9.4.13
 
        + Correction of chroma shift once for all this time.

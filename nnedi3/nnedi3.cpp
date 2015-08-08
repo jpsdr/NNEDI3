@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.13 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.14 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1308,9 +1308,9 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
 	else
 		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
-				args[3].AsBool(true),args[4].AsBool(false),args[5].AsBool(false),
-				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
+				args[3].AsBool(true),false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),
+				args[9].AsInt(0),args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),
+				args[13].AsInt(15),env);
 }
 
 
@@ -1337,6 +1337,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const int threads = args[12].AsInt(0);
 	const int opt = args[13].AsInt(0);
 	const int fapprox = args[14].AsInt(15);
+	const bool mpeg2_chroma = args[15].AsBool(true);
+
 	if (rfactor < 2 || rfactor > 1024) env->ThrowError("nnedi3_rpow2:  2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	int rf = 1, ct = 0;
 
@@ -1376,7 +1378,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 		if (vi.IsRGB24() || vi.IsYV24() || vi.IsY8())
 		{
-			if (vi.IsRGB24() && (FTurnR && FTurnL))
+			if (vi.IsRGB24())
 			{
 				AVSValue sargs[3] = {v,"Y8",0};
 				vu=env->Invoke("ShowRed",AVSValue(sargs,2)).AsClip();
@@ -1386,7 +1388,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				v=env->Invoke("Interleave",AVSValue(sargs,3)).AsClip();
 			}
 
-			const bool UV_process=!(vi.IsY8() || (vi.IsRGB24() && (FTurnR && FTurnL)));
+			const bool UV_process=!(vi.IsY8() || vi.IsRGB24());
 
 			for (int i=0; i<ct; ++i)
 			{
@@ -1443,12 +1445,18 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				C_hshift/=2.0;
 
 				C_hshift-=0.25*(rf-1);
+
+				// Correct resize chroma position if YV12 has MPEG2 chroma subsampling
+				if ((mpeg2_chroma) && (fwidth!=vi.width))
+					C_hshift+=0.25*rf*(1.0-(double)vi.width/(double)fwidth);
 			}
 			else
 			{
 				if (vi.IsYV411())
 				{
 					C_hshift=-0.5*(rf-1);
+
+					// There is no chroma position resize correction to do in YV411
 				}
 				else
 				{
@@ -1456,6 +1464,10 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 					C_hshift/=2.0;
 					C_hshift-=0.25*(rf-1);
+
+					// Correct resize chroma position because YV16 has MPEG2 chroma subsampling
+					if (fwidth!=vi.width)
+						C_hshift+=0.25*rf*(1.0-(double)vi.width/(double)fwidth);
 				}
 			}
 		}
@@ -1518,7 +1530,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				}
 				else
 				{
-					if (vi.IsRGB24() && (FTurnR && FTurnL))
+					if (vi.IsRGB24())
 					{
 						sargs[0]=v; sargs[1]=3;
 						sargs[2]=0;
@@ -1579,7 +1591,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				}
 				else
 				{
-					if (vi.IsRGB24() && (FTurnR && FTurnL))
+					if (vi.IsRGB24())
 					{
 						sargs[0]=v; sargs[1]=3;
 						sargs[2]=0;
@@ -1639,7 +1651,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				}
 				else
 				{
-					if (vi.IsRGB24() && (FTurnR && FTurnL))
+					if (vi.IsRGB24())
 					{
 						sargs[0]=v; sargs[1]=3;
 						sargs[2]=0;
@@ -1676,7 +1688,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else
 			{
-				if (vi.IsRGB24() && (FTurnR && FTurnL))
+				if (vi.IsRGB24())
 				{
 					AVSValue sargs[4];
 
@@ -1709,7 +1721,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
     env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
 		"[threads]i[opt]i[fapprox]i", Create_nnedi3, 0);
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
-		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i", Create_nnedi3_rpow2, 0);
+		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[mpeg2]b", Create_nnedi3_rpow2, 0);
 
 	return "NNEDI3 plugin";
 	
