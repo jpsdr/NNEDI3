@@ -127,6 +127,19 @@ bool PlanarFrame::allocSpace(VideoInfo &viInfo)
 					ywidth = width;
 					yheight = height;
 				}
+				else
+				{
+					if (viInfo.IsYV411())
+					{
+						ypitch = modnpf(width+MIN_PAD,MIN_ALIGNMENT);
+						ywidth = width;
+						yheight = height;
+						width >>= 2;
+						uvpitch = modnpf(width+MIN_PAD,MIN_ALIGNMENT);
+						uvwidth = width;
+						uvheight = height;
+					}
+				}
 			}
 		}
 	}
@@ -237,6 +250,10 @@ void PlanarFrame::createPlanar(int height,int width,uint8_t chroma_format)
 			specs[0] = height; specs[1] = height;
 			specs[2] = width; specs[3] = width>>1;
 			break;
+		case 3 :
+			specs[0] = height; specs[1] = height;
+			specs[2] = width; specs[3] = width>>2;
+			break;
 		default :
 			specs[0] = height; specs[1] = height;
 			specs[2] = width; specs[3] = width;
@@ -340,7 +357,7 @@ void PlanarFrame::copyInternalFrom(PVideoFrame &frame,VideoInfo &viInfo)
 {
 	if ((y==NULL) || (!viInfo.IsY8() && ((u==NULL) || (v==NULL)))) return;
 
-	if (viInfo.IsYV12() || viInfo.IsYV16() || viInfo.IsYV24())
+	if (viInfo.IsYV12() || viInfo.IsYV16() || viInfo.IsYV24() || viInfo.IsYV411())
 	{
 		BitBlt(y,ypitch,frame->GetReadPtr(PLANAR_Y),frame->GetPitch(PLANAR_Y), 
 			frame->GetRowSize(PLANAR_Y),frame->GetHeight(PLANAR_Y));
@@ -391,7 +408,7 @@ void PlanarFrame::copyInternalTo(PVideoFrame &frame,VideoInfo &viInfo)
 {
 	if ((y==NULL) || (!viInfo.IsY8() && ((u==NULL) || (v==NULL)))) return;
 
-	if (viInfo.IsYV12() || viInfo.IsYV16() || viInfo.IsYV24())
+	if (viInfo.IsYV12() || viInfo.IsYV16() || viInfo.IsYV24() || viInfo.IsYV411())
 	{
 		BitBlt(frame->GetWritePtr(PLANAR_Y),frame->GetPitch(PLANAR_Y),y,ypitch,ywidth,yheight);
 		BitBlt(frame->GetWritePtr(PLANAR_U),frame->GetPitch(PLANAR_U),u,uvpitch,uvwidth,uvheight);

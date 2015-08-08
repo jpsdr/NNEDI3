@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.12 (06/08/2015)                                          |
+                                     v0.9.4.13 (08/08/2015)                                          |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -11,7 +11,7 @@ INFO:
 
       nnedi3 is an intra-field only deinterlacer. It takes in a frame, throws away one field, and
    then interpolates the missing pixels using only information from the kept field. It has same
-      rate and double rate modes, and works with YV12, YV16, YV24, Y8, YUY2, and RGB24 input.
+      rate and double rate modes, and works with YV12, YV411, YV16, YV24, Y8, YUY2, and RGB24 input.
        nnedi3 is also very good for enlarging images by powers of 2, and includes a function
                                   'nnedi3_rpow2' for that purpose.
 
@@ -279,6 +279,12 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   08/08/2015  v0.9.4.13
+
+       + Correction of chroma shift once for all this time.
+       + Faster RGB24 mode if FTurn is usable.
+       + Fix YV411 support.
+
    06/08/2015  v0.9.4.12
 
        + More checks on use of FTurn.

@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.12 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.13 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1361,10 +1361,12 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		env->ThrowError("nnedi3_rpow2:  fapprox must be [0,15]!\n");
 
 	AVSValue v = args[0].AsClip();
-	auto turnRightFunction = (env->FunctionExists("FTurnRight") &&
-		((env->GetCPUFlags() & CPUF_SSE2)!=0) && !vi.IsRGB24() ) ? "FTurnRight" : "TurnRight";
-	auto turnLeftFunction = (env->FunctionExists("FTurnLeft") &&
-		((env->GetCPUFlags() & CPUF_SSE2)!=0) && !vi.IsRGB24() ) ? "FTurnLeft" : "TurnLeft";
+
+	const bool FTurnL=(env->FunctionExists("FTurnLeft") && ((env->GetCPUFlags() & CPUF_SSE2)!=0));
+	const bool FTurnR=(env->FunctionExists("FTurnRight") && ((env->GetCPUFlags() & CPUF_SSE2)!=0));
+
+	auto turnRightFunction = (FTurnR) ? "FTurnRight" : "TurnRight";
+	auto turnLeftFunction =  (FTurnL) ? "FTurnLeft" : "TurnLeft";
 
 	try 
 	{
@@ -1374,11 +1376,23 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 		if (vi.IsRGB24() || vi.IsYV24() || vi.IsY8())
 		{
+			if (vi.IsRGB24() && (FTurnR && FTurnL))
+			{
+				AVSValue sargs[3] = {v,"Y8",0};
+				vu=env->Invoke("ShowRed",AVSValue(sargs,2)).AsClip();
+				vv=env->Invoke("ShowGreen",AVSValue(sargs,2)).AsClip();
+				v=env->Invoke("ShowBlue",AVSValue(sargs,2)).AsClip();
+				sargs[0]=vu; sargs[1]=vv; sargs[2]=v;
+				v=env->Invoke("Interleave",AVSValue(sargs,3)).AsClip();
+			}
+
+			const bool UV_process=!(vi.IsY8() || (vi.IsRGB24() && (FTurnR && FTurnL)));
+
 			for (int i=0; i<ct; ++i)
 			{
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,!vi.IsY8(),!vi.IsY8(),nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
 				v = env->Invoke(turnRightFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,!vi.IsY8(),!vi.IsY8(),nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
 			}
 			Y_hshift = Y_vshift = -0.5;
@@ -1414,38 +1428,36 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				vv = env->Invoke(turnLeftFunction,vv).AsClip();
 			}
 
-/*			for (int i=0; i<ct; ++i)
-				Y_hshift=Y_hshift*2.0-0.5;
-			Y_vshift=-0.5;*/
 			Y_hshift = Y_vshift = -0.5;
 
-			C_hshift=Y_hshift;
 			C_vshift=Y_vshift;
 
 			if (vi.IsYV12())
 			{
+				C_hshift=Y_hshift;
+
 				// Correct chroma shift (it's always 1/2 pixel upwards).
 				C_vshift-=0.5;
 
 				C_vshift/=2.0;
 				C_hshift/=2.0;
+
+				C_hshift-=0.25*(rf-1);
 			}
 			else
 			{
-				if (vi.IsYV411()) C_hshift/=4.0;
-				else C_hshift/=2.0;
+				if (vi.IsYV411())
+				{
+					C_hshift=-0.5*(rf-1);
+				}
+				else
+				{
+					C_hshift=Y_hshift;
+
+					C_hshift/=2.0;
+					C_hshift-=0.25*(rf-1);
+				}
 			}
-
-			if (!vi.IsYV411())
-			{
-				// Correct ressampling chroma shift
-				// First correct the first past increasing of rf
-				C_hshift+=0.25*(rf-1);
-
-				// Correct for the final resolution
-				C_hshift+=0.25*(1.0-((double)(vi.width*rfactor)/(double)fwidth));
-			}
-
 		}
 
 		if (cshift[0])
@@ -1504,6 +1516,21 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 					if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
 				}
+				else
+				{
+					if (vi.IsRGB24() && (FTurnR && FTurnL))
+					{
+						sargs[0]=v; sargs[1]=3;
+						sargs[2]=0;
+						vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[2]=1;
+						vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[2]=2;
+						v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
+						v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();
+					}
+				}
 			}
 			else if (type != 3 || min(ep0,ep1) == -FLT_MAX)
 			{
@@ -1550,6 +1577,21 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 					if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
 				}
+				else
+				{
+					if (vi.IsRGB24() && (FTurnR && FTurnL))
+					{
+						sargs[0]=v; sargs[1]=3;
+						sargs[2]=0;
+						vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[2]=1;
+						vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[2]=2;
+						v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
+						v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();
+					}
+				}
 			}
 			else
 			{
@@ -1595,6 +1637,21 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 					if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
 				}
+				else
+				{
+					if (vi.IsRGB24() && (FTurnR && FTurnL))
+					{
+						sargs[0]=v; sargs[1]=3;
+						sargs[2]=0;
+						vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[2]=1;
+						vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[2]=2;
+						v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
+						v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();
+					}
+				}
 			}
 		}
 		else
@@ -1616,6 +1673,23 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
 
 				if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
+			}
+			else
+			{
+				if (vi.IsRGB24() && (FTurnR && FTurnL))
+				{
+					AVSValue sargs[4];
+
+					sargs[0]=v; sargs[1]=3;
+					sargs[2]=0;
+					vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+					sargs[2]=1;
+					vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+					sargs[2]=2;
+					v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+					sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
+					v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();
+				}
 			}
 		}
 	}
