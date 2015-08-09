@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.14 (09/08/2015)                                          |
+                                     v0.9.4.15 (09/08/2015)                                          |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -262,8 +262,10 @@ PARAMETERS (nnedi3_rpow2):
       Specify chroma alignment for YV12. If true, chroma subsampling follow MPEG-2
       alignment, and a shift correction is made on the chroma according the resize.
       If false, chroma subsampling for YV12 is MPEG-1, and so no shift is made.
+      To keep previous behavior by default, false also don't shift chroma on YV16,
+      even if YV16 always have MPEG-2 chroma subsampling.
       
-      Default: True
+      Default: False
 
 
 
@@ -288,6 +290,11 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   09/08/2015  v0.9.4.15
+
+       + Change default value of mpeg2 to false, and keep exact
+         previous behavior in that case (but doesn't put back chroma shift issue ^_^).
+
    09/08/2015  v0.9.4.14
 
        + Add resize adjustment chroma shift in case of MPEG-2 subsampling.
