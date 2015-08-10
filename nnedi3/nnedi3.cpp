@@ -1431,14 +1431,14 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				vv = env->Invoke(turnLeftFunction,vv).AsClip();
 			}
 
-			Y_hshift = Y_vshift = -0.5;
+			Y_hshift = -0.5*(rf-1);
+			Y_vshift = -0.5;
 
+			C_hshift=Y_hshift;
 			C_vshift=Y_vshift;
 
 			if (vi.IsYV12())
 			{
-				C_hshift=Y_hshift;
-
 				// Correct chroma shift (it's always 1/2 pixel upwards).
 				C_vshift-=0.5;
 
@@ -1455,14 +1455,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				if (vi.IsYV411())
 				{
-					C_hshift=-0.5*(rf-1);
+					C_hshift/=4.0;
+					C_hshift-=0.375*(rf-1);
 
 					// There is no chroma position resize correction to do in YV411
 				}
 				else
 				{
-					C_hshift=Y_hshift;
-
 					C_hshift/=2.0;
 					C_hshift-=0.25*(rf-1);
 
