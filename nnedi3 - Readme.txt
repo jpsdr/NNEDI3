@@ -302,6 +302,7 @@ CHANGE LIST:
    10/08/2015  v0.9.4.16
 
        + Add csresize parameter, and chroma shift adjustment according resize is enabled by default.
+       + Fix regression on center adjustment.
 
    09/08/2015  v0.9.4.15
 
