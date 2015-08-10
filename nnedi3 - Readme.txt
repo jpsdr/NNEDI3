@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.15 (09/08/2015)                                          |
+                                     v0.9.4.16 (10/08/2015)                                          |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -256,16 +256,25 @@ PARAMETERS (nnedi3_rpow2):
 
       Same as corresponding parameters in nnedi3. However, nnedi3_rpow2 uses nsize=0 and
       nns=3 by default (versus nsize=6 and nns=1 in nnedi3()).
+     
+   csresize
+     
+      Chroma Shift Resize. This parameter enable (true) or disable (false) the chroma shift
+      adjustment according the resize. If disabled, no shift is made on chroma according the
+      resize and/or the colorspace, and the [mpeg2] parameter has not effect. If true, adjustment
+      on chroma shift is made according the color space and the resize. YV16 is always shifted
+      because it's always MPEG-2 subsampling, YV411 is never shifted, and YV12 is ruled by the
+      [mpeg2] parameter.
       
+      Default: True
+
    mpeg2
      
       Specify chroma alignment for YV12. If true, chroma subsampling follow MPEG-2
       alignment, and a shift correction is made on the chroma according the resize.
       If false, chroma subsampling for YV12 is MPEG-1, and so no shift is made.
-      To keep previous behavior by default, false also don't shift chroma on YV16,
-      even if YV16 always have MPEG-2 chroma subsampling.
       
-      Default: False
+      Default: True
 
 
 
@@ -290,6 +299,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   10/08/2015  v0.9.4.16
+
+       + Add csresize parameter, and chroma shift adjustment according resize is enabled by default.
+
    09/08/2015  v0.9.4.15
 
        + Change default value of mpeg2 to false, and keep exact

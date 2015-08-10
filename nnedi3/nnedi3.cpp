@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.15 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.16 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1337,7 +1337,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const int threads = args[12].AsInt(0);
 	const int opt = args[13].AsInt(0);
 	const int fapprox = args[14].AsInt(15);
-	const bool mpeg2_chroma = args[15].AsBool(false);
+	const bool chroma_shift_resize = args[15].AsBool(true);
+	const bool mpeg2_chroma = args[16].AsBool(true);
 
 	if (rfactor < 2 || rfactor > 1024) env->ThrowError("nnedi3_rpow2:  2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	int rf = 1, ct = 0;
@@ -1447,7 +1448,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				C_hshift-=0.25*(rf-1);
 
 				// Correct resize chroma position if YV12 has MPEG2 chroma subsampling
-				if ((mpeg2_chroma) && (fwidth!=vi.width))
+				if (chroma_shift_resize && mpeg2_chroma && (fwidth!=vi.width))
 					C_hshift+=0.25*rf*(1.0-(double)vi.width/(double)fwidth);
 			}
 			else
@@ -1465,9 +1466,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					C_hshift/=2.0;
 					C_hshift-=0.25*(rf-1);
 
-					// Even if YV16 always has MPEG2 chroma subsampling, to keep previous
-					// behavior, no shift is made if mpeg2 parameter is false
-					if ((mpeg2_chroma) && (fwidth!=vi.width))
+					//YV16 always has MPEG2 chroma subsampling
+					if (chroma_shift_resize && (fwidth!=vi.width))
 						C_hshift+=0.25*rf*(1.0-(double)vi.width/(double)fwidth);
 				}
 			}
@@ -1722,7 +1722,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
     env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
 		"[threads]i[opt]i[fapprox]i", Create_nnedi3, 0);
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
-		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[mpeg2]b", Create_nnedi3_rpow2, 0);
+		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b", Create_nnedi3_rpow2, 0);
 
 	return "NNEDI3 plugin";
 	
