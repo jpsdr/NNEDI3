@@ -638,7 +638,7 @@ void PlanarFrame::BitBlt(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,int src
 
 	if (((cpu&CPU_ISSE)!=0) && useSIMD) 
 	{
-		if ((height==1) || ((src_pitch==dst_pitch) && (dst_pitch==row_size))) memcpy_amd(dstp,srcp,row_size*height);
+		if ((height==1) || ((src_pitch==dst_pitch) && (dst_pitch==row_size))) memcpy(dstp,srcp,row_size*height);
 		else asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
 	}
 	else

@@ -28,7 +28,6 @@
 #include <malloc.h>
 #include <stdint.h>
 #include "internal.h"
-#include "memcpy_amd.h"
 
 #define MIN_PAD 10
 #define MIN_ALIGNMENT 16
