@@ -23,7 +23,7 @@ INFO:
 
     nnedi3_rpow2(int rfactor, int nsize, int nns, int qual, int etype, int pscrn, string cshift,
                  int fwidth, int fheight, float ep0, float ep1, int threads, int opt, int fapprox,
-                 bool mpeg2)
+                 bool csresize, bool mpeg2)
 
 
 
