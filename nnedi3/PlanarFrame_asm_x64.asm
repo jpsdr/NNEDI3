@@ -421,79 +421,150 @@ xloop_4:
 conv422toYUY2_SSE2 endp
 
 
-;asm_BitBlt_ISSE_1 proc srcStart:dword,dstStart:dword,row_size:dword,height:dword,src_pitch:dword,dst_pitch:dword
-; srcStart = rcx
-; dstStart = rdx
-; row_size = r8d
-; height = r9d
 
-asm_BitBlt_ISSE_1 proc public frame
+;memcpy_SSE2 proc dst_:dword,src_:dword,size_:dword
+; dst_ = rcx
+; src_ = rdx
+; size_ = r8
 
-src_pitch equ dword ptr[rbp+48]
-dst_pitch equ dword ptr[rbp+56]
+memcpy_SSE2 proc public frame
 
-	push rbp
-	.pushreg rbp
-	mov rbp,rsp
-	push rbx
-	.pushreg rbx
 	push rsi
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
 	.endprolog
 	
-			mov   rsi,rcx
-			mov   rdi,rdx
-			xor rdx,rdx
-			mov   edx,r8d
-			dec   edx
-			xor rbx,rbx
-			mov   ebx,r9d
-			
-			movsxd r8,src_pitch
-			movsxd r9,dst_pitch
-			mov r10,1
-			
-			align 16
-memoptS_rowloop:
-			mov   rcx,rdx
-memoptS_byteloop:
-			mov   al,[rsi+rcx]
-			mov   [rdi+rcx],al
-			sub   rcx,r10
-			jnc   memoptS_byteloop
-			sub   rsi,r8
-			sub   rdi,r9
-			dec   rbx
-			jne   memoptS_rowloop
-			
+	mov rsi,rdx
+	mov rdi,rcx
+	mov rax,64
+	mov r9,16
+	mov r10,32
+	mov r11,48
+	
+	mov rcx,r8
+	shr rcx,6
+	jz short Suite0_1
+Boucle0_1:
+	movdqa xmm0,oword ptr[rsi]
+	movdqa xmm1,oword ptr[rsi+r9]
+	movdqa xmm2,oword ptr[rsi+r10]
+	movdqa xmm3,oword ptr[rsi+r11]
+	movntdq oword ptr[rdi],xmm0
+	movntdq oword ptr[rdi+r9],xmm1
+	movntdq oword ptr[rdi+r10],xmm2
+	movntdq oword ptr[rdi+r11],xmm3
+	add rsi,rax
+	add rdi,rax
+	loop Boucle0_1
+Suite0_1:	
+	and r8,63
+	jz short Suite2_1
+	cld
+	mov rcx,r8
+	shr rcx,3
+	jz short Suite1_1
+	rep stosq
+Suite1_1:
+	and r8,7
+	jz short Suite2_1
+	mov rcx,r8
+	rep stosb
+	
+Suite2_1:
 	pop rdi
 	pop rsi
-	pop rbx
-	pop rbp		
-					
-		ret
-		
-asm_BitBlt_ISSE_1 endp
+	
+	ret
+memcpy_SSE2 endp
 
 
-;asm_BitBlt_ISSE_2 proc srcStart:dword,dstStart:dword,row_size:dword,height:dword,src_pitch:dword,dst_pitch:dword
-; srcStart = rcx
-; dstStart = rdx
-; row_size = r8d
-; height = r9d
+;memcpy_SSE2_b proc dst_:dword,src_:dword,size_:dword
+; dst_ = rcx
+; src_ = rdx
+; size_ = r8
 
-asm_BitBlt_ISSE_2 proc public frame
+memcpy_SSE2_b proc public frame
 
-src_pitch equ dword ptr[rbp+48]
-dst_pitch equ dword ptr[rbp+56]
+	push rsi
+	.pushreg rsi
+	push rdi
+	.pushreg rdi
+	push r12
+	.pushreg r12
+	push r13
+	.pushreg r13
+	.endprolog
+	
+	mov rsi,rdx
+	mov rdi,rcx
+	mov rax,64
+	mov r9,8
+	mov r10,24
+	mov r11,40
+	mov r12,48
+	mov r13,56
+	
+	mov rcx,r8
+	shr rcx,6
+	jz short Suite0_2
+Boucle0_2:
+	movq mm0,qword ptr[rsi]
+	movq mm1,qword ptr[rsi+r9]
+	movq mm2,qword ptr[rsi+2*r9]
+	movq mm3,qword ptr[rsi+r10]
+	movq mm4,qword ptr[rsi+4*r9]
+	movq mm5,qword ptr[rsi+r11]
+	movq mm6,qword ptr[rsi+r12]
+	movq mm7,qword ptr[rsi+r13]
+	movntq qword ptr[rdi],mm0
+	movntq qword ptr[rdi+r9],mm1
+	movntq qword ptr[rdi+2*r9],mm2
+	movntq qword ptr[rdi+r10],mm3
+	movntq qword ptr[rdi+4*r9],mm4
+	movntq qword ptr[rdi+r11],mm5
+	movntq qword ptr[rdi+r12],mm6
+	movntq qword ptr[rdi+r13],mm7
+	add rsi,rax
+	add rdi,rax
+	loop Boucle0_2
+Suite0_2:	
+	and r8,63
+	jz short Suite2_2
+	cld
+	mov rcx,r8
+	shr rcx,3
+	jz short Suite1_2
+	rep stosq
+Suite1_2:
+	and r8,7
+	jz short Suite2_2
+	mov rcx,r8
+	rep stosb
+	
+Suite2_2:
+	emms
+	pop r13
+	pop r12
+	pop rdi
+	pop rsi
+	
+	ret
+memcpy_SSE2_b endp
 
-	push rbp
-	.pushreg rbp
-	mov rbp,rsp
-	push rbx
-	.pushreg rbx
+
+
+;Move_Full_SSE2 proc src_:dword,dst_:dword,w:dword,h:dword,src_modulo:dword,dst_modulo:dword
+; src_ = rcx
+; dst_ = rdx
+; w = r8d
+; h = r9d
+
+Move_Full_SSE2 proc public frame
+
+src_modulo equ dword ptr[rbp+48]
+dst_modulo equ dword ptr[rbp+56]
+
 	push rsi
 	.pushreg rsi
 	push rdi
@@ -504,122 +575,86 @@ dst_pitch equ dword ptr[rbp+56]
 	.pushreg r13
 	push r14
 	.pushreg r14
+	push r15
+	.pushreg r15
+	push rbx
+	.pushreg rbx
 	.endprolog
 	
-			mov   rsi,rcx
-			mov   al,[rsi]
-			mov   rdi,rdx
-			xor rdx,rdx
-			mov   edx,r8d
-			xor rbx,rbx
-			mov   ebx,r9d
-			
-			movsxd r8,src_pitch
-			movsxd r9,dst_pitch
-			mov r10,8
-			mov r11,0FFFFFFFFFFFFFFC0h
-			mov r12,64
-			mov r13,63
-			mov r14,7
-		
-			align 16
-memoptU_rowloop:
-			mov   rcx,rdx
-			dec   rcx
-			add   rcx,rsi
-			and   rcx,r11
-memoptU_prefetchloop:
-			mov   ax,[rcx]
-			sub   rcx,r12
-			cmp   rcx,rsi
-			jae   memoptU_prefetchloop
-			movq    mm6,[rsi]
-			movntq  [rdi],mm6
-			mov   rax,rdi
-			neg   rax
-			mov   rcx,rax
-			and   rax,r13
-			and   rcx,r14
-			align 16
-memoptU_prewrite8loop:
-			cmp   rcx,rax
-			jz    memoptU_pre8done
-			movq    mm7,[rsi+rcx]
-			movntq  [rdi+rcx],mm7
-			add   rcx,r10
-			jmp   memoptU_prewrite8loop
-			align 16
-memoptU_write64loop:
-			movntq  [rdi+rcx-64],mm0
-			movntq  [rdi+rcx-56],mm1
-			movntq  [rdi+rcx-48],mm2
-			movntq  [rdi+rcx-40],mm3
-			movntq  [rdi+rcx-32],mm4
-			movntq  [rdi+rcx-24],mm5
-			movntq  [rdi+rcx-16],mm6
-			movntq  [rdi+rcx- 8],mm7
-memoptU_pre8done:
-			add   rcx,r12
-			cmp   rcx,rdx
-			ja    memoptU_done64
-			movq    mm0,[rsi+rcx-64]
-			movq    mm1,[rsi+rcx-56]
-			movq    mm2,[rsi+rcx-48]
-			movq    mm3,[rsi+rcx-40]
-			movq    mm4,[rsi+rcx-32]
-			movq    mm5,[rsi+rcx-24]
-			movq    mm6,[rsi+rcx-16]
-			movq    mm7,[rsi+rcx- 8]
-			jmp   memoptU_write64loop
-memoptU_done64:
-			sub     rcx,r12
-			align 16
-memoptU_write8loop:
-			add     rcx,r10
-			cmp     rcx,rdx
-			ja      memoptU_done8
-			movq    mm0,[rsi+rcx-8]
-			movntq  [rdi+rcx-8],mm0
-			jmp   memoptU_write8loop
-memoptU_done8:
-			movq    mm1,[rsi+rdx-8]
-			movntq  [rdi+rdx-8],mm1
-			sub   rsi,r8
-			sub   rdi,r9
-			dec   rbx
-			jne   memoptU_rowloop
-			sfence
-			emms
-					
+	mov rsi,rcx
+	mov rdi,rdx
+	mov rax,64
+	mov r10,16
+	mov r11,32
+	mov r12,48
+	movsxd r13,src_modulo
+	movsxd r14,dst_modulo
+	
+	mov rbx,63
+	mov r15,7
+	
+	cld
+	xor rcx,rcx	
+	xor rbx,rbx
+	
+Boucle0_3:	
+	mov ecx,r8d
+	shr ecx,6
+	jz short Suite0_3
+Boucle1_3:
+	movdqa xmm0,oword ptr[rsi]
+	movdqa xmm1,oword ptr[rsi+r10]
+	movdqa xmm2,oword ptr[rsi+r11]
+	movdqa xmm3,oword ptr[rsi+r12]
+	movntdq oword ptr[rdi],xmm0
+	movntdq oword ptr[rdi+r10],xmm1
+	movntdq oword ptr[rdi+r11],xmm2
+	movntdq oword ptr[rdi+r12],xmm3
+	add rsi,rax
+	add rdi,rax
+	loop Boucle1_3
+Suite0_3:	
+	mov ecx,r8d
+	and ecx,ebx
+	jz short Suite2_3
+	shr ecx,3
+	jz short Suite1_3
+	rep stosq
+Suite1_3:
+	mov ecx,r8d
+	and ecx,r15d
+	jz short Suite2_3
+	rep stosb
+	
+Suite2_3:
+	add rsi,r13
+	add rdi,r14
+	dec r9d
+	jnz short Boucle0_3	
+	
+	pop rbx
+	pop r15
 	pop r14
 	pop r13
 	pop r12
 	pop rdi
 	pop rsi
-	pop rbx
-	pop rbp		
-		
-		ret
-		
-asm_BitBlt_ISSE_2 endp
-			
+	
+	ret
+Move_Full_SSE2 endp
 
-;asm_BitBlt_ISSE_3 proc srcStart:dword,dstStart:dword,row_size:dword,height:dword,src_pitch:dword,dst_pitch:dword
-; srcStart = rcx
-; dstStart = rdx
-; row_size = r8d
-; height = r9d
 
-asm_BitBlt_ISSE_3 proc public frame
+;Move_Full_SSE2_b proc src_:dword,dst_:dword,w:dword,h:dword,src_modulo:dword,dst_modulo:dword
+; src_ = rcx
+; dst_ = rdx
+; w = r8d
+; h = r9d
 
-src_pitch equ dword ptr[rbp+48]
-dst_pitch equ dword ptr[rbp+56]
+Move_Full_SSE2_b proc public frame
 
-	push rbp
-	.pushreg rbp
-	mov rbp,rsp
-	push rbx
-	.pushreg rbx
+src_modulo equ dword ptr[rbp+48]
+dst_modulo equ dword ptr[rbp+56]
+
 	push rsi
 	.pushreg rsi
 	push rdi
@@ -628,97 +663,85 @@ dst_pitch equ dword ptr[rbp+56]
 	.pushreg r12
 	push r13
 	.pushreg r13
+	push r14
+	.pushreg r14
+	push r15
+	.pushreg r15
+	push rbx
+	.pushreg rbx
 	.endprolog
 	
-			mov   rsi,rcx
-			mov   rdi,rdx
-			xor rdx,rdx
-			mov   edx,r8d
-			xor rbx,rbx
-			mov   ebx,r9d
-			
-			movsxd r8,src_pitch
-			movsxd r9,dst_pitch
-			mov r10,8
-			mov r11,0FFFFFFFFFFFFFFC0h
-			mov r12,64
-			mov r13,63
-
-			align 16
-memoptA_rowloop:
-			mov   rcx,rdx
-			dec   rcx
-			add   rcx,rsi
-			and   rcx,r11
-			align 16
-memoptA_prefetchloop:
-			mov   ax,[rcx]
-			sub   rcx,r12
-			cmp   rcx,rsi
-			jae   memoptA_prefetchloop
-			mov   rax,rdi
-			xor   rcx,rcx
-			neg   rax
-			and   rax,r13
-			align 16
-memoptA_prewrite8loop:
-			cmp   rcx,rax
-			jz    memoptA_pre8done
-			movq    mm7,[rsi+rcx]
-			movntq  [rdi+rcx],mm7
-			add   rcx,r10
-			jmp   memoptA_prewrite8loop
-			align 16
-			memoptA_write64loop:
-			movntq  [rdi+rcx-64],mm0
-			movntq  [rdi+rcx-56],mm1
-			movntq  [rdi+rcx-48],mm2
-			movntq  [rdi+rcx-40],mm3
-			movntq  [rdi+rcx-32],mm4
-			movntq  [rdi+rcx-24],mm5
-			movntq  [rdi+rcx-16],mm6
-			movntq  [rdi+rcx- 8],mm7
-memoptA_pre8done:
-			add   rcx,r12
-			cmp   rcx,rdx
-			ja    memoptA_done64
-			movq    mm0,[rsi+rcx-64]
-			movq    mm1,[rsi+rcx-56]
-			movq    mm2,[rsi+rcx-48]
-			movq    mm3,[rsi+rcx-40]
-			movq    mm4,[rsi+rcx-32]
-			movq    mm5,[rsi+rcx-24]
-			movq    mm6,[rsi+rcx-16]
-			movq    mm7,[rsi+rcx- 8]
-			jmp   memoptA_write64loop
-memoptA_done64:
-			sub   rcx,r12
-			align 16
-memoptA_write8loop:
-			add   rcx,r10
-			cmp   rcx,rdx
-			ja    memoptA_done8
-			movq    mm7,[rsi+rcx-8]
-			movntq  [rdi+rcx-8],mm7
-			jmp   memoptA_write8loop
-memoptA_done8:
-			sub   rsi,r8
-			sub   rdi,r9
-			dec   rbx
-			jne   memoptA_rowloop
-			sfence
-			emms
-			
+	mov rsi,rcx
+	mov rdi,rdx
+	mov rax,64
+	mov r10,8
+	mov r11,24
+	mov r12,40
+	mov r13,48
+	mov r14,56
+	
+	movsxd rbx,src_modulo
+	movsxd r15,dst_modulo
+	
+	cld
+	xor rcx,rcx	
+	xor rbx,rbx
+	
+Boucle0_4:	
+	mov ecx,r8d
+	shr ecx,6
+	jz short Suite0_4
+Boucle1_4:
+	movq mm0,qword ptr[rsi]
+	movq mm1,qword ptr[rsi+r10]
+	movq mm2,qword ptr[rsi+2*r10]
+	movq mm3,qword ptr[rsi+r11]
+	movq mm4,qword ptr[rsi+4*r10]
+	movq mm5,qword ptr[rsi+r12]
+	movq mm6,qword ptr[rsi+r13]
+	movq mm7,qword ptr[rsi+r14]
+	movntq qword ptr[rdi],mm0
+	movntq qword ptr[rdi+r10],mm1
+	movntq qword ptr[rdi+2*r10],mm2
+	movntq qword ptr[rdi+r11],mm3
+	movntq qword ptr[rdi+4*r10],mm4
+	movntq qword ptr[rdi+r12],mm5
+	movntq qword ptr[rdi+r13],mm6
+	movntq qword ptr[rdi+r14],mm7
+	add rsi,rax
+	add rdi,rax
+	loop Boucle1_4
+Suite0_4:	
+	mov ecx,r8d
+	and ecx,63
+	jz short Suite2_4
+	shr ecx,3
+	jz short Suite1_4
+	rep stosq
+Suite1_4:
+	mov ecx,r8d
+	and ecx,7
+	jz short Suite2_4
+	rep stosb
+	
+Suite2_4:	
+	add rsi,rbx
+	add rdi,r15
+	dec r9d
+	jnz Boucle0_4
+	
+	emms
+	pop rbx
+	pop r15
+	pop r14
 	pop r13
 	pop r12
 	pop rdi
 	pop rsi
-	pop rbx
-	pop rbp		
-		
-		ret
-		
-asm_BitBlt_ISSE_3 endp
+	
+	ret
+Move_Full_SSE2_b endp
+
 			
 
 end

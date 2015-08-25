@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.17 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.18 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1458,7 +1458,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					C_hshift/=4.0;
 					C_hshift-=0.375*(rf-1);
 
-					// There is no chroma position resize correction to do in YV411
+				// Correct resize chroma position
+				if (chroma_shift_resize && (fwidth!=vi.width))
+					C_hshift+=0.375*rf*(1.0-(double)vi.width/(double)fwidth);
 				}
 				else
 				{

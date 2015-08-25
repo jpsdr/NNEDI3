@@ -36,6 +36,10 @@ extern "C" void conv422toYUY2_MMX(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *d
 	int width,int height);
 extern "C" void conv422toYUY2_SSE2(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst,int pitch1Y,int pitch1UV,int pitch2,
 	int width,int height);
+extern "C" void memcpy_SSE2(void *dst,const void *src, const size_t size);
+extern "C" void memcpy_SSE2_b(void *dst,const void *src, const size_t size);
+extern "C" void Move_Full_SSE2(const void *src,void *dst,int w,int h,int src_modulo,int dst_modulo);
+extern "C" void Move_Full_SSE2_b(const void *src,void *dst,int w,int h,int src_modulo,int dst_modulo);
 
 
 int modnpf(const int m, const int n)
@@ -638,12 +642,22 @@ void PlanarFrame::BitBlt(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,int src
 
 	if (((cpu&CPU_ISSE)!=0) && useSIMD) 
 	{
-		if ((height==1) || ((src_pitch==dst_pitch) && (dst_pitch==row_size))) memcpy(dstp,srcp,row_size*height);
-		else asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
+		if ((height==1) || ((src_pitch==dst_pitch) && (dst_pitch==row_size)))
+		{
+			if ((((size_t)srcp & 0x0F)==0) && (((size_t)dstp & 0x0F)==0)) memcpy_SSE2(dstp,srcp,(size_t)row_size*(size_t)height);
+			else memcpy_SSE2_b(dstp,srcp,(size_t)row_size*(size_t)height);
+		}
+		else
+		{
+			if ((((size_t)srcp & 0x0F)==0) && (((size_t)dstp & 0x0F)==0) && ((src_pitch & 0x0F)==0) 
+				&& ((dst_pitch & 0x0F)==0))
+				Move_Full_SSE2(srcp,dstp,row_size,height,src_pitch-row_size,dst_pitch-row_size);
+			else Move_Full_SSE2_b(srcp,dstp,row_size,height,src_pitch-row_size,dst_pitch-row_size);					
+		}
 	}
 	else
 	{
-		if ((height==1) || ((dst_pitch==src_pitch) && (src_pitch==row_size))) memcpy(dstp,srcp,src_pitch*height);
+		if ((height==1) || ((dst_pitch==src_pitch) && (src_pitch==row_size))) memcpy(dstp,srcp,(size_t)src_pitch*(size_t)height);
 		else 
 		{
 			for (int y=height; y>0; --y)
@@ -652,42 +666,6 @@ void PlanarFrame::BitBlt(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,int src
 				dstp+=dst_pitch;
 				srcp+=src_pitch;
 			}
-		}
-	}
-}
-
-  /*****************************
-  * Assembler bitblit by Steady
-   *****************************/
-
-extern "C" void asm_BitBlt_ISSE_1(const uint8_t *srcStart,uint8_t *dstStart,int row_size,int height,
-	int src_pitch,int dst_pitch);
-extern "C" void asm_BitBlt_ISSE_2(const uint8_t *srcStart,uint8_t *dstStart,int row_size,int height,
-	int src_pitch,int dst_pitch);
-extern "C" void asm_BitBlt_ISSE_3(const uint8_t *srcStart,uint8_t *dstStart,int row_size,int height,
-	int src_pitch,int dst_pitch);
-
-
-void PlanarFrame::asm_BitBlt_ISSE(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,int src_pitch,int row_size,int height) 
-{
-	if ((row_size==0) || (height==0) || (dst_pitch==0) || (src_pitch==0)) return;
-
-	const uint8_t *srcStart=srcp+src_pitch*(height-1);
-	uint8_t *dstStart=dstp+dst_pitch*(height-1);
-
-	if(row_size<64) 
-	{
-		asm_BitBlt_ISSE_1(srcStart,dstStart,row_size,height,src_pitch,dst_pitch);
-	}
-	else
-	{
-		if (((size_t(dstp)|row_size|src_pitch|dst_pitch)&7)!=0) 
-		{
-			asm_BitBlt_ISSE_2(srcStart,dstStart,row_size,height,src_pitch,dst_pitch);
-		}
-		else 
-		{
-			asm_BitBlt_ISSE_3(srcStart,dstStart,row_size,height,src_pitch,dst_pitch);
 		}
 	}
 }

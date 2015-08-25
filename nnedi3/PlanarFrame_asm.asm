@@ -306,216 +306,245 @@ xloop_4:
 		
 conv422toYUY2_SSE2 endp
 
-asm_BitBlt_ISSE_1 proc srcStart:dword,dstStart:dword,row_size:dword,height:dword,src_pitch:dword,dst_pitch:dword
 
-	public asm_BitBlt_ISSE_1
 
-		push ebx
-		push edi
-		push esi
+memcpy_SSE2 proc dst_:dword,src_:dword,size_:dword
+
+	public memcpy_SSE2
+	
+	push esi
+	push edi
+	push ebx
+	
+	mov esi,src_
+	mov edi,dst_
+	mov eax,64
+	mov edx,16
+	mov ebx,48
 		
-			mov   esi,srcStart
-			mov   edi,dstStart
-			mov   edx,row_size
-			dec   edx
-			mov   ebx,height
-			align 16
-memoptS_rowloop:
-			mov   ecx,edx
-memoptS_byteloop:
-			mov   AL,[esi+ecx]
-			mov   [edi+ecx],AL
-			sub   ecx,1
-			jnc   memoptS_byteloop
-			sub   esi,src_pitch
-			sub   edi,dst_pitch
-			dec   ebx
-			jne   memoptS_rowloop
-			
-		pop esi
-		pop edi
-		pop ebx
+	mov ecx,size_
+	shr ecx,6
+	jz short Suite0_1
+Boucle0_1:
+	movdqa xmm0,oword ptr[esi]
+	movdqa xmm1,oword ptr[esi+edx]
+	movdqa xmm2,oword ptr[esi+2*edx]
+	movdqa xmm3,oword ptr[esi+ebx]
+	movntdq oword ptr[edi],xmm0
+	movntdq oword ptr[edi+edx],xmm1
+	movntdq oword ptr[edi+2*edx],xmm2
+	movntdq oword ptr[edi+ebx],xmm3
+	add esi,eax
+	add edi,eax
+	loop Boucle0_1
+Suite0_1:	
+	mov edx,size_
+	and edx,63
+	jz short Suite2_1
+	cld
+	mov ecx,edx
+	shr ecx,2
+	jz short Suite1_1
+	rep stosd
+Suite1_1:
+	and edx,3
+	jz short Suite2_1
+	mov ecx,edx
+	rep stosb
+	
+Suite2_1:
+	pop ebx
+	pop edi
+	pop esi
+	
+	ret
+memcpy_SSE2 endp	
+	
+	
+	
+memcpy_SSE2_b proc dst_:dword,src_:dword,size_:dword
+
+	public memcpy_SSE2_b
+	
+	push esi
+	push edi
+	
+	mov esi,src_
+	mov edi,dst_
+	mov eax,64
 		
-		ret
+	mov ecx,size_
+	shr ecx,6
+	jz short Suite0_2
+Boucle0_2:
+	movq mm0,qword ptr[esi]
+	movq mm1,qword ptr[esi+8]
+	movq mm2,qword ptr[esi+16]
+	movq mm3,qword ptr[esi+24]
+	movq mm4,qword ptr[esi+32]
+	movq mm5,qword ptr[esi+40]
+	movq mm6,qword ptr[esi+48]
+	movq mm7,qword ptr[esi+56]
+	movntq qword ptr[edi],mm0
+	movntq qword ptr[edi+8],mm1
+	movntq qword ptr[edi+16],mm2
+	movntq qword ptr[edi+24],mm3
+	movntq qword ptr[edi+32],mm0
+	movntq qword ptr[edi+40],mm1
+	movntq qword ptr[edi+48],mm2
+	movntq qword ptr[edi+56],mm3
+	add esi,eax
+	add edi,eax
+	loop Boucle0_2
+Suite0_2:	
+	mov edx,size_
+	and edx,63
+	jz short Suite2_2
+	cld
+	mov ecx,edx
+	shr ecx,2
+	jz short Suite1_2
+	rep stosd
+Suite1_2:
+	and edx,3
+	jz short Suite2_2
+	mov ecx,edx
+	rep stosb
+	
+Suite2_2:
+	emms
+	pop edi
+	pop esi
+	
+	ret
+memcpy_SSE2_b endp	
+	
+	
+	
+Move_Full_SSE2 proc src_:dword,dst_:dword,w:dword,h:dword,src_modulo:dword,dst_modulo:dword
+
+	public Move_Full_SSE2
+	
+	push esi
+	push edi
+	push ebx
+	
+	mov esi,src_
+	mov edi,dst_
+	mov eax,64
+	mov edx,16
+	mov ebx,w
+	cld
 		
-asm_BitBlt_ISSE_1 endp
+Boucle0_3:		
+	mov ecx,ebx
+	shr ecx,6
+	jz short Suite0_3
+Boucle1_3:
+	movdqa xmm0,oword ptr[esi]
+	movdqa xmm1,oword ptr[esi+edx]
+	movdqa xmm2,oword ptr[esi+2*edx]
+	movdqa xmm3,oword ptr[esi+48]
+	movntdq oword ptr[edi],xmm0
+	movntdq oword ptr[edi+edx],xmm1
+	movntdq oword ptr[edi+2*edx],xmm2
+	movntdq oword ptr[edi+48],xmm3
+	add esi,eax
+	add edi,eax
+	loop Boucle1_3
+Suite0_3:	
+	mov ecx,ebx
+	and ecx,63
+	jz short Suite2_3
+	shr ecx,2
+	jz short Suite1_3
+	rep stosd
+Suite1_3:
+	mov ecx,ebx
+	and ecx,3
+	jz short Suite2_3
+	rep stosb
+	
+Suite2_3:
+	add esi,src_modulo
+	add edi,dst_modulo
+	dec h
+	jnz short Boucle0_3
 
+	pop ebx
+	pop edi
+	pop esi
+	
+	ret
+Move_Full_SSE2 endp		
+	
 
-asm_BitBlt_ISSE_2 proc srcStart:dword,dstStart:dword,row_size:dword,height:dword,src_pitch:dword,dst_pitch:dword
+	
+Move_Full_SSE2_b proc src_:dword,dst_:dword,w:dword,h:dword,src_modulo:dword,dst_modulo:dword
 
-	public asm_BitBlt_ISSE_2
-
-		push ebx
-		push edi
-		push esi
+	public Move_Full_SSE2_b
+	
+	push esi
+	push edi
+	push ebx
+	
+	mov esi,src_
+	mov edi,dst_
+	mov eax,64
+	mov edx,63
+	mov ebx,w
+	cld
 		
-			mov   esi,srcStart
-			mov   al,[esi]
-			mov   edi,dstStart
-			mov   edx,row_size
-			mov   ebx,height
-			align 16
-memoptU_rowloop:
-			mov   ecx,edx
-			dec   ecx
-			add   ecx,esi
-			and   ecx,0FFFFFFC0h
-memoptU_prefetchloop:
-			mov   AX,[ecx]
-			sub   ecx,64
-			cmp   ecx,esi
-			jae   memoptU_prefetchloop
-			movq    mm6,[esi]
-			movntq  [edi],mm6
-			mov   eax,edi
-			neg   eax
-			mov   ecx,eax
-			and   eax,63
-			and   ecx,7
-			align 16
-memoptU_prewrite8loop:
-			cmp   ecx,eax
-			jz    memoptU_pre8done
-			movq    mm7,[esi+ecx]
-			movntq  [edi+ecx],mm7
-			add   ecx,8
-			jmp   memoptU_prewrite8loop
-			align 16
-memoptU_write64loop:
-			movntq  [edi+ecx-64],mm0
-			movntq  [edi+ecx-56],mm1
-			movntq  [edi+ecx-48],mm2
-			movntq  [edi+ecx-40],mm3
-			movntq  [edi+ecx-32],mm4
-			movntq  [edi+ecx-24],mm5
-			movntq  [edi+ecx-16],mm6
-			movntq  [edi+ecx- 8],mm7
-memoptU_pre8done:
-			add   ecx,64
-			cmp   ecx,edx
-			ja    memoptU_done64
-			movq    mm0,[esi+ecx-64]
-			movq    mm1,[esi+ecx-56]
-			movq    mm2,[esi+ecx-48]
-			movq    mm3,[esi+ecx-40]
-			movq    mm4,[esi+ecx-32]
-			movq    mm5,[esi+ecx-24]
-			movq    mm6,[esi+ecx-16]
-			movq    mm7,[esi+ecx- 8]
-			jmp   memoptU_write64loop
-memoptU_done64:
-			sub     ecx,64
-			align 16
-memoptU_write8loop:
-			add     ecx,8
-			cmp     ecx,edx
-			ja      memoptU_done8
-			movq    mm0,[esi+ecx-8]
-			movntq  [edi+ecx-8],mm0
-			jmp   memoptU_write8loop
-memoptU_done8:
-			movq    mm1,[esi+edx-8]
-			movntq  [edi+edx-8],mm1
-			sub   esi,src_pitch
-			sub   edi,dst_pitch
-			dec   ebx
-			jne   memoptU_rowloop
-			sfence
-			emms
-			
-		pop esi
-		pop edi
-		pop ebx
-		
-		ret
-		
-asm_BitBlt_ISSE_2 endp
-			
+Boucle0_4:		
+	mov ecx,ebx
+	shr ecx,6
+	jz short Suite0_4
+Boucle1_4:
+	movq mm0,qword ptr[esi]
+	movq mm1,qword ptr[esi+8]
+	movq mm2,qword ptr[esi+16]
+	movq mm3,qword ptr[esi+24]
+	movq mm4,qword ptr[esi+32]
+	movq mm5,qword ptr[esi+40]
+	movq mm6,qword ptr[esi+48]
+	movq mm7,qword ptr[esi+56]
+	movntq qword ptr[edi],mm0
+	movntq qword ptr[edi+8],mm1
+	movntq qword ptr[edi+16],mm2
+	movntq qword ptr[edi+24],mm3
+	movntq qword ptr[edi+32],mm0
+	movntq qword ptr[edi+40],mm1
+	movntq qword ptr[edi+48],mm2
+	movntq qword ptr[edi+56],mm3
+	add esi,eax
+	add edi,eax
+	loop Boucle1_4
+Suite0_4:	
+	mov ecx,ebx
+	and ecx,edx
+	jz short Suite2_4
+	shr ecx,2
+	jz short Suite1_4
+	rep stosd
+Suite1_4:
+	mov ecx,ebx
+	and ecx,3
+	jz short Suite2_4
+	rep stosb
+	
+Suite2_4:
+	add esi,src_modulo
+	add edi,dst_modulo
+	dec h
+	jnz short Boucle0_4
 
-asm_BitBlt_ISSE_3 proc srcStart:dword,dstStart:dword,row_size:dword,height:dword,src_pitch:dword,dst_pitch:dword
+	emms
+	pop ebx
+	pop edi
+	pop esi
+	
+	ret
+Move_Full_SSE2_b endp		
 
-	public asm_BitBlt_ISSE_3
-
-		push ebx
-		push edi
-		push esi
-
-			mov   esi,srcStart
-			mov   edi,dstStart
-			mov   ebx,height
-			mov   edx,row_size
-			align 16
-memoptA_rowloop:
-			mov   ecx,edx
-			dec   ecx
-			add   ecx,esi
-			and   ecx,0FFFFFFC0h
-			align 16
-memoptA_prefetchloop:
-			mov   AX,[ecx]
-			sub   ecx,64
-			cmp   ecx,esi
-			jae   memoptA_prefetchloop
-			mov   eax,edi
-			xor   ecx,ecx
-			neg   eax
-			and   eax,63
-			align 16
-memoptA_prewrite8loop:
-			cmp   ecx,eax
-			jz    memoptA_pre8done
-			movq    mm7,[esi+ecx]
-			movntq  [edi+ecx],mm7
-			add   ecx,8
-			jmp   memoptA_prewrite8loop
-			align 16
-			memoptA_write64loop:
-			movntq  [edi+ecx-64],mm0
-			movntq  [edi+ecx-56],mm1
-			movntq  [edi+ecx-48],mm2
-			movntq  [edi+ecx-40],mm3
-			movntq  [edi+ecx-32],mm4
-			movntq  [edi+ecx-24],mm5
-			movntq  [edi+ecx-16],mm6
-			movntq  [edi+ecx- 8],mm7
-memoptA_pre8done:
-			add   ecx,64
-			cmp   ecx,edx
-			ja    memoptA_done64
-			movq    mm0,[esi+ecx-64]
-			movq    mm1,[esi+ecx-56]
-			movq    mm2,[esi+ecx-48]
-			movq    mm3,[esi+ecx-40]
-			movq    mm4,[esi+ecx-32]
-			movq    mm5,[esi+ecx-24]
-			movq    mm6,[esi+ecx-16]
-			movq    mm7,[esi+ecx- 8]
-			jmp   memoptA_write64loop
-memoptA_done64:
-			sub   ecx,64
-			align 16
-memoptA_write8loop:
-			add   ecx,8
-			cmp   ecx,edx
-			ja    memoptA_done8
-			movq    mm7,[esi+ecx-8]
-			movntq  [edi+ecx-8],mm7
-			jmp   memoptA_write8loop
-memoptA_done8:
-			sub   esi,src_pitch
-			sub   edi,dst_pitch
-			dec   ebx
-			jne   memoptA_rowloop
-			sfence
-			emms
-			
-		pop esi
-		pop edi
-		pop ebx
-		
-		ret
-		
-asm_BitBlt_ISSE_3 endp
-			
 
 end

@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.17 (11/08/2015)                                         |
+                                     v0.9.4.18 (25/08/2015)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -299,6 +299,11 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   25/08/2015  v0.9.4.18
+
+       + Fix 4:1:1 chroma shift.
+       + Modification of the memory transfer functions.
+
    11/08/2015  v0.9.4.17
 
        + Change the order between turnl/r and nnedi3 calls in nnedi3_rpow2 to optimize speed.
