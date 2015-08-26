@@ -22,6 +22,7 @@
 */
 
 #include "PlanarFrame.h"
+#include "asmlib\asmlib.h"
 #include <stdint.h>
 
 
@@ -36,10 +37,6 @@ extern "C" void conv422toYUY2_MMX(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *d
 	int width,int height);
 extern "C" void conv422toYUY2_SSE2(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst,int pitch1Y,int pitch1UV,int pitch2,
 	int width,int height);
-extern "C" void memcpy_SSE2(void *dst,const void *src, const size_t size);
-extern "C" void memcpy_SSE2_b(void *dst,const void *src, const size_t size);
-extern "C" void Move_Full_SSE2(const void *src,void *dst,int w,int h,int src_modulo,int dst_modulo);
-extern "C" void Move_Full_SSE2_b(const void *src,void *dst,int w,int h,int src_modulo,int dst_modulo);
 
 
 int modnpf(const int m, const int n)
@@ -48,6 +45,7 @@ int modnpf(const int m, const int n)
 		return m;
 	return m+n-(m%n);
 }
+
 
 PlanarFrame::PlanarFrame()
 {
@@ -636,36 +634,18 @@ void PlanarFrame::conv444toRGB24(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *ds
 // IScriptEnvironment pointer 
 // to call it
 
-void PlanarFrame::BitBlt(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,int src_pitch,int row_size,int height) 
+inline void PlanarFrame::BitBlt(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,int src_pitch,int row_size,int height) 
 {
-	if ((height==0) || (row_size==0) || (dst_pitch==0) || (src_pitch==0)) return;
+	if ((height==0) || (row_size==0)) return;
 
-	if (((cpu&CPU_ISSE)!=0) && useSIMD) 
+	if ((height==1) || ((dst_pitch==src_pitch) && (src_pitch==row_size))) A_memcpy(dstp,srcp,(size_t)src_pitch*(size_t)height);
+	else 
 	{
-		if ((height==1) || ((src_pitch==dst_pitch) && (dst_pitch==row_size)))
+		for (int y=0; y<height; y++)
 		{
-			if ((((size_t)srcp & 0x0F)==0) && (((size_t)dstp & 0x0F)==0)) memcpy_SSE2(dstp,srcp,(size_t)row_size*(size_t)height);
-			else memcpy_SSE2_b(dstp,srcp,(size_t)row_size*(size_t)height);
-		}
-		else
-		{
-			if ((((size_t)srcp & 0x0F)==0) && (((size_t)dstp & 0x0F)==0) && ((src_pitch & 0x0F)==0) 
-				&& ((dst_pitch & 0x0F)==0))
-				Move_Full_SSE2(srcp,dstp,row_size,height,src_pitch-row_size,dst_pitch-row_size);
-			else Move_Full_SSE2_b(srcp,dstp,row_size,height,src_pitch-row_size,dst_pitch-row_size);					
-		}
-	}
-	else
-	{
-		if ((height==1) || ((dst_pitch==src_pitch) && (src_pitch==row_size))) memcpy(dstp,srcp,(size_t)src_pitch*(size_t)height);
-		else 
-		{
-			for (int y=height; y>0; --y)
-			{
-				memcpy(dstp,srcp,row_size);
-				dstp+=dst_pitch;
-				srcp+=src_pitch;
-			}
+			A_memcpy(dstp,srcp,row_size);
+			dstp+=dst_pitch;
+			srcp+=src_pitch;
 		}
 	}
 }

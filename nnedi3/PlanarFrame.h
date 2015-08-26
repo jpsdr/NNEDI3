@@ -66,7 +66,6 @@ private:
 	void PlanarFrame::copyInternalTo(PVideoFrame &frame,VideoInfo &viInfo);
 	void PlanarFrame::copyInternalTo(PlanarFrame &frame);
 	void PlanarFrame::copyInternalPlaneTo(PlanarFrame &frame,uint8_t plane);
-	static void PlanarFrame::asm_BitBlt_ISSE(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,int src_pitch,int row_size,int height);
 	void PlanarFrame::conv422toYUY2(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst,int pitch1Y,int pitch1UV,int pitch2,
 		int width,int height);
 	void PlanarFrame::conv444toRGB24(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst,int pitch1Y,int pitch1UV,int pitch2,
@@ -93,7 +92,7 @@ public:
 	int PlanarFrame::GetWidth(uint8_t plane);
 	int PlanarFrame::GetHeight(uint8_t plane);
 	int PlanarFrame::GetPitch(uint8_t plane);
-	void PlanarFrame::BitBlt(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,int src_pitch,int row_size,int height);
+	inline void PlanarFrame::BitBlt(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,int src_pitch,int row_size,int height);
 	PlanarFrame& PlanarFrame::operator=(PlanarFrame &ob2);
 	void PlanarFrame::convYUY2to422(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8_t *pv,int pitch1,int pitch2Y,int pitch2UV,
 		int width,int height);

@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.18 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.19 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -21,8 +21,10 @@
 */
 
 #include "nnedi3.h"
+#include "asmlib\asmlib.h"
 #include <stdint.h>
 
+static bool asmlibInit=false;
 
 extern "C" void computeNetwork0_SSE2(const float *input,const float *weights,uint8_t *d);
 extern "C" void computeNetwork0_i16_SSE2(const float *inputf,const float *weightsf,uint8_t *d);
@@ -1718,9 +1720,17 @@ const AVS_Linkage *AVS_linkage = nullptr;
 
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
+	if (!asmlibInit)
+	{
+		InstructionSet();
+		SetMemcpyCacheLimit(16);
+		SetMemsetCacheLimit(16);
+		asmlibInit=true;
+	}
+
 	AVS_linkage = vectors;
 
-    env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
+	env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
 		"[threads]i[opt]i[fapprox]i", Create_nnedi3, 0);
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
 		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b", Create_nnedi3_rpow2, 0);
