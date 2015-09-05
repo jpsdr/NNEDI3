@@ -249,7 +249,7 @@ xloop_2:
 		psrlw xmm2,8            ;xxxxxxxx0V0V0V0V
 		packuswb xmm1,xmm1      ;xxxxxxxxxxxxUUUU
 		packuswb xmm2,xmm2      ;xxxxxxxxxxxxVVVV
-		movlpd qword ptr[rbx+rax*2],xmm0 ;store y
+		movq qword ptr[rbx+rax*2],xmm0 ;store y
 		movd dword ptr[rdx+rax],xmm1     ;store u
 		movd dword ptr[rsi+rax],xmm2     ;store v
 		add rax,r12
@@ -394,7 +394,7 @@ yloop_4:
 		xor rax,rax
 		align 16
 xloop_4:
-		movlpd xmm0,qword ptr[rbx+rax*2] ;????????YYYYYYYY
+		movq xmm0,qword ptr[rbx+rax*2] ;????????YYYYYYYY
 		movd xmm1,dword ptr[rdx+rax]     ;000000000000UUUU
 		movd xmm2,dword ptr[rsi+rax]     ;000000000000VVVV
 		punpcklbw xmm1,xmm2     ;00000000VUVUVUVU

@@ -638,7 +638,15 @@ inline void PlanarFrame::BitBlt(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,
 {
 	if ((height==0) || (row_size==0)) return;
 
-	if ((height==1) || ((dst_pitch==src_pitch) && (src_pitch==row_size))) A_memcpy(dstp,srcp,(size_t)src_pitch*(size_t)height);
+	if ((height==1) || ((dst_pitch==src_pitch) && (abs(src_pitch)==row_size)))
+	{
+		if (src_pitch<0)
+		{
+			srcp+=(height-1)*src_pitch;
+			dstp+=(height-1)*dst_pitch;
+		}
+		A_memcpy(dstp,srcp,(size_t)row_size*(size_t)height);
+	}
 	else 
 	{
 		for (int y=0; y<height; y++)

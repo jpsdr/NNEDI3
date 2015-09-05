@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.19 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.20 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -24,7 +24,11 @@
 #include "asmlib\asmlib.h"
 #include <stdint.h>
 
-static bool asmlibInit=false;
+extern "C" int IInstrSet;
+// Cache size for asmlib function, a little more the size of a 720p YV12 frame
+#define MAX_CACHE_SIZE 1400000
+
+static size_t CPU_Cache_Size;
 
 extern "C" void computeNetwork0_SSE2(const float *input,const float *weights,uint8_t *d);
 extern "C" void computeNetwork0_i16_SSE2(const float *inputf,const float *weightsf,uint8_t *d);
@@ -122,6 +126,16 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	vi.SetFieldBased(false);
 	child->SetCacheHints(CACHE_GET_WINDOW,3);
 	if (threads==0) threads=num_processors();
+
+	const size_t img_size=vi.BMPSize();
+
+	if (img_size<=MAX_CACHE_SIZE)
+	{
+		if (CPU_Cache_Size>=img_size) Cache_Setting=img_size;
+		else Cache_Setting=16;
+	}
+	else Cache_Setting=16;
+
 	srcPF = new PlanarFrame();
 	if (vi.IsYV12()) srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64);
 	else
@@ -545,6 +559,9 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	int field_n;
 	int PlaneMax=3;
 
+	SetMemcpyCacheLimit(Cache_Setting);
+	SetMemsetCacheLimit(Cache_Setting);
+
 	if (vi.IsY8()) PlaneMax=1;
 	if (field>1)
 	{
@@ -554,7 +571,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	else field_n = field;
 	copyPad(field>1?(n>>1):n,field_n,env);
 	for (int i=0; i<PlaneMax; ++i)
-		memset(lcount[i],0,dstPF->GetHeight(i)*sizeof(int));
+		A_memset(lcount[i],0,dstPF->GetHeight(i)*sizeof(int));
 	PVideoFrame dst = env->NewVideoFrame(vi);
 	const int plane[3] = {PLANAR_Y,PLANAR_U,PLANAR_V};
 	for (int i=0; i<threads; ++i)
@@ -1718,15 +1735,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 const AVS_Linkage *AVS_linkage = nullptr;
 
+
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
-	if (!asmlibInit)
-	{
-		InstructionSet();
-		SetMemcpyCacheLimit(16);
-		SetMemsetCacheLimit(16);
-		asmlibInit=true;
-	}
+	if (IInstrSet<0) InstructionSet();
+	CPU_Cache_Size=DataCacheSize(0)>>2;
 
 	AVS_linkage = vectors;
 
