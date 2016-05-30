@@ -534,7 +534,7 @@ public:
 
 class VideoFrame {
   volatile long refcount;
-  VideoFrameBuffer* const vfb;
+  VideoFrameBuffer* vfb;
 
   // Due to technical reasons these members are not const, but should be treated as such.
   // That means do not modify them once the class has been constructed.
@@ -979,6 +979,7 @@ enum AvsAllocType
       to test it and give your feedback about any ideas, improvements, or issues
       you might have.
    ----------------------------------------------------------------------------- */
+class AVSFunction;
 class IScriptEnvironment2 : public IScriptEnvironment{
 public:
   virtual __stdcall ~IScriptEnvironment2() {}
@@ -1007,7 +1008,6 @@ public:
 
   // Threading
   virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0; // If filter is "", sets the default MT mode
-  virtual MtMode __stdcall GetFilterMTMode(const char* filter, bool* is_forced) const = 0; // If filter is "", gets the default MT mode
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
 
@@ -1024,6 +1024,7 @@ public:
   virtual int __stdcall IncrImportDepth() = 0;
   virtual int __stdcall DecrImportDepth() = 0;
   virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus) = 0;
+  virtual MtMode __stdcall GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const = 0; // If filter is "", gets the default MT mode
   virtual void __stdcall SetPrefetcher(Prefetcher *p) = 0;
 
   // These lines are needed so that we can overload the older functions from IScriptEnvironment.

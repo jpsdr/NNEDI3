@@ -71,6 +71,8 @@ private:
 	size_t Cache_Setting;
 	HANDLE *thds;
 	float *weights0,*weights1[2];
+	HANDLE ghMutex;
+
 	void nnedi3::calcStartEnd2(PVideoFrame dst);
 	void nnedi3::copyPad(int n,int fn,IScriptEnvironment *env);
 

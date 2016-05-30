@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.20 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.22 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -484,6 +484,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		hremain[i] = height%threads;
 	}
 	size_t temp_size = max((size_t)srcPF->GetWidth(0), 512 * sizeof(float));
+	ghMutex=CreateMutex(NULL,FALSE,NULL);
+
 	for (int i=0; i<threads; ++i)
 	{
 		pssInfo[i] = (PS_INFO*)malloc(sizeof(PS_INFO));
@@ -539,6 +541,7 @@ nnedi3::~nnedi3()
 		SetEvent(pssInfo[i]->nextJob);
 	}
 	WaitForMultipleObjects(threads,thds,TRUE,INFINITE);
+	CloseHandle(ghMutex);
 	for (int i=0; i<threads; ++i)
 		CloseHandle(thds[i]);
 	free(tids);
@@ -561,6 +564,8 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 
 	SetMemcpyCacheLimit(Cache_Setting);
 	SetMemsetCacheLimit(Cache_Setting);
+
+	WaitForSingleObject(ghMutex,INFINITE);
 
 	if (vi.IsY8()) PlaneMax=1;
 	if (field>1)
@@ -602,6 +607,9 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	for (int i=0; i<threads; ++i)
 		WaitForSingleObject(pssInfo[i]->jobFinished,INFINITE);
 	if (!(vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8() || vi.IsYV411())) dstPF->copyTo(dst, vi);
+
+	ReleaseMutex(ghMutex);
+
 	return dst;
 }
 
@@ -1748,6 +1756,13 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
 		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b", Create_nnedi3_rpow2, 0);
 
+	if (env->FunctionExists("SetFilterMTMode"))
+	{
+		auto env2 = static_cast<IScriptEnvironment2*>(env);
+
+		env2->SetFilterMTMode("nnedi3",MT_MULTI_INSTANCE,true);
+		env2->SetFilterMTMode("nnedi3_rpow2",MT_MULTI_INSTANCE, true);
+	}
 	return "NNEDI3 plugin";
 	
 }
