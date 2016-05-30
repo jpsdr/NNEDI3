@@ -50,14 +50,6 @@
 
 
 
-struct AVSFunction {
-  const char* name;
-  const char* param_types;
-  AVSValue (__cdecl *apply)(AVSValue args, void* user_data, IScriptEnvironment* env);
-  void* user_data;
-};
-
-
 int RGB2YUV(int rgb);
 
 PClip Create_MessageClip(const char* message, int width, int height,
