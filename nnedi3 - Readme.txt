@@ -299,7 +299,7 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
-   30/05/2016  v0.9.4.23
+   15/07/2016  v0.9.4.23
 
        + Update to new avisynth header.
 
