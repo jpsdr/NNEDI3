@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.20 (05/09/2015)                                         |
+                                     v0.9.4.23 (15/07/2016)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -299,6 +299,19 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   30/05/2016  v0.9.4.23
+
+       + Update to new avisynth header.
+
+   30/05/2016  v0.9.4.22
+
+       + Fix for MT version of avisynth.
+
+   17/04/2016  v0.9.4.21
+
+       * Update to asmlib 3.26.
+       + Fix XP build with VS2015.
+
    05/09/2015  v0.9.4.20
 
        * Minor changes, should handle negative pitch properly.

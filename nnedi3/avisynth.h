@@ -18,21 +18,22 @@
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
 //
-// Linking Avisynth statically or dynamically with other modules is making a
-// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
-// General Public License cover the whole combination.
-
-
-/*
-Please NOTE! This version of avisynth.h DOES NOT have any special exemption!
-
-         While this version is under development you are fully
-       constrained by the terms of the GNU General Public License.
-
- Any derivative software you may publish MUST include the full source code.
-
-    Normal licence conditions will be reapplied in a future version.
-*/
+// Linking Avisynth statically or dynamically with other modules is making
+// a combined work based on Avisynth.  Thus, the terms and conditions of
+// the GNU General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate
+// with Avisynth solely through the interfaces defined in avisynth.h,
+// regardless of the license terms of these independent modules, and to
+// copy and distribute the resulting combined work under terms of your
+// choice, provided that every copy of the combined work is accompanied
+// by a complete copy of the source code of Avisynth (the version of
+// Avisynth used to produce the combined work), being distributed under
+// the terms of the GNU General Public License plus this exception.  An
+// independent module is a module which is not derived from or based on
+// Avisynth, such as 3rd-party filters, import and export plugins, or
+// graphical user interfaces.
 
 
 
@@ -108,6 +109,10 @@ class AvisynthError /* exception */ {
 public:
   const char* const msg;
   AvisynthError(const char* _msg) : msg(_msg) {}
+
+// Ensure AvisynthError cannot be publicly assigned!
+private:
+	AvisynthError& operator=(const AvisynthError&) {return(*this);}
 }; // end class AvisynthError
 
 
@@ -276,6 +281,13 @@ struct AVS_Linkage {
 // end class AVSValue
 
 /**********************************************************************/
+  // Reserve pointer space so that we can keep compatibility with Avs "classic" even if it adds functions on its own
+  void    (VideoInfo::*reserved[32])();
+/**********************************************************************/
+  // AviSynth+ additions
+  int     (VideoInfo::*NumComponents)() const;
+  int     (VideoInfo::*ComponentSize)() const;
+  /**********************************************************************/
 };
 
 #ifdef BUILDING_AVSCORE
@@ -393,12 +405,32 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
     CS_YV411 = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_4,  // YUV 4:1:1 planar
 
     CS_Y8    = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_8,                                     // Y   4:0:0 planar
+
+    //-------------------------
+    // AVS16: new planar constants go live! Experimental PF 160613 
+    CS_YUV444P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 16bit samples
+    CS_YUV422P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2, // YUV 4:2:2 16bit samples
+    CS_YUV420P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2, // YUV 4:2:0 16bit samples
+    // no short naming style. CS_YV24->CS_YV48 = CS_YUV444P16 ok. but YV12->YV24? no-no.
+
+    // grey 16
+    CS_Y16 = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_16,                                      // Y   4:0:0 16bit samples
+
+    // 32 bit samples (float)
+    CS_YUV444PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 32bit samples
+    CS_YUV422PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2, // YUV 4:2:2 32bit samples
+    CS_YUV420PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2, // YUV 4:2:0 32bit samples
+    // CS_YV96  = CS_YUV444PS, 
+
+    // grey 32
+    CS_Y32 = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_32,                                      // Y   4:0:0 32bit samples
+
+    // todo: rgb
+
 /*
     CS_YV48  = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 16bit samples
-    CS_Y16   = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_16,                                    // Y   4:0:0 16bit samples
 
     CS_YV96  = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 32bit samples
-    CS_Y32   = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_32,                                    // Y   4:0:0 32bit samples
 
     CS_PRGB  = CS_PLANAR | CS_RGB | CS_Sample_Bits_8,                                                      // Planar RGB
     CS_RGB48 = CS_PLANAR | CS_RGB | CS_Sample_Bits_16,                                                     // Planar RGB 16bit samples
@@ -490,7 +522,13 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
   void MulDivFPS(unsigned multiplier, unsigned divisor) AVS_BakedCode( AVS_LinkCall(MulDivFPS)(multiplier, divisor) )
 
   // Test for same colorspace
-  bool IsSameColorspace(const VideoInfo& vi) const AVS_BakedCode( return AVS_LinkCall(IsSameColorspace)(vi) )
+  bool IsSameColorspace(const VideoInfo& vi) const AVS_BakedCode(return AVS_LinkCall(IsSameColorspace)(vi))
+
+  // Returns the number of color channels or planes in a frame
+  int NumComponents() const AVS_BakedCode(return AVS_LinkCall(NumComponents)())
+
+  // Returns the size in bytes of a single component of a pixel
+  int ComponentSize() const AVS_BakedCode(return AVS_LinkCall(ComponentSize)())
 
 }; // end struct VideoInfo
 
@@ -526,6 +564,11 @@ public:
   int GetDataSize() const AVS_BakedCode( return AVS_LinkCall(GetDataSize)() )
   int GetSequenceNumber() const AVS_BakedCode( return AVS_LinkCall(GetSequenceNumber)() )
   int GetRefcount() const AVS_BakedCode( return AVS_LinkCall(GetRefcount)() )
+
+// Ensure VideoFrameBuffer cannot be publicly assigned
+private:
+    VideoFrameBuffer& operator=(const VideoFrameBuffer&) {return(*this);}
+
 }; // end class VideoFrameBuffer
 
 
@@ -575,6 +618,11 @@ public:
 public:
   void DESTRUCTOR();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
 #endif
+
+// Ensure VideoFrame cannot be publicly assigned
+private:
+    VideoFrame& operator=(const VideoFrame&) {return(*this);}
+
 }; // end class VideoFrame
 
 enum CachePolicyHint {
@@ -758,6 +806,7 @@ public:
   AVSValue(double f) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR6)(f) )
   AVSValue(const char* s) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR7)(s) )
   AVSValue(const AVSValue* a, int size) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR8)(a, size) )
+  AVSValue(const AVSValue& a, int size) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR8)(&a, size) )
   AVSValue(const AVSValue& v) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR9)(v) )
 
   ~AVSValue() AVS_BakedCode( AVS_LinkCall(AVSValue_DESTRUCTOR)() )
@@ -781,12 +830,13 @@ public:
 //  int AsLong() const;
   const char* AsString() const AVS_BakedCode( return AVS_LinkCall(AsString1)() )
   double AsFloat() const AVS_BakedCode( return AVS_LinkCall(AsFloat1)() )
-
+  float AsFloatf() const AVS_BakedCode( return float( AVS_LinkCall(AsFloat1)() ) )
+  
   bool AsBool(bool def) const AVS_BakedCode( return AVS_LinkCall(AsBool2)(def) )
   int AsInt(int def) const AVS_BakedCode( return AVS_LinkCall(AsInt2)(def) )
   double AsDblDef(double def) const AVS_BakedCode( return AVS_LinkCall(AsDblDef)(def) ) // Value is still a float
-//float AsFloat(double def) const; // def demoted to a float
   double AsFloat(float def) const AVS_BakedCode( return AVS_LinkCall(AsFloat2)(def) )
+  float AsFloatf(float def) const AVS_BakedCode( return float( AVS_LinkCall(AsFloat2)(def) ) )
   const char* AsString(const char* def) const AVS_BakedCode( return AVS_LinkCall(AsString2)(def) )
 
   int ArraySize() const AVS_BakedCode( return AVS_LinkCall(ArraySize)() )
@@ -921,10 +971,13 @@ public:
 
   virtual void __stdcall DeleteScriptEnvironment() = 0;
 
-  virtual void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
+  virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
                                      int textcolor, int halocolor, int bgcolor) = 0;
 
   virtual const AVS_Linkage* const __stdcall GetAVSLinkage() = 0;
+
+  // noThrow version of GetVar
+  virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) = 0;
 
 }; // end class IScriptEnvironment
 
