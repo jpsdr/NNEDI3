@@ -1771,13 +1771,6 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
 		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b", Create_nnedi3_rpow2, 0);
 
-/*	if (env->FunctionExists("SetFilterMTMode"))
-	{
-		auto env2 = static_cast<IScriptEnvironment2*>(env);
-
-		env2->SetFilterMTMode("nnedi3",MT_MULTI_INSTANCE,true);
-		env2->SetFilterMTMode("nnedi3_rpow2",MT_MULTI_INSTANCE, true);
-	}*/
 	return "NNEDI3 plugin";
 	
 }
