@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.20 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.24 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -81,6 +81,8 @@ public:
 		int _pscrn,int _threads,int _opt,int _fapprox,IScriptEnvironment *env);
 	nnedi3::~nnedi3();
 	PVideoFrame __stdcall nnedi3::GetFrame(int n,IScriptEnvironment *env);
+
+	int __stdcall SetCacheHints(int cachehints, int frame_range);
 };
 
 // new prescreener functions

@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.23 (15/07/2016)                                         |
+                                     v0.9.4.24 (21/07/2016)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -299,9 +299,14 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   21/07/2016  v0.9.4.24
+
+       * Don't use SetMTMode for now to set MT mode
+       * Update to new avisynth header.
+
    15/07/2016  v0.9.4.23
 
-       + Update to new avisynth header.
+       * Update to new avisynth header.
 
    30/05/2016  v0.9.4.22
 
@@ -322,40 +327,40 @@ CHANGE LIST:
 
    25/08/2015  v0.9.4.18
 
-       + Fix 4:1:1 chroma shift.
-       + Modification of the memory transfer functions.
+       * Fix 4:1:1 chroma shift.
+       * Modification of the memory transfer functions.
 
    11/08/2015  v0.9.4.17
 
-       + Change the order between turnl/r and nnedi3 calls in nnedi3_rpow2 to optimize speed.
-       + Remove memcpy_amd and use memcpy instead.
+       * Change the order between turnl/r and nnedi3 calls in nnedi3_rpow2 to optimize speed.
+       * Remove memcpy_amd and use memcpy instead.
 
    10/08/2015  v0.9.4.16
 
        + Add csresize parameter, and chroma shift adjustment according resize is enabled by default.
-       + Fix regression on center adjustment.
+       * Fix regression on center adjustment.
 
    09/08/2015  v0.9.4.15
 
-       + Change default value of mpeg2 to false, and keep exact
+       * Change default value of mpeg2 to false, and keep exact
          previous behavior in that case (but doesn't put back chroma shift issue ^_^).
 
    09/08/2015  v0.9.4.14
 
        + Add resize adjustment chroma shift in case of MPEG-2 subsampling.
-       + Faster RGB24 mode always.
+       * Faster RGB24 mode always.
        + Add mpeg2 parameter.
 
    08/08/2015  v0.9.4.13
 
-       + Correction of chroma shift once for all this time.
-       + Faster RGB24 mode if FTurn is usable.
-       + Fix YV411 support.
+       * Correction of chroma shift once for all this time.
+       * Faster RGB24 mode if FTurn is usable.
+       * Fix YV411 support.
 
    06/08/2015  v0.9.4.12
 
-       + More checks on use of FTurn.
-       + Fix regression on YUY2 introduced in previous release.
+       * More checks on use of FTurn.
+       * Fix regression on YUY2 introduced in previous release.
 
    31/07/2015  v0.9.4.11
 
@@ -364,23 +369,23 @@ CHANGE LIST:
 
    25/05/2015  v0.9.4.10
 
-       + Integration of commits coming from Vapoursynth version, thanks to Myrsloik.
+       * Integration of commits coming from Vapoursynth version, thanks to Myrsloik.
 
    10/05/2015  v0.9.4.9
 
-       + Bug correction in x64 ASM file, thanks to jackoneill and HolyWu.
+       * Bug correction in x64 ASM file, thanks to jackoneill and HolyWu.
 
    13/03/2015  v0.9.4.8
 
-       + Update to last AVS+ header files.
+       * Update to last AVS+ header files.
 
    26/01/2014  v0.9.4.7
 
-       + Little correction in YV24 and Y8 support for nnedi3_rpow2.
+       * Little correction in YV24 and Y8 support for nnedi3_rpow2.
 
    17/01/2014  v0.9.4.6
 
-       + Little YV16 optimization.
+       * Little YV16 optimization.
 
    16/01/2014  v0.9.4.5
 
@@ -388,7 +393,7 @@ CHANGE LIST:
 
    15/01/2014  v0.9.4.4
 
-       + Some few little optimizations.
+       * Some few little optimizations.
        * Trick YV16 support in nnedi3_rpow2 by working internaly in YUY2 mode to speed-up.
 
    14/01/2014  v0.9.4.3
@@ -401,8 +406,8 @@ CHANGE LIST:
 
    03/01/2014  v0.9.4.1
 
-       + Move out all inline ASM code in external files, update code to build x64 version.
-       + Update interface to new avisynth 2.6 API.
+       * Move out all inline ASM code in external files, update code to build x64 version.
+       * Update interface to new avisynth 2.6 API.
        - Avisynth 2.5.x not supported anymore.
 
 End of Tritical version

@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.23 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.24 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -124,7 +124,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	}
 	if (dh) vi.height*=2;
 	vi.SetFieldBased(false);
-	child->SetCacheHints(CACHE_GET_WINDOW,3);
+
 	if (threads==0) threads=num_processors();
 
 	const size_t img_size=vi.BMPSize();
@@ -525,6 +525,21 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		thds[i] = (HANDLE)_beginthreadex(0,0,&threadPool,(void*)(pssInfo[i]),0,&tids[i]);
 	}
 }
+
+
+int __stdcall nnedi3::SetCacheHints(int cachehints,int frame_range)
+{
+  switch (cachehints)
+  {
+  case CACHE_DONT_CACHE_ME:
+    return 1;
+  case CACHE_GET_MTMODE:
+    return MT_MULTI_INSTANCE;
+  default:
+    return 0;
+  }
+}
+
 
 nnedi3::~nnedi3()
 {
@@ -1756,13 +1771,13 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
 		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b", Create_nnedi3_rpow2, 0);
 
-	if (env->FunctionExists("SetFilterMTMode"))
+/*	if (env->FunctionExists("SetFilterMTMode"))
 	{
 		auto env2 = static_cast<IScriptEnvironment2*>(env);
 
 		env2->SetFilterMTMode("nnedi3",MT_MULTI_INSTANCE,true);
 		env2->SetFilterMTMode("nnedi3_rpow2",MT_MULTI_INSTANCE, true);
-	}
+	}*/
 	return "NNEDI3 plugin";
 	
 }
