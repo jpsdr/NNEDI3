@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.24 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.25 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1409,9 +1409,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 	const bool FTurnL=(env->FunctionExists("FTurnLeft") && ((env->GetCPUFlags() & CPUF_SSE2)!=0));
 	const bool FTurnR=(env->FunctionExists("FTurnRight") && ((env->GetCPUFlags() & CPUF_SSE2)!=0));
+	const bool SplineMT=env->FunctionExists("Spline36ResizeMT");
 
 	auto turnRightFunction = (FTurnR) ? "FTurnRight" : "TurnRight";
 	auto turnLeftFunction =  (FTurnL) ? "FTurnLeft" : "TurnLeft";
+	auto Spline36 = (SplineMT) ? "Spline36ResizeMT" : "Spline36Resize";
 
 	try 
 	{
@@ -1720,9 +1722,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 						(vi.width*rfactor)>>1,(vi.height*rfactor)>>1};
 					const char *nargs[7]={0,0,0,"src_left","src_top","src_width","src_height"};
 
-					vu = env->Invoke("Spline36Resize",AVSValue(sargs,7),nargs).AsClip();
+					vu = env->Invoke(Spline36,AVSValue(sargs,7),nargs).AsClip();
 					sargs[0]=vv;
-					vv = env->Invoke("Spline36Resize",AVSValue(sargs,7),nargs).AsClip();
+					vv = env->Invoke(Spline36,AVSValue(sargs,7),nargs).AsClip();
 				}
 
 				AVSValue ytouvargs[3] = {vu,vv,v};

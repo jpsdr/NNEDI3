@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.24 (21/07/2016)                                         |
+                                     v0.9.4.25 (12/08/2016)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -299,9 +299,13 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   12/08/2016  v0.9.4.25
+
+       * Use Spline36ResizeMT if avaible.
+
    21/07/2016  v0.9.4.24
 
-       * Don't use SetMTMode for now to set MT mode
+       * Don't use SetMTMode for now to set MT mode.
        * Update to new avisynth header.
 
    15/07/2016  v0.9.4.23
