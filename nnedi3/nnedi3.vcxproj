@@ -379,10 +379,15 @@
     <ClInclude Include="nnedi3.h" />
     <ClInclude Include="PlanarFrame.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="ThreadPool.h" />
+    <ClInclude Include="ThreadPoolDef.h" />
+    <ClInclude Include="ThreadPoolInterface.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="nnedi3.cpp" />
     <ClCompile Include="PlanarFrame.cpp" />
+    <ClCompile Include="ThreadPool.cpp" />
+    <ClCompile Include="ThreadPoolInterface.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="nnedi3.rc" />

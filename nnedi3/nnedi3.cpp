@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.25 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.26 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -49,22 +49,14 @@ extern "C" void castScale_SSE(const float *val,const float *scale,uint8_t *dstp)
 extern "C" void uc2s64_SSE2(const uint8_t *t,const int pitch,float *p);
 extern "C" void computeNetwork0new_SSE2(const float *datai,const float *weights,uint8_t *d);
 
-
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
-int num_processors()
-{
-#ifdef _DEBUG
-	return 1;
-#else
-	int pcount = 0;
-	ULONG_PTR p_aff=0, s_aff=0;
-	GetProcessAffinityMask(GetCurrentProcess(), &p_aff, &s_aff);
-	for(; p_aff != 0; p_aff>>=1) 
-		pcount += (p_aff&1);
-	return pcount;
-#endif
-}
+#define myfree(ptr) if (ptr!=NULL) { free(ptr); ptr=NULL;}
+#define myCloseHandle(ptr) if (ptr!=NULL) { CloseHandle(ptr); ptr=NULL;}
+#define myalignedfree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
+#define mydelete(ptr) if (ptr!=NULL) { delete ptr; ptr=NULL;}
+
+static ThreadPoolInterface *poolInterface;
 
 int roundds(const double f)
 {
@@ -100,10 +92,10 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	int _threads,int _opt,int _fapprox,IScriptEnvironment *env) : GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),
 	nsize(_nsize),nns(_nns),qual(_qual),etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox)
 {
-	int PlaneMax=3;
+	uint8_t PlaneMax=3;
 
 	if ((field<-2) || (field>3)) env->ThrowError("nnedi3:  field must be set to -2, -1, 0, 1, 2, or 3!");
-	if ((threads<0) || (threads>16)) env->ThrowError("nnedi3:  threads must be between 0 and 16 inclusive!");
+	if ((threads<0) || (threads>MAX_MT_THREADS)) env->ThrowError("nnedi3:  threads must be between 0 and %d inclusive!",MAX_MT_THREADS);
 	if (dh && ((field<-1) || (field>1))) env->ThrowError("nnedi3:  field must be set to -1, 0, or 1 when dh=true!");
 	if ((nsize<0) || (nsize>=NUM_NSIZE)) env->ThrowError("nnedi3:  nsize must be in [0,%d]!\n",NUM_NSIZE-1);
 	if ((nns<0) || (nns>=NUM_NNS)) env->ThrowError("nnedi3:  nns must be in [0,%d]!\n",NUM_NNS-1);
@@ -125,7 +117,33 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	if (dh) vi.height*=2;
 	vi.SetFieldBased(false);
 
-	if (threads==0) threads=num_processors();
+	StaticThreadpoolF=StaticThreadpool;
+
+	srcPF=NULL;
+	dstPF=NULL;
+	weights0=NULL;
+	for (uint8_t i=0; i<2; i++)
+		weights1[i]=NULL;
+	for (uint8_t i=0; i<3; i++)
+		lcount[i]=NULL;
+
+	for (uint8_t i=0; i<MAX_MT_THREADS; i++)
+	{
+		MT_Thread[i].pClass=this;
+		MT_Thread[i].f_process=0;
+		MT_Thread[i].thread_Id=(uint8_t)i;
+		MT_Thread[i].pFunc=StaticThreadpoolF;
+
+		pssInfo[i].input=NULL;
+		pssInfo[i].temp=NULL;
+	}
+	CSectionOk=FALSE;
+
+	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("nnedi3: Error with the TheadPool status !");
+
+	threads_number=poolInterface->GetThreadNumber(threads,false);
+	if (threads_number==0)
+		env->ThrowError("nnedi3: Error with the TheadPool while getting CPU info !");
 
 	const size_t img_size=vi.BMPSize();
 
@@ -137,21 +155,55 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	else Cache_Setting=16;
 
 	srcPF = new PlanarFrame();
-	if (vi.IsYV12()) srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64);
+	if (srcPF==NULL)
+		env->ThrowError("nnedi3: Error while creating srcPF !");
+	if (vi.IsYV12())
+	{
+		if (!srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64))
+		{
+			FreeData();
+			env->ThrowError("nnedi3: Error while creating planar for srcPF !");
+		}
+	}
 	else
 	{
-		if (vi.IsYV411()) srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>2)+64);
+		if (vi.IsYV411())
+		{
+			if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>2)+64))
+			{
+				FreeData();
+				env->ThrowError("nnedi3: Error while creating planar for srcPF !");
+			}
+		}
 		else
 		{
-			if (vi.IsYV16() || vi.IsYUY2()) srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>1)+64);
+			if (vi.IsYV16() || vi.IsYUY2())
+			{
+				if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>1)+64))
+				{
+					FreeData();
+					env->ThrowError("nnedi3: Error while creating planar for srcPF !");
+				}
+			}
 			else
 			{
-				if (vi.IsYV24() || vi.IsRGB24()) srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,vi.width+64);
+				if (vi.IsYV24() || vi.IsRGB24())
+				{
+					if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,vi.width+64))
+					{
+						FreeData();
+						env->ThrowError("nnedi3: Error while creating planar for srcPF !");
+					}
+				}
 				else
 				{
 					if (vi.IsY8())
 					{
-						srcPF->createPlanar(vi.height+12,0,vi.width+64,0);
+						if (!srcPF->createPlanar(vi.height+12,0,vi.width+64,0))
+						{
+							FreeData();
+							env->ThrowError("nnedi3: Error while creating planar for srcPF !");
+						}
 						U = false;
 						V = false;
 						PlaneMax=1;
@@ -161,6 +213,17 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		}
 	}
 	dstPF = new PlanarFrame(vi);
+	if (dstPF==NULL)
+	{
+		FreeData();
+		env->ThrowError("nnedi3: Error while creating dstPF !");
+	}
+	if (!dstPF->GetAllocStatus())
+	{
+		FreeData();
+		env->ThrowError("nnedi3: Error while creating planar dstPF !");
+	}
+
 	if (opt==0)
 	{
 		const int cpuf = srcPF->cpu;
@@ -175,40 +238,69 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	const int dims0new = 4*65+4*5;
 	const int dims1 = (xdiaTable[nsize]*ydiaTable[nsize]+1) << (nnsTablePow2[nns]+1);
 	int dims1tsize = 0, dims1offset;
-	for (int j=0; j<NUM_NNS; ++j)
+	for (int j=0; j<NUM_NNS; j++)
 	{
 		int j_a;
 
 		j_a=nnsTablePow2[j]+2;
-		for (int i=0; i<NUM_NSIZE; ++i)
+		for (int i=0; i<NUM_NSIZE; i++)
 		{
 			if ((i==nsize) && (j==nns)) dims1offset=dims1tsize;
 			dims1tsize+=(xdiaTable[i]*ydiaTable[i]+1) << j_a;
 		}
 	}
 	weights0 = (float*)_aligned_malloc(max(dims0,dims0new)*sizeof(float),16);
-	for (int i=0; i<2; ++i)
+	if (weights0==NULL)
+	{
+		FreeData();
+		env->ThrowError("nnedi3: Error while allocating weights0 !");
+	}
+	for (uint8_t i=0; i<2; i++)
+	{
 		weights1[i] = (float*)_aligned_malloc(dims1*sizeof(float),16);
-	for (int i=0; i<3; ++i)
-		lcount[i]=NULL;
-	for (int i=0; i<PlaneMax; ++i)
+		if (weights1[i]==NULL)
+		{
+			FreeData();
+			env->ThrowError("nnedi3: Error while allocating weights1[%d] !",i);
+		}
+	}
+	for (uint8_t i=0; i<PlaneMax; i++)
+	{
 		lcount[i] = (int*)_aligned_malloc(dstPF->GetHeight(i)*sizeof(int),16);
+		if (lcount[i]==NULL)
+		{
+			FreeData();
+			env->ThrowError("nnedi3: Error while allocating lcount[%d] !",i);
+		}
+	}
 	char nbuf[512];
 	GetModuleFileName((HINSTANCE)&__ImageBase,nbuf,512);
 	HMODULE hmod = GetModuleHandle(nbuf);
-	if (!hmod) env->ThrowError("nnedi3:  unable to get module handle!");
+	if (hmod==NULL)
+	{
+		FreeData();
+		env->ThrowError("nnedi3: unable to get module handle!");
+	}
 	HRSRC hrsrc = FindResource(hmod,MAKEINTRESOURCE(101),_T("BINARY"));
 	HGLOBAL hglob = LoadResource(hmod,hrsrc);
 	LPVOID lplock = LockResource(hglob);
 	DWORD dwSize = SizeofResource(hmod,hrsrc);
 	if ((hmod==NULL) || (hrsrc==NULL) || (hglob==NULL) || (lplock==NULL) || (dwSize!=(dims0+dims0new*3+dims1tsize*2)*sizeof(float)))
+	{
+		FreeData();
 		env->ThrowError("nnedi3:  error loading resource (%x,%x,%x,%x,%d,%d)!",hmod,hrsrc,hglob,lplock,dwSize,
 		(dims0+dims0new*3+dims1tsize*2)*sizeof(float));
+	}
 	float *bdata = (float*)lplock;
 	// Adjust prescreener weights
 	if (pscrn>=2) // using new prescreener
 	{
 		int *offt = (int*)calloc(4*64,sizeof(int));
+		if (offt==NULL)
+		{
+			FreeData();
+			env->ThrowError("nnedi3: Error while allocating offt!");
+		}
 		int j_a;
 
 		j_a=0;
@@ -294,6 +386,11 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 			if (opt>1) // shuffle weight order for asm
 			{
 				int16_t *rs = (int16_t*)malloc(dims0*sizeof(float));
+				if (rs==NULL)
+				{
+					FreeData();
+					env->ThrowError("nnedi3: Error while allocating rs!");
+				}
 				int j_b=0;
 
 				memcpy(rs,weights0,dims0*sizeof(float));
@@ -325,6 +422,11 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 			{
 				float *wf = weights0;
 				float *rf = (float*)malloc(dims0*sizeof(float));
+				if (rf==NULL)
+				{
+					FreeData();
+					env->ThrowError("nnedi3: Error while allocating rf!");
+				}
 				int j_b=0;
 
 				memcpy(rf,weights0,dims0*sizeof(float));
@@ -349,6 +451,12 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		const int asize = xdiaTable[nsize]*ydiaTable[nsize];
 		const int boff = nnst2*asize;
 		double *mean = (double*)calloc(asize+1+nnst2,sizeof(double));
+		if (mean==NULL)
+		{
+			FreeData();
+			env->ThrowError("nnedi3: Error while allocating mean!");
+		}
+
 		int j_a,j_d;
 
 		// Calculate mean weight of each neuron (ignore bias)
@@ -415,6 +523,11 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 			if (opt>1) // shuffle weight order for asm
 			{
 				int16_t *rs = (int16_t*)malloc(nnst2*asize*sizeof(int16_t));
+				if (rs==NULL)
+				{
+					FreeData();
+					env->ThrowError("nnedi3: Error while allocating rs!");
+				}
 
 				memcpy(rs,ws,nnst2*asize*sizeof(int16_t));
 				j_a=0;
@@ -472,57 +585,67 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		}
 		free(mean);
 	}
-	tids = (unsigned*)malloc(threads*sizeof(unsigned));
-	thds = (HANDLE*)malloc(threads*sizeof(HANDLE));
-	pssInfo = (PS_INFO**)malloc(threads*sizeof(PS_INFO*));
 	int hslice[3],hremain[3];
 	int srow[3] = {6,6,6};
 	for (int i=0; i<PlaneMax; ++i)
 	{
 		const int height = srcPF->GetHeight(i)-12;
-		hslice[i] = height/threads;
-		hremain[i] = height%threads;
+		hslice[i] = height/(int)threads_number;
+		hremain[i] = height%(int)threads_number;
 	}
 	size_t temp_size = max((size_t)srcPF->GetWidth(0), 512 * sizeof(float));
-	ghMutex=CreateMutex(NULL,FALSE,NULL);
 
-	for (int i=0; i<threads; ++i)
+	CSectionOk=InitializeCriticalSectionAndSpinCount(&CriticalSection,0x00000040);
+	if (CSectionOk==FALSE)
 	{
-		pssInfo[i] = (PS_INFO*)malloc(sizeof(PS_INFO));
-		pssInfo[i]->type = 0;
-		pssInfo[i]->input = (float*)_aligned_malloc(512*sizeof(float),16);
-		pssInfo[i]->temp = (float*)_aligned_malloc(temp_size, 16);
-		pssInfo[i]->weights0 = weights0;
-		pssInfo[i]->weights1 = weights1;
-		pssInfo[i]->ident = i;
-		pssInfo[i]->qual = qual;
-		pssInfo[i]->pscrn = pscrn;
-		pssInfo[i]->env = env;
-		pssInfo[i]->opt = opt;
-		pssInfo[i]->Y = Y;
-		pssInfo[i]->U = U;
-		pssInfo[i]->V = V;
-		pssInfo[i]->nns = nnsTable[nns];
-		pssInfo[i]->xdia = xdiaTable[nsize];
-		pssInfo[i]->ydia = ydiaTable[nsize];
-		pssInfo[i]->asize = xdiaTable[nsize]*ydiaTable[nsize];
-		pssInfo[i]->fapprox = fapprox;
+		FreeData();
+		env->ThrowError("nnedi3: Unable to create Critical Section !");
+	}
+
+	for (uint8_t i=0; i<threads_number; i++)
+	{
+		pssInfo[i].input = (float*)_aligned_malloc(512*sizeof(float),16);
+		pssInfo[i].temp = (float*)_aligned_malloc(temp_size, 16);
+		if ((pssInfo[i].input==NULL) || (pssInfo[i].temp==NULL))
+		{
+			FreeData();
+			env->ThrowError("nnedi3: Error while allocating pssInfo[%d]!",i);
+		}
+		pssInfo[i].weights0 = weights0;
+		pssInfo[i].weights1 = weights1;
+		pssInfo[i].ident = i;
+		pssInfo[i].qual = qual;
+		pssInfo[i].pscrn = pscrn;
+		pssInfo[i].env = env;
+		pssInfo[i].opt = opt;
+		pssInfo[i].Y = Y;
+		pssInfo[i].U = U;
+		pssInfo[i].V = V;
+		pssInfo[i].nns = nnsTable[nns];
+		pssInfo[i].xdia = xdiaTable[nsize];
+		pssInfo[i].ydia = ydiaTable[nsize];
+		pssInfo[i].asize = xdiaTable[nsize]*ydiaTable[nsize];
+		pssInfo[i].fapprox = fapprox;
 		for (int b=0; b<PlaneMax; ++b)
 		{
-			pssInfo[i]->lcount[b] = lcount[b];
-			pssInfo[i]->dstp[b] = dstPF->GetPtr(b);
-			pssInfo[i]->srcp[b] = srcPF->GetPtr(b);
-			pssInfo[i]->dst_pitch[b] = dstPF->GetPitch(b);
-			pssInfo[i]->src_pitch[b] = srcPF->GetPitch(b);
-			pssInfo[i]->height[b] = srcPF->GetHeight(b);
-			pssInfo[i]->width[b] = srcPF->GetWidth(b);
-			pssInfo[i]->sheight[b] = srow[b];
+			pssInfo[i].lcount[b] = lcount[b];
+			pssInfo[i].dstp[b] = dstPF->GetPtr(b);
+			pssInfo[i].srcp[b] = srcPF->GetPtr(b);
+			pssInfo[i].dst_pitch[b] = dstPF->GetPitch(b);
+			pssInfo[i].src_pitch[b] = srcPF->GetPitch(b);
+			pssInfo[i].height[b] = srcPF->GetHeight(b);
+			pssInfo[i].width[b] = srcPF->GetWidth(b);
+			pssInfo[i].sheight[b] = srow[b];
 			srow[b] += i == 0 ? hslice[b]+hremain[b] : hslice[b];
-			pssInfo[i]->eheight[b] = srow[b];
+			pssInfo[i].eheight[b] = srow[b];
 		}
-		pssInfo[i]->jobFinished = CreateEvent(NULL, TRUE, TRUE, NULL);
-		pssInfo[i]->nextJob = CreateEvent(NULL, TRUE, FALSE, NULL);
-		thds[i] = (HANDLE)_beginthreadex(0,0,&threadPool,(void*)(pssInfo[i]),0,&tids[i]);
+	}
+
+	UserId=0;
+	if (!poolInterface->AllocateThreads(UserId,threads_number,0,0,true,0))
+	{
+		FreeData();
+		env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool !");
 	}
 }
 
@@ -541,35 +664,31 @@ int __stdcall nnedi3::SetCacheHints(int cachehints,int frame_range)
 }
 
 
+void nnedi3::FreeData(void)
+{
+	for (int8_t i=threads_number-1; i>=0; i--)
+	{
+		myalignedfree(pssInfo[i].temp);
+		myalignedfree(pssInfo[i].input);
+	}
+	if (CSectionOk==TRUE)
+	{
+		DeleteCriticalSection(&CriticalSection);
+		CSectionOk=FALSE;
+	}
+	for (int8_t i=2; i>=0; i--)
+		myalignedfree(lcount[i]);
+	for (int8_t i=1; i>=0; i--)
+		myalignedfree(weights1[i]);
+	myalignedfree(weights0);
+	mydelete(dstPF);
+	mydelete(srcPF);
+}
+
 nnedi3::~nnedi3()
 {
-	delete srcPF;
-	delete dstPF;
-	_aligned_free(weights0);
-	for (int i=0; i<2; ++i)
-		_aligned_free(weights1[i]);
-	for (int i=0; i<3; ++i)
-		if (lcount[i]!=NULL) _aligned_free(lcount[i]);
-	for (int i=0; i<threads; ++i)
-	{
-		pssInfo[i]->type = -1;
-		SetEvent(pssInfo[i]->nextJob);
-	}
-	WaitForMultipleObjects(threads,thds,TRUE,INFINITE);
-	CloseHandle(ghMutex);
-	for (int i=0; i<threads; ++i)
-		CloseHandle(thds[i]);
-	free(tids);
-	free(thds);
-	for (int i=0; i<threads; ++i)
-	{
-		CloseHandle(pssInfo[i]->jobFinished);
-		CloseHandle(pssInfo[i]->nextJob);
-		_aligned_free(pssInfo[i]->input);
-		_aligned_free(pssInfo[i]->temp);
-		free(pssInfo[i]);
-	}
-	free(pssInfo);
+	poolInterface->DeAllocateThreads(UserId);
+	FreeData();
 }
 
 PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
@@ -580,7 +699,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	SetMemcpyCacheLimit(Cache_Setting);
 	SetMemsetCacheLimit(Cache_Setting);
 
-	WaitForSingleObject(ghMutex,INFINITE);
+	EnterCriticalSection(&CriticalSection);
 
 	if (vi.IsY8()) PlaneMax=1;
 	if (field>1)
@@ -590,40 +709,41 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	}
 	else field_n = field;
 	copyPad(field>1?(n>>1):n,field_n,env);
+
+	if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,0,false))
+	{
+		FreeData();
+		env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
+	}
+
 	for (int i=0; i<PlaneMax; ++i)
 		A_memset(lcount[i],0,dstPF->GetHeight(i)*sizeof(int));
 	PVideoFrame dst = env->NewVideoFrame(vi);
 	const int plane[3] = {PLANAR_Y,PLANAR_U,PLANAR_V};
-	for (int i=0; i<threads; ++i)
+	for (uint8_t i=0; i<threads_number; i++)
 	{
 		for (int b=0; b<PlaneMax; ++b)
 		{
-			const int srow = pssInfo[i]->sheight[b];
-			pssInfo[i]->field[b] = (srow&1) ? 1-field_n : field_n;
+			const int srow = pssInfo[i].sheight[b];
+			pssInfo[i].field[b] = (srow&1) ? 1-field_n : field_n;
 			if (vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8() || vi.IsYV411())
 			{
-				pssInfo[i]->dstp[b] = dst->GetWritePtr(plane[b]);
-				pssInfo[i]->dst_pitch[b] = dst->GetPitch(plane[b]);
+				pssInfo[i].dstp[b] = dst->GetWritePtr(plane[b]);
+				pssInfo[i].dst_pitch[b] = dst->GetPitch(plane[b]);
 			}
 		}
-		pssInfo[i]->type = 0;
-		ResetEvent(pssInfo[i]->jobFinished);
-		SetEvent(pssInfo[i]->nextJob);
+		MT_Thread[i].f_process=1;
 	}
-	for (int i=0; i<threads; ++i)
-		WaitForSingleObject(pssInfo[i]->jobFinished,INFINITE);
+	if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	calcStartEnd2((vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8() || vi.IsYV411())?dst:NULL);
-	for (int i=0; i<threads; ++i)
-	{
-		pssInfo[i]->type = 1;
-		ResetEvent(pssInfo[i]->jobFinished);
-		SetEvent(pssInfo[i]->nextJob);
-	}
-	for (int i=0; i<threads; ++i)
-		WaitForSingleObject(pssInfo[i]->jobFinished,INFINITE);
+	for (uint8_t i=0; i<threads_number; i++)
+		MT_Thread[i].f_process=2;
+	if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	if (!(vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8() || vi.IsYV411())) dstPF->copyTo(dst, vi);
 
-	ReleaseMutex(ghMutex);
+	poolInterface->ReleaseThreadPool(UserId);
+
+	LeaveCriticalSection(&CriticalSection);
 
 	return dst;
 }
@@ -804,7 +924,7 @@ void nnedi3::calcStartEnd2(PVideoFrame dst)
 				++ll;
 			}
 		}
-		int tslice=int(total/double(threads)+0.95);
+		int tslice=int(total/double(threads_number)+0.95);
 		int count=0,countt=0,y=fl,yl=fl,th=0;
 
 		const int height_ll=height-ll;
@@ -814,10 +934,10 @@ void nnedi3::calcStartEnd2(PVideoFrame dst)
 			count+=lcount[b][y++];
 			if (count>=tslice)
 			{
-				pssInfo[th]->sheight2[b]=yl;
+				pssInfo[th].sheight2[b]=yl;
 				countt+=count;
 				if (countt==total) y=height_ll;
-				pssInfo[th]->eheight2[b]=y;
+				pssInfo[th].eheight2[b]=y;
 				while ((y<height_ll) && (lcount[b][y]==0))
 					++y;
 				yl=y;
@@ -827,14 +947,14 @@ void nnedi3::calcStartEnd2(PVideoFrame dst)
 		}
 		if (yl!=y)
 		{
-			pssInfo[th]->sheight2[b]=yl;
+			pssInfo[th].sheight2[b]=yl;
 			countt+=count;
 			if (countt==total) y=height_ll;
-			pssInfo[th]->eheight2[b]=y;
+			pssInfo[th].eheight2[b]=y;
 			++th;
 		}
-		for (; th<threads; ++th)
-			pssInfo[th]->sheight2[b] = pssInfo[th]->eheight2[b] = height;
+		for (; th<(int)threads_number; ++th)
+			pssInfo[th].sheight2[b] = pssInfo[th].eheight2[b] = height;
 	}
 }
 
@@ -983,7 +1103,7 @@ int processLine0_SSE2(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t
 	return count;
 }
 
-void evalFunc_0(void *ps)
+void evalFunc_1(void *ps)
 {
 	PS_INFO *pss = (PS_INFO*)ps;
 	float *input = pss->input;
@@ -1224,7 +1344,7 @@ void weightedAvgElliottMul5_m16_C(const float *w,const int n,float *mstd)
 
 
 
-void evalFunc_1(void *ps)
+void evalFunc_2(void *ps)
 {
 	PS_INFO *pss = (PS_INFO*)ps;
 	float *input = pss->input;
@@ -1317,17 +1437,19 @@ void evalFunc_1(void *ps)
 	}
 }
 
-unsigned __stdcall threadPool(void *ps)
+void nnedi3::StaticThreadpool(void *ptr)
 {
-	const PS_INFO *pss = (PS_INFO*)ps;
-	while (true)
+	const Public_MT_Data_Thread *data=(const Public_MT_Data_Thread *)ptr;
+	nnedi3 *ptrClass=(nnedi3 *)data->pClass;
+	void *ps = &(ptrClass->pssInfo[data->thread_Id]);
+	
+	switch(data->f_process)
 	{
-		WaitForSingleObject(pss->nextJob,INFINITE);
-		if (pss->type<0) return 0;
-		if (pss->type==0) evalFunc_0(ps);
-		else evalFunc_1(ps);
-		ResetEvent(pss->nextJob);
-		SetEvent(pss->jobFinished);
+		case 1 : evalFunc_1(ps);
+			break;
+		case 2 : evalFunc_2(ps);
+			break;
+		default : ;
 	}
 }
 
@@ -1381,6 +1503,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const int fapprox = args[14].AsInt(15);
 	const bool chroma_shift_resize = args[15].AsBool(true);
 	const bool mpeg2_chroma = args[16].AsBool(true);
+	const int threads_rs = args[17].AsInt(0);
 
 	if (rfactor < 2 || rfactor > 1024) env->ThrowError("nnedi3_rpow2:  2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	int rf = 1, ct = 0;
@@ -1398,8 +1521,10 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		env->ThrowError("nnedi3_rpow2:  nns must be in [0,%d]!\n", NUM_NNS-1);
 	if (qual < 1 || qual > 2)
 		env->ThrowError("nnedi3_rpow2:  qual must be set to 1 or 2!\n");
-	if (threads < 0 || threads > 16)
-		env->ThrowError("nnedi3_rpow2:  0 <= threads <= 16!\n");
+	if (threads < 0 || threads > MAX_MT_THREADS)
+		env->ThrowError("nnedi3_rpow2:  0 <= threads <= %d!\n",MAX_MT_THREADS);
+	if (threads_rs < 0 || threads_rs > MAX_MT_THREADS)
+		env->ThrowError("nnedi3_rpow2:  0 <= threads_rs <= %d!\n",MAX_MT_THREADS);
 	if (opt < 0 || opt > 2)
 		env->ThrowError("nnedi3_rpow2:  opt must be set to 0, 1, or 2!\n");
 	if (fapprox < 0 || fapprox > 15)
@@ -1520,23 +1645,34 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 		if (cshift[0])
 		{
+			const bool use_rs_mt=((_strnicmp(cshift,"pointresizemt",13)==0) || (_strnicmp(cshift,"bilinearresizemt",16)==0)
+				|| (_strnicmp(cshift,"bicubicresizemt",15)==0) || (_strnicmp(cshift,"lanczosresizemt",15)==0)
+				|| (_strnicmp(cshift,"lanczos4resizemt",16)==0) || (_strnicmp(cshift,"blackmanresizemt",16)==0)
+				|| (_strnicmp(cshift,"spline16resizemt",16)==0) || (_strnicmp(cshift,"spline36resizemt",16)==0)
+				|| (_strnicmp(cshift,"spline64resizemt",16)==0) || (_strnicmp(cshift,"gaussresizemt",13)==0)
+				|| (_strnicmp(cshift,"sincresizemt",12)==0));
+
 			int type = 0;
-			if (_strnicmp(cshift,"blackmanresize",14) == 0 ||
-				_strnicmp(cshift,"lanczosresize",13) == 0 ||
-				_strnicmp(cshift,"sincresize",10) == 0)
-				type = 1;
-			else if (_strnicmp(cshift,"gaussresize",11) == 0)
-				type = 2;
-			else if (_strnicmp(cshift,"bicubicresize",13) == 0)
-				type = 3;
-			if (!type || (type != 3 && ep0 == -FLT_MAX) ||
-				(type == 3 && ep0 == -FLT_MAX && ep1 == -FLT_MAX))
+			if ((_strnicmp(cshift,"blackmanresize",14)==0) || (_strnicmp(cshift,"lanczosresize",13)==0)
+				|| (_strnicmp(cshift,"sincresize",10)==0)) type=1;
+			else
 			{
-				AVSValue sargs[7] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
-					vi.width*rfactor, vi.height*rfactor };
-				const char *nargs[7] = { 0, 0, 0, "src_left", "src_top", 
-					"src_width", "src_height" };
-				v = env->Invoke(cshift,AVSValue(sargs,7),nargs).AsClip();
+				if (_strnicmp(cshift,"gaussresize",11)==0) type=2;
+				else
+				{
+					if (_strnicmp(cshift,"bicubicresize",13)==0) type=3;
+				}
+			}
+			if ((type==0) || ((type!=3) && (ep0==-FLT_MAX)) ||
+				((type==3) && (ep0==-FLT_MAX) && (ep1==-FLT_MAX)))
+			{
+				AVSValue sargs[8] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+					vi.width*rfactor, vi.height*rfactor,threads_rs };
+				const char *nargs[8] = { 0, 0, 0, "src_left", "src_top", 
+					"src_width", "src_height","threads" };
+				const uint8_t nbarg=(use_rs_mt) ? 8:7;
+
+				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
 				if (!(vi.IsRGB24() || vi.IsYV24() || vi.IsY8()))
 				{
@@ -1565,9 +1701,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					}
 
 					sargs[0]=vu;
-					vu = env->Invoke(cshift,AVSValue(sargs,7),nargs).AsClip();
+					vu = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 					sargs[0]=vv;
-					vv = env->Invoke(cshift,AVSValue(sargs,7),nargs).AsClip();
+					vv = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
 					AVSValue ytouvargs[3] = {vu,vv,v};
 					v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
@@ -1590,14 +1726,17 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					}
 				}
 			}
-			else if (type != 3 || min(ep0,ep1) == -FLT_MAX)
+			else if ((type!=3) || (min(ep0,ep1)==-FLT_MAX))
 			{
-				AVSValue sargs[8] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+				AVSValue sargs[9] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor, type==1?AVSValue((int)(ep0+0.5f)):
-					(type==2?ep0:max(ep0,ep1)) };
-				const char *nargs[8] = { 0, 0, 0, "src_left", "src_top", 
-					"src_width", "src_height", type==1?"taps":(type==2?"p":(max(ep0,ep1)==ep0?"b":"c")) };
-				v = env->Invoke(cshift,AVSValue(sargs,8),nargs).AsClip();
+					(type==2?ep0:max(ep0,ep1)),threads_rs };
+				const char *nargs[9] = { 0, 0, 0, "src_left", "src_top", 
+					"src_width", "src_height", type==1?"taps":(type==2?"p":(max(ep0,ep1)==ep0?"b":"c")),
+					"threads" };
+				const uint8_t nbarg=(use_rs_mt) ? 9:8;
+
+				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
 				if (!(vi.IsRGB24() || vi.IsYV24() || vi.IsY8()))
 				{
@@ -1626,9 +1765,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					}
 
 					sargs[0]=vu;
-					vu = env->Invoke(cshift,AVSValue(sargs,8),nargs).AsClip();
+					vu = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 					sargs[0]=vv;
-					vv = env->Invoke(cshift,AVSValue(sargs,8),nargs).AsClip();
+					vv = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
 					AVSValue ytouvargs[3] = {vu,vv,v};
 					v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
@@ -1653,11 +1792,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else
 			{
-				AVSValue sargs[9] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
-					vi.width*rfactor, vi.height*rfactor, ep0, ep1 };
-				const char *nargs[9] = { 0, 0, 0, "src_left", "src_top", 
-					"src_width", "src_height", "b", "c" };
-				v = env->Invoke(cshift,AVSValue(sargs,9),nargs).AsClip();
+				AVSValue sargs[10] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+					vi.width*rfactor, vi.height*rfactor, ep0, ep1,threads_rs };
+				const char *nargs[10] = { 0, 0, 0, "src_left", "src_top", 
+					"src_width", "src_height", "b", "c", "threads" };
+				const uint8_t nbarg=(use_rs_mt) ? 10:9;
+
+				v = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
 				if (!(vi.IsRGB24() || vi.IsYV24() || vi.IsY8()))
 				{
@@ -1686,9 +1827,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					}
 
 					sargs[0]=vu;
-					vu = env->Invoke(cshift,AVSValue(sargs,9),nargs).AsClip();
+					vu = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 					sargs[0]=vv;
-					vv = env->Invoke(cshift,AVSValue(sargs,9),nargs).AsClip();
+					vv = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
 					AVSValue ytouvargs[3] = {vu,vv,v};
 					v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
@@ -1718,13 +1859,14 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				if (vi.IsYV12())
 				{
-					AVSValue sargs[7]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
-						(vi.width*rfactor)>>1,(vi.height*rfactor)>>1};
-					const char *nargs[7]={0,0,0,"src_left","src_top","src_width","src_height"};
+					AVSValue sargs[8]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
+						(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,threads_rs};
+					const char *nargs[8]={0,0,0,"src_left","src_top","src_width","src_height","threads"};
+					const uint8_t nbarg=(SplineMT) ? 8:7;
 
-					vu = env->Invoke(Spline36,AVSValue(sargs,7),nargs).AsClip();
+					vu = env->Invoke(Spline36,AVSValue(sargs,nbarg),nargs).AsClip();
 					sargs[0]=vv;
-					vv = env->Invoke(Spline36,AVSValue(sargs,7),nargs).AsClip();
+					vv = env->Invoke(Spline36,AVSValue(sargs,nbarg),nargs).AsClip();
 				}
 
 				AVSValue ytouvargs[3] = {vu,vv,v};
@@ -1765,13 +1907,14 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 {
 	if (IInstrSet<0) InstructionSet();
 	CPU_Cache_Size=DataCacheSize(0)>>2;
+	poolInterface=ThreadPoolInterface::Init(1);
 
 	AVS_linkage = vectors;
 
 	env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
 		"[threads]i[opt]i[fapprox]i", Create_nnedi3, 0);
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
-		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b", Create_nnedi3_rpow2, 0);
+		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b[threads_rs]i", Create_nnedi3_rpow2, 0);
 
 	return "NNEDI3 plugin";
 	

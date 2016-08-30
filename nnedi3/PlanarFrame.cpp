@@ -25,6 +25,7 @@
 #include "asmlib\asmlib.h"
 #include <stdint.h>
 
+#define myalignedfree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
 
 extern "C" int checkCPU_ASM(void);
 extern "C" void checkSSEOSSupport_ASM(void);
@@ -47,8 +48,9 @@ int modnpf(const int m, const int n)
 }
 
 
-PlanarFrame::PlanarFrame()
+PlanarFrame::PlanarFrame(void)
 {
+	alloc_ok=false;
 	ypitch = uvpitch = 0;
 	ywidth = uvwidth = 0;
 	yheight = uvheight = 0;
@@ -65,28 +67,30 @@ PlanarFrame::PlanarFrame(VideoInfo &viInfo)
 	y = u = v = NULL;
 	useSIMD = true;
 	cpu = getCPUInfo();
-	allocSpace(viInfo);
+	alloc_ok=allocSpace(viInfo);
 }
 
-PlanarFrame::~PlanarFrame()
+PlanarFrame::~PlanarFrame(void)
 {
-	if (v != NULL) { _aligned_free(v); v = NULL; }
-	if (u != NULL) { _aligned_free(u); u = NULL; }
-	if (y != NULL) { _aligned_free(y); y = NULL; }
+	myalignedfree(v);
+	myalignedfree(u);
+	myalignedfree(y);
 }
 
 bool PlanarFrame::allocSpace(VideoInfo &viInfo)
 {
-	if (v != NULL) { _aligned_free(v); v = NULL; }
-	if (u != NULL) { _aligned_free(u); u = NULL; }
-	if (y != NULL) { _aligned_free(y); y = NULL; }
+	myalignedfree(v);
+	myalignedfree(u);
+	myalignedfree(y);
+	alloc_ok=false;
+
 	ypitch = uvpitch = 0;
 	ywidth = uvwidth = 0;
 	yheight = uvheight = 0;
 
 	int height = viInfo.height;
 	int width = viInfo.width;
-	if ((height==0) || (width==0)) return false;
+	if ((height==0) || (width==0)) return(false);
 	if (viInfo.IsYV12())
 	{
 		ypitch = modnpf(width+MIN_PAD,MIN_ALIGNMENT);
@@ -146,29 +150,32 @@ bool PlanarFrame::allocSpace(VideoInfo &viInfo)
 		}
 	}
 	y = (unsigned char*)_aligned_malloc((size_t)ypitch*(size_t)yheight,MIN_ALIGNMENT);
-	if (y == NULL) return false;
+	if (y == NULL) return(false);
 	if ((uvpitch!=0) && (uvheight!=0))
 	{
 		u = (unsigned char*)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
-		if (u == NULL) return false;
+		if (u == NULL) return(false);
 		v = (unsigned char*)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
-		if (v == NULL) return false;
+		if (v == NULL) return(false);
 	}
-	return true;
+	alloc_ok=true;
+	return(true);
 }
 
 bool PlanarFrame::allocSpace(int specs[4])
 {
-	if (v != NULL) { _aligned_free(v); v = NULL; }
-	if (u != NULL) { _aligned_free(u); u = NULL; }
-	if (y != NULL) { _aligned_free(y); y = NULL; }
+	myalignedfree(v);
+	myalignedfree(u);
+	myalignedfree(y);
+	alloc_ok=false;
+
 	ypitch = uvpitch = 0;
 	ywidth = uvwidth = 0;
 	yheight = uvheight = 0;
 
 	int height = specs[0];
 	int width = specs[2];
-	if ((height==0) || (width==0)) return false;
+	if ((height==0) || (width==0)) return(false);
 	ypitch = modnpf(width+MIN_PAD,MIN_ALIGNMENT);
 	ywidth = width;
 	yheight = height;
@@ -181,24 +188,25 @@ bool PlanarFrame::allocSpace(int specs[4])
 		uvheight = height;
 	}
 	y = (unsigned char*)_aligned_malloc((size_t)ypitch*(size_t)yheight,MIN_ALIGNMENT);
-	if (y == NULL) return false;
+	if (y == NULL) return(false);
 	if ((uvpitch!=0) && (uvheight!=0))
 	{
 		u = (unsigned char*)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
-		if (u == NULL) return false;
+		if (u == NULL) return(false);
 		v = (unsigned char*)_aligned_malloc((size_t)uvpitch*(size_t)uvheight,MIN_ALIGNMENT);
-		if (v == NULL) return false;
+		if (v == NULL) return(false);
 	}
-	return true;
+	alloc_ok=true;
+	return(true);
 }
 
-int PlanarFrame::getCPUInfo()
+int PlanarFrame::getCPUInfo(void)
 {
 	static const int cpu_saved = checkCPU();
 	return cpu_saved;
 }
 
-int PlanarFrame::checkCPU()
+int PlanarFrame::checkCPU(void)
 {
 	int cput = 0;
 
@@ -232,13 +240,13 @@ void PlanarFrame::checkSSE2OSSupport(int &cput)
 	}
 }
 
-void PlanarFrame::createPlanar(int yheight, int uvheight, int ywidth, int uvwidth)
+bool PlanarFrame::createPlanar(int yheight, int uvheight, int ywidth, int uvwidth)
 {
 	int specs[4] = {yheight,uvheight,ywidth,uvwidth};
-	allocSpace(specs);
+	return(allocSpace(specs));
 }
 
-void PlanarFrame::createPlanar(int height,int width,uint8_t chroma_format)
+bool PlanarFrame::createPlanar(int height,int width,uint8_t chroma_format)
 {
 	int specs[4];
 	switch(chroma_format)
@@ -261,50 +269,50 @@ void PlanarFrame::createPlanar(int height,int width,uint8_t chroma_format)
 			specs[2] = width; specs[3] = width;
 			break;
 	}
-	allocSpace(specs);
+	return(allocSpace(specs));
 }
 
-void PlanarFrame::createFromProfile(VideoInfo &viInfo)
+bool PlanarFrame::createFromProfile(VideoInfo &viInfo)
 {
-	allocSpace(viInfo);
+	return(allocSpace(viInfo));
 }
 
-void PlanarFrame::createFromFrame(PVideoFrame &frame,VideoInfo &viInfo)
+bool PlanarFrame::createFromFrame(PVideoFrame &frame,VideoInfo &viInfo)
 {
-	allocSpace(viInfo);
-	copyInternalFrom(frame,viInfo);
+	if (!allocSpace(viInfo)) return(false);
+	else return(copyInternalFrom(frame,viInfo));
 }
 
-void PlanarFrame::createFromPlanar(PlanarFrame &frame)
+bool PlanarFrame::createFromPlanar(PlanarFrame &frame)
 {
 	int specs[4] = {frame.yheight,frame.uvheight,frame.ywidth,frame.uvwidth};
-	allocSpace(specs);
-	copyInternalFrom(frame);
+	if (!allocSpace(specs)) return(false);
+	else return(copyInternalFrom(frame));
 }
 
-void PlanarFrame::copyFrom(PVideoFrame &frame,VideoInfo &viInfo)
+bool PlanarFrame::copyFrom(PVideoFrame &frame,VideoInfo &viInfo)
 {
-	copyInternalFrom(frame,viInfo);
+	return(copyInternalFrom(frame,viInfo));
 }
 
-void PlanarFrame::copyFrom(PlanarFrame &frame)
+bool PlanarFrame::copyFrom(PlanarFrame &frame)
 {
-	copyInternalFrom(frame);
+	return(copyInternalFrom(frame));
 }
 
-void PlanarFrame::copyTo(PVideoFrame &frame,VideoInfo &viInfo)
+bool PlanarFrame::copyTo(PVideoFrame &frame,VideoInfo &viInfo)
 {
-	copyInternalTo(frame,viInfo);
+	return(copyInternalTo(frame,viInfo));
 }
 
-void PlanarFrame::copyTo(PlanarFrame &frame)
+bool PlanarFrame::copyTo(PlanarFrame &frame)
 {
-	copyInternalTo(frame);
+	return(copyInternalTo(frame));
 }
 
-void PlanarFrame::copyPlaneTo(PlanarFrame &frame,uint8_t plane)
+bool PlanarFrame::copyPlaneTo(PlanarFrame &frame,uint8_t plane)
 {
-	copyInternalPlaneTo(frame,plane);
+	return(copyInternalPlaneTo(frame,plane));
 }
 
 uint8_t* PlanarFrame::GetPtr(uint8_t plane)
@@ -346,18 +354,20 @@ int PlanarFrame::GetPitch(uint8_t plane)
 
 void PlanarFrame::freePlanar()
 {
-	if (v != NULL) { _aligned_free(v); v = NULL; }
-	if (u != NULL) { _aligned_free(u); u = NULL; }
-	if (y != NULL) { _aligned_free(y); y = NULL; }
+	myalignedfree(v);
+	myalignedfree(u);
+	myalignedfree(y);
+	alloc_ok=false;
+
 	ypitch = uvpitch = 0;
 	ywidth = uvwidth = 0;
 	yheight = uvheight = 0;
 	cpu = 0;
 }
 
-void PlanarFrame::copyInternalFrom(PVideoFrame &frame,VideoInfo &viInfo)
+bool PlanarFrame::copyInternalFrom(PVideoFrame &frame,VideoInfo &viInfo)
 {
-	if ((y==NULL) || (!viInfo.IsY8() && ((u==NULL) || (v==NULL)))) return;
+	if ((y==NULL) || (!viInfo.IsY8() && ((u==NULL) || (v==NULL)))) return(false);
 
 	if (viInfo.IsYV12() || viInfo.IsYV16() || viInfo.IsYV24() || viInfo.IsYV411())
 	{
@@ -392,11 +402,12 @@ void PlanarFrame::copyInternalFrom(PVideoFrame &frame,VideoInfo &viInfo)
 			}
 		}
 	}
+	return(true);
 }
 
-void PlanarFrame::copyInternalFrom(PlanarFrame &frame)
+bool PlanarFrame::copyInternalFrom(PlanarFrame &frame)
 {
-	if ((y==NULL) || ((uvpitch!=0) && ((u==NULL) || (v==NULL)))) return;
+	if ((y==NULL) || ((uvpitch!=0) && ((u==NULL) || (v==NULL)))) return(false);
 
 	BitBlt(y,ypitch,frame.y,frame.ypitch,frame.ywidth,frame.yheight);
 	if (uvpitch!=0)
@@ -404,11 +415,12 @@ void PlanarFrame::copyInternalFrom(PlanarFrame &frame)
 		BitBlt(u,uvpitch,frame.u,frame.uvpitch,frame.uvwidth,frame.uvheight);
 		BitBlt(v,uvpitch,frame.v,frame.uvpitch,frame.uvwidth,frame.uvheight);
 	}
+	return(true);
 }
 
-void PlanarFrame::copyInternalTo(PVideoFrame &frame,VideoInfo &viInfo)
+bool PlanarFrame::copyInternalTo(PVideoFrame &frame,VideoInfo &viInfo)
 {
-	if ((y==NULL) || (!viInfo.IsY8() && ((u==NULL) || (v==NULL)))) return;
+	if ((y==NULL) || (!viInfo.IsY8() && ((u==NULL) || (v==NULL)))) return(false);
 
 	if (viInfo.IsYV12() || viInfo.IsYV16() || viInfo.IsYV24() || viInfo.IsYV411())
 	{
@@ -437,11 +449,13 @@ void PlanarFrame::copyInternalTo(PVideoFrame &frame,VideoInfo &viInfo)
 			}
 		}
 	}
+	return(true);
 }
 
-void PlanarFrame::copyInternalTo(PlanarFrame &frame)
+
+bool PlanarFrame::copyInternalTo(PlanarFrame &frame)
 {
-	if ((y==NULL) || ((uvpitch!=0) && ((u==NULL) || (v==NULL)))) return;
+	if ((y==NULL) || ((uvpitch!=0) && ((u==NULL) || (v==NULL)))) return(false);
 
 	BitBlt(frame.y,frame.ypitch,y,ypitch,ywidth,yheight);
 	if (uvpitch!=0)
@@ -449,25 +463,45 @@ void PlanarFrame::copyInternalTo(PlanarFrame &frame)
 		BitBlt(frame.u,frame.uvpitch,u,uvpitch,uvwidth,uvheight);
 		BitBlt(frame.v,frame.uvpitch,v,uvpitch,uvwidth,uvheight);
 	}
+	return(true);
 }
 
-void PlanarFrame::copyInternalPlaneTo(PlanarFrame &frame,uint8_t plane)
+
+bool PlanarFrame::copyInternalPlaneTo(PlanarFrame &frame,uint8_t plane)
 {
+	bool out=true;
+
 	switch(plane)
 	{
-		case 0 : if (y!=NULL) BitBlt(frame.y,frame.ypitch,y,ypitch,ywidth,yheight); break;
-		case 1 : if (u!=NULL) BitBlt(frame.u,frame.uvpitch,u,uvpitch,uvwidth,uvheight); break;
-		case 2 : if (v!=NULL) BitBlt(frame.v,frame.uvpitch,v,uvpitch,uvwidth,uvheight); break;
+		case 0 :
+			if (y!=NULL) BitBlt(frame.y,frame.ypitch,y,ypitch,ywidth,yheight);
+			else out=false;
+			break;
+		case 1 :
+			if (u!=NULL) BitBlt(frame.u,frame.uvpitch,u,uvpitch,uvwidth,uvheight);
+			else out=false;
+			break;
+		case 2 :
+			if (v!=NULL) BitBlt(frame.v,frame.uvpitch,v,uvpitch,uvwidth,uvheight);
+			else out=false;
+			break;
 	}
+	return(out);
 }
 
-void PlanarFrame::copyChromaTo(PlanarFrame &dst)
+
+bool PlanarFrame::copyChromaTo(PlanarFrame &dst)
 {
+	bool out=true;
+
 	if (uvpitch!=0)
 	{
 		BitBlt(dst.u,dst.uvpitch,u,uvpitch,dst.uvwidth,dst.uvheight);
 		BitBlt(dst.v,dst.uvpitch,v,uvpitch,dst.uvwidth,dst.uvheight);
 	}
+	else out=false;
+
+	return(out);
 }
 
 
@@ -480,6 +514,7 @@ PlanarFrame& PlanarFrame::operator=(PlanarFrame &ob2)
 	uvpitch = ob2.uvpitch;
 	uvheight = ob2.uvheight;
 	uvwidth = ob2.uvwidth;
+	alloc_ok=ob2.alloc_ok;
 	this->copyFrom(ob2);
 	return *this;
 }

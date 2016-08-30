@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.25 (12/08/2016)                                         |
+                                     v0.9.4.26 (30/08/2016)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ INFO:
 
     nnedi3_rpow2(int rfactor, int nsize, int nns, int qual, int etype, int pscrn, string cshift,
                  int fwidth, int fheight, float ep0, float ep1, int threads, int opt, int fapprox,
-                 bool csresize, bool mpeg2)
+                 bool csresize, bool mpeg2, int threads_rs)
 
 
 
@@ -167,7 +167,7 @@ PARAMETERS (nnedi3):
    threads -
 
       Controls how many threads will be used for processing. If set to 0, threads will
-      be set equal to the number of detected processors.
+      be set equal to the number of physical cores detected.
 
       Default:  0  (int)
 
@@ -276,6 +276,14 @@ PARAMETERS (nnedi3_rpow2):
       
       Default: True
 
+   threads_rs -
+
+      Controls how many threads will be used for multithreaded resampler, if they are used.
+      If set to 0, threads will be set equal to the number of physical cores detected.
+      If multithreaded resampler are not used, this has no effect.
+
+      Default:  0  (int)
+
 
 
 nnedi3_rpow2 EXAMPLES:
@@ -299,6 +307,11 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   30/08/2016  v0.9.4.26
+
+       * Update to my threadpool interface.
+       + Add a thread parameter for the resampler if use of the MT resamplers.
+
    12/08/2016  v0.9.4.25
 
        * Use Spline36ResizeMT if avaible.

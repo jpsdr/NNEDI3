@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.25 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.26 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include "avisynth.h"
 #include "PlanarFrame.h"
+#include "ThreadPoolInterface.h"
 
 #define NUM_NSIZE 7
 #define NUM_NNS 5
@@ -38,10 +39,8 @@ const int nnsTablePow2[NUM_NNS] = {4,5,6,7,8};
 
 #define CB2(n) max(min((n),254),0)
 
-unsigned __stdcall threadPool(void *ps);
-
 struct PS_INFO {
-	int field[3], type, ident;
+	int field[3], ident;
 	const uint8_t *srcp[3];
 	uint8_t *dstp[3];
 	int src_pitch[3],dst_pitch[3];
@@ -55,31 +54,38 @@ struct PS_INFO {
 	bool Y,U,V;
 	int pscrn;
 	IScriptEnvironment *env;
-	HANDLE nextJob, jobFinished;
 };
 
 class nnedi3 : public GenericVideoFilter
 {
-private:
+protected:
 	bool dh,Y,U,V;
 	int pscrn;
 	int field,threads,opt,nns,etype;
 	int *lcount[3],qual,nsize,fapprox;
 	PlanarFrame *srcPF,*dstPF;
-	PS_INFO **pssInfo;
-	unsigned *tids;
+	PS_INFO pssInfo[MAX_MT_THREADS];
 	size_t Cache_Setting;
-	HANDLE *thds;
 	float *weights0,*weights1[2];
-	HANDLE ghMutex;
+	CRITICAL_SECTION CriticalSection;
+	BOOL CSectionOk;
+	uint8_t threads_number;
+	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
+	uint16_t UserId;
 
-	void nnedi3::calcStartEnd2(PVideoFrame dst);
-	void nnedi3::copyPad(int n,int fn,IScriptEnvironment *env);
+	void calcStartEnd2(PVideoFrame dst);
+	void copyPad(int n,int fn,IScriptEnvironment *env);
+
+	ThreadPoolFunction StaticThreadpoolF;
+
+	static void StaticThreadpool(void *ptr);
+
+	void FreeData(void);
 
 public:
-	nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsize,int _nns,int _qual,int _etype,
+	nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsize,int _nns,int _qual,int _etype,
 		int _pscrn,int _threads,int _opt,int _fapprox,IScriptEnvironment *env);
-	nnedi3::~nnedi3();
+	~nnedi3();
 	PVideoFrame __stdcall nnedi3::GetFrame(int n,IScriptEnvironment *env);
 
 	int __stdcall SetCacheHints(int cachehints, int frame_range);
