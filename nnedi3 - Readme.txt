@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.26 (30/08/2016)                                         |
+                                     v0.9.4.27 (31/08/2016)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -307,6 +307,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   31/08/2016  v0.9.4.27
+
+       * Minor fixes and don't use threadpool if number of threads=1.
+
    30/08/2016  v0.9.4.26
 
        * Update to my threadpool interface.

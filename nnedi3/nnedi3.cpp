@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.26 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.27 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -138,6 +138,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		pssInfo[i].temp=NULL;
 	}
 	CSectionOk=FALSE;
+	UserId=0;
 
 	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("nnedi3: Error with the TheadPool status !");
 
@@ -525,6 +526,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 				int16_t *rs = (int16_t*)malloc(nnst2*asize*sizeof(int16_t));
 				if (rs==NULL)
 				{
+					free(mean);
 					FreeData();
 					env->ThrowError("nnedi3: Error while allocating rs!");
 				}
@@ -641,11 +643,13 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		}
 	}
 
-	UserId=0;
-	if (!poolInterface->AllocateThreads(UserId,threads_number,0,0,true,0))
+	if (threads_number>1)
 	{
-		FreeData();
-		env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool !");
+		if (!poolInterface->AllocateThreads(UserId,threads_number,0,0,true,0))
+		{
+			FreeData();
+			env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool !");
+		}
 	}
 }
 
@@ -671,11 +675,6 @@ void nnedi3::FreeData(void)
 		myalignedfree(pssInfo[i].temp);
 		myalignedfree(pssInfo[i].input);
 	}
-	if (CSectionOk==TRUE)
-	{
-		DeleteCriticalSection(&CriticalSection);
-		CSectionOk=FALSE;
-	}
 	for (int8_t i=2; i>=0; i--)
 		myalignedfree(lcount[i]);
 	for (int8_t i=1; i>=0; i--)
@@ -687,9 +686,17 @@ void nnedi3::FreeData(void)
 
 nnedi3::~nnedi3()
 {
-	poolInterface->DeAllocateThreads(UserId);
+	if (threads_number>1) poolInterface->DeAllocateThreads(UserId);
 	FreeData();
+	if (CSectionOk==TRUE)
+	{
+		DeleteCriticalSection(&CriticalSection);
+		CSectionOk=FALSE;
+	}
 }
+
+void evalFunc_1(void *ps);
+void evalFunc_2(void *ps);
 
 PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 {
@@ -710,10 +717,13 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	else field_n = field;
 	copyPad(field>1?(n>>1):n,field_n,env);
 
-	if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,0,false))
+	if (threads_number>1)
 	{
-		FreeData();
-		env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
+		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,0,false))
+		{
+			FreeData();
+			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
+		}
 	}
 
 	for (int i=0; i<PlaneMax; ++i)
@@ -734,14 +744,23 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		}
 		MT_Thread[i].f_process=1;
 	}
-	if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+	if (threads_number>1)
+	{
+		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+	}
+	else evalFunc_1(pssInfo);
 	calcStartEnd2((vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8() || vi.IsYV411())?dst:NULL);
-	for (uint8_t i=0; i<threads_number; i++)
-		MT_Thread[i].f_process=2;
-	if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+	if (threads_number>1)
+	{
+		for (uint8_t i=0; i<threads_number; i++)
+			MT_Thread[i].f_process=2;
+
+		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+	}
+	else evalFunc_2(pssInfo);
 	if (!(vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8() || vi.IsYV411())) dstPF->copyTo(dst, vi);
 
-	poolInterface->ReleaseThreadPool(UserId);
+	if (threads_number>1) poolInterface->ReleaseThreadPool(UserId);
 
 	LeaveCriticalSection(&CriticalSection);
 
