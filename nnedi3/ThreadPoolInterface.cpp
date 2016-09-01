@@ -195,7 +195,7 @@ uint8_t ThreadPoolInterface::GetThreadNumber(uint8_t thread_number,bool logical)
 
 
 
-bool ThreadPoolInterface::AllocateThreads(uint16_t &UserId,uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,int8_t nPool)
+bool ThreadPoolInterface::AllocateThreads(uint16_t &UserId,uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,int8_t nPool)
 {
 	if ((!Status_Ok) || Error_Occured) return(false);
 
@@ -271,7 +271,7 @@ bool ThreadPoolInterface::AllocateThreads(uint16_t &UserId,uint8_t thread_number
 						return(false);
 					}
 				}
-				bool ok=ptrPool[i]->AllocateThreads(thread_number,offset_core,offset_ht,UseMaxPhysCore);
+				bool ok=ptrPool[i]->AllocateThreads(thread_number,offset_core,offset_ht,UseMaxPhysCore,SetAffinity);
 				if (!ok)
 				{
 					Error_Occured=true;
@@ -301,7 +301,7 @@ bool ThreadPoolInterface::AllocateThreads(uint16_t &UserId,uint8_t thread_number
 					return(false);
 				}
 			}
-			bool ok=ptrPool[nPool]->AllocateThreads(thread_number,offset_core,offset_ht,UseMaxPhysCore);
+			bool ok=ptrPool[nPool]->AllocateThreads(thread_number,offset_core,offset_ht,UseMaxPhysCore,SetAffinity);
 			if (!ok)
 			{
 				Error_Occured=true;
@@ -320,6 +320,106 @@ bool ThreadPoolInterface::AllocateThreads(uint16_t &UserId,uint8_t thread_number
 
 	return(true);
 }
+
+
+
+bool ThreadPoolInterface::ChangeThreadsAffinity(uint16_t UserId,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,int8_t nPool)
+{
+	if ((!Status_Ok) || Error_Occured) return(false);
+
+	EnterCriticalSection(&CriticalSection);
+
+	if ((!Status_Ok) || Error_Occured || (UserId==0) || (nPool>=(int8_t)NbrePool) || (nPool<-1))
+	{
+		LeaveCriticalSection(&CriticalSection);
+		return(false);
+	}
+
+	uint16_t i=0;
+
+	while ((NbreUsers>i) && (TabId[i].UserId!=UserId)) i++;
+	if (i==NbreUsers)
+	{
+		LeaveCriticalSection(&CriticalSection);
+		return(false);
+	}
+
+	EnterCriticalSection(&CriticalSectionResources);
+	if ((!Status_Ok) || Error_Occured)
+	{
+		LeaveCriticalSection(&CriticalSection);
+		LeaveCriticalSection(&CriticalSectionResources);
+		return(false);
+	}
+
+	if (nPool==-1)
+	{
+		for(uint8_t i=0; i<NbrePool; i++)
+		{
+			if (ptrPool[i]->GetCurrentThreadAllocated()>0)
+			{
+				while (JobsRunning[i])
+				{
+					LeaveCriticalSection(&CriticalSection);
+					WaitForSingleObject(JobsEnded[i],INFINITE);
+					EnterCriticalSection(&CriticalSection);
+					if ((!Status_Ok) || Error_Occured)
+					{
+						LeaveCriticalSection(&CriticalSection);
+						LeaveCriticalSection(&CriticalSectionResources);
+						return(false);
+					}
+				}
+				bool ok=ptrPool[i]->ChangeThreadsAffinity(offset_core,offset_ht,UseMaxPhysCore,SetAffinity);
+				if (!ok)
+				{
+					Error_Occured=true;
+					FreePool();
+					Status_Ok=false;
+					FreeData();
+					LeaveCriticalSection(&CriticalSection);
+					LeaveCriticalSection(&CriticalSectionResources);
+					return(false);
+				}
+			}
+		}
+	}
+	else
+	{
+		if (ptrPool[nPool]->GetCurrentThreadAllocated()>0)
+		{
+			while (JobsRunning[nPool])
+			{
+				LeaveCriticalSection(&CriticalSection);
+				WaitForSingleObject(JobsEnded[nPool],INFINITE);
+				EnterCriticalSection(&CriticalSection);
+				if ((!Status_Ok) || Error_Occured)
+				{
+					LeaveCriticalSection(&CriticalSection);
+					LeaveCriticalSection(&CriticalSectionResources);
+					return(false);
+				}
+			}
+			bool ok=ptrPool[nPool]->ChangeThreadsAffinity(offset_core,offset_ht,UseMaxPhysCore,SetAffinity);
+			if (!ok)
+			{
+				Error_Occured=true;
+				FreePool();
+				Status_Ok=false;
+				FreeData();
+				LeaveCriticalSection(&CriticalSection);
+				LeaveCriticalSection(&CriticalSectionResources);
+				return(false);
+			}
+		}
+	}
+
+	LeaveCriticalSection(&CriticalSection);
+	LeaveCriticalSection(&CriticalSectionResources);
+
+	return(true);
+}
+
 
 
 bool ThreadPoolInterface::DeAllocateThreads(uint16_t UserId)

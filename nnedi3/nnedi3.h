@@ -70,6 +70,7 @@ protected:
 	CRITICAL_SECTION CriticalSection;
 	BOOL CSectionOk;
 	uint8_t threads_number;
+	bool LogicalCores,MaxPhysCores,SetAffinity;
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
 	uint16_t UserId;
 
@@ -84,7 +85,8 @@ protected:
 
 public:
 	nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsize,int _nns,int _qual,int _etype,
-		int _pscrn,int _threads,int _opt,int _fapprox,IScriptEnvironment *env);
+		int _pscrn,int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,
+		IScriptEnvironment *env);
 	~nnedi3();
 	PVideoFrame __stdcall nnedi3::GetFrame(int n,IScriptEnvironment *env);
 

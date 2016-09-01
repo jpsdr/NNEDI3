@@ -5,7 +5,7 @@
 
 #include "ThreadPoolDef.h"
 
-#define THREADPOOL_VERSION "ThreadPool 1.1.1"
+#define THREADPOOL_VERSION "ThreadPool 1.2.0"
 
 typedef struct _MT_Data_Thread
 {
@@ -20,6 +20,7 @@ typedef struct _Arch_CPU
 	uint8_t NbPhysCore,NbLogicCPU;
 	uint8_t NbHT[64];
 	ULONG_PTR ProcMask[64];
+	ULONG_PTR FullMask;
 } Arch_CPU;
 
 
@@ -35,7 +36,8 @@ class ThreadPool
 	public :
 
 	uint8_t GetThreadNumber(uint8_t thread_number,bool logical);
-	bool AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore);
+	bool AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity);
+	bool ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity);
 	bool DeAllocateThreads(void);
 	bool RequestThreadPool(uint8_t thread_number,Public_MT_Data_Thread *Data);
 	bool ReleaseThreadPool(void);
@@ -59,7 +61,7 @@ class ThreadPool
 	uint8_t TotalThreadsRequested,CurrentThreadsAllocated,CurrentThreadsUsed;
 	
 	void FreeThreadPool(void);
-	void CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore);
+	void CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity);
 
 	private :
 

@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.27 (31/08/2016)                                         |
+                                     v0.9.4.27 (01/09/2016)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -19,11 +19,12 @@ INFO:
   Syntax =>
 
     nnedi3(int field, bool dh, bool Y, bool U, bool V, int nsize, int nns, int qual, int etype,
-           int pscrn, int threads, int opt, int fapprox)
+           int pscrn, int threads, int opt, int fapprox, bool logicalCores, bool MaxPhysCore, bool SetAffinity)
 
     nnedi3_rpow2(int rfactor, int nsize, int nns, int qual, int etype, int pscrn, string cshift,
                  int fwidth, int fheight, float ep0, float ep1, int threads, int opt, int fapprox,
-                 bool csresize, bool mpeg2, int threads_rs)
+                 bool csresize, bool mpeg2,bool logicalCores, bool MaxPhysCore, bool SetAffinity,
+                 int threads_rs,bool logicalCores_rs, bool MaxPhysCore_rs, bool SetAffinity_rs)
 
 
 
@@ -200,6 +201,30 @@ PARAMETERS (nnedi3):
       Default:  15 (int)
 
 
+   logicalCores -
+      If threads is set to 0, it will specify if the number of threads will be the number
+      of logical CPU (true) or the number of physical cores (false). If your processor doesn't
+      have hyper-threading or threads<>0, this parameter has no effect.
+
+      Default: false (bool)
+
+   MaxPhysCore -
+      If true, the threads repartition will use the maximum of physical cores possible. If your
+      processor doesn't have hyper-threading or the SetAffinity parameter is set to false,
+      this parameter has no effect.
+
+      Default: true (bool)
+
+   SetAffinity -
+      If this parameter is set to true, the pool of threads will set each thread to a specific core,
+      according the status of previous parameters. If set to false, it's leaved to the OS.
+
+      Default: true (bool)
+
+
+The logicalCores, MaxPhysCore and SetAffinity are parameters to specify how the pool of thread will be created,
+allowing if necessary each people to tune according his configuration.
+
 
 PARAMETERS (nnedi3_rpow2):
 
@@ -252,7 +277,7 @@ PARAMETERS (nnedi3_rpow2):
                 not set  (float)
 
 
-   nsize/nns/qual/etype/pscrn/threads/opt/fapprox -
+   nsize/nns/qual/etype/pscrn/threads/opt/fapprox/logicalCores/MaxPhysCore/SetAffinity -
 
       Same as corresponding parameters in nnedi3. However, nnedi3_rpow2 uses nsize=0 and
       nns=3 by default (versus nsize=6 and nns=1 in nnedi3()).
@@ -278,13 +303,27 @@ PARAMETERS (nnedi3_rpow2):
 
    threads_rs -
 
-      Controls how many threads will be used for multithreaded resampler, if they are used.
-      If set to 0, threads will be set equal to the number of physical cores detected.
-      If multithreaded resampler are not used, this has no effect.
+      threads parameter of the multithreaded resamplers if they are used, otherwise no effect.
 
       Default:  0  (int)
 
+   logicalCores_rs -
 
+      logicalCores parameter of the multithreaded resamplers if they are used, otherwise no effect.
+
+      Default:  false  (bool)
+
+   MaxPhysCore_rs -
+
+      MaxPhysCore parameter of the multithreaded resamplers if they are used, otherwise no effect.
+
+      Default:  true  (bool)
+
+   SetAffinity_rs -
+
+      SetAffinity parameter of the multithreaded resamplers if they are used, otherwise no effect.
+
+      Default:  true  (bool)
 
 nnedi3_rpow2 EXAMPLES:
 
@@ -307,9 +346,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
-   31/08/2016  v0.9.4.27
+   01/09/2016  v0.9.4.27
 
        * Minor fixes and don't use threadpool if number of threads=1.
+       + Add several parameters to control the creation of the threadpool.
 
    30/08/2016  v0.9.4.26
 

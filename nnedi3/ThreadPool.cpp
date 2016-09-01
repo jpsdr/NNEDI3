@@ -37,6 +37,7 @@ static void Get_CPU_Info(Arch_CPU& cpu)
 
 	cpu.NbLogicCPU=0;
 	cpu.NbPhysCore=0;
+	cpu.FullMask=0;
 
     while (!done)
     {
@@ -71,6 +72,7 @@ static void Get_CPU_Info(Arch_CPU& cpu)
 				cpu.NbHT[processorCoreCount]=CountSetBits(ptr->ProcessorMask);
 		        logicalProcessorCount+=cpu.NbHT[processorCoreCount];
 				cpu.ProcMask[processorCoreCount++]=ptr->ProcessorMask;
+				cpu.FullMask|=ptr->ProcessorMask;
 			    break;
 			default : break;
         }
@@ -266,19 +268,27 @@ uint8_t ThreadPool::GetThreadNumber(uint8_t thread_number,bool logical)
 }
 
 
-bool ThreadPool::AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore)
+bool ThreadPool::AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity)
 {
 	if ((!Status_Ok) || (thread_number==0)) return(false);
 
 	if (thread_number>CurrentThreadsAllocated)
 	{
 		TotalThreadsRequested=thread_number;
-		CreateThreadPool(offset_core,offset_ht,UseMaxPhysCore);
+		CreateThreadPool(offset_core,offset_ht,UseMaxPhysCore,SetAffinity);
 	}
 
 	return(Status_Ok);
 }
 
+bool ThreadPool::ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity)
+{
+	if ((!Status_Ok) || (CurrentThreadsAllocated==0)) return(false);
+
+	CreateThreadPool(offset_core,offset_ht,UseMaxPhysCore,SetAffinity);
+
+	return(Status_Ok);
+}
 
 bool ThreadPool::DeAllocateThreads(void)
 {
@@ -291,7 +301,7 @@ bool ThreadPool::DeAllocateThreads(void)
 
 
 
-void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore)
+void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity)
 {
 	int16_t i;
 
@@ -305,9 +315,12 @@ void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool Use
 
 	for(i=0; i<CurrentThreadsAllocated; i++)
 	{
-		SetThreadAffinityMask(thds[i],ThreadMask[i]);
+		if (SetAffinity) SetThreadAffinityMask(thds[i],ThreadMask[i]);
+		else SetThreadAffinityMask(thds[i],CPU.FullMask);
 		ResumeThread(thds[i]);
 	}
+
+	if (CurrentThreadsAllocated==TotalThreadsRequested) return;
 
 	i=CurrentThreadsAllocated;
 	while ((i<TotalThreadsRequested) && Status_Ok)
@@ -332,7 +345,8 @@ void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool Use
 		Status_Ok=Status_Ok && (thds[i]!=NULL);
 		if (Status_Ok)
 		{
-			SetThreadAffinityMask(thds[i],ThreadMask[i]);
+			if (SetAffinity) SetThreadAffinityMask(thds[i],ThreadMask[i]);
+			else SetThreadAffinityMask(thds[i],CPU.FullMask);
 			ResumeThread(thds[i]);
 		}
 		i++;

@@ -89,8 +89,10 @@ void shufflePreScrnL2L3(float *wf,float *rf,const int opt)
 }
 
 nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsize,int _nns,int _qual,int _etype,int _pscrn,
-	int _threads,int _opt,int _fapprox,IScriptEnvironment *env) : GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),
-	nsize(_nsize),nns(_nns),qual(_qual),etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox)
+	int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,IScriptEnvironment *env) :
+	GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),
+	nsize(_nsize),nns(_nns),qual(_qual),etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox),
+	LogicalCores(_LogicalCores),MaxPhysCores(_MaxPhysCores),SetAffinity(_SetAffinity)
 {
 	uint8_t PlaneMax=3;
 
@@ -142,7 +144,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 
 	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("nnedi3: Error with the TheadPool status !");
 
-	threads_number=poolInterface->GetThreadNumber(threads,false);
+	threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
 	if (threads_number==0)
 		env->ThrowError("nnedi3: Error with the TheadPool while getting CPU info !");
 
@@ -645,7 +647,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 
 	if (threads_number>1)
 	{
-		if (!poolInterface->AllocateThreads(UserId,threads_number,0,0,true,0))
+		if (!poolInterface->AllocateThreads(UserId,threads_number,0,0,MaxPhysCores,SetAffinity,0))
 		{
 			FreeData();
 			env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool !");
@@ -1488,12 +1490,13 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),
 				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),env);
+				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),
+				args[14].AsBool(false),args[15].AsBool(true),args[16].AsBool(true),env);
 	else
 		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),
 				args[9].AsInt(0),args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),
-				args[13].AsInt(15),env);
+				args[13].AsInt(15),args[14].AsBool(false),args[15].AsBool(true),args[16].AsBool(true),env);
 }
 
 
@@ -1522,7 +1525,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const int fapprox = args[14].AsInt(15);
 	const bool chroma_shift_resize = args[15].AsBool(true);
 	const bool mpeg2_chroma = args[16].AsBool(true);
-	const int threads_rs = args[17].AsInt(0);
+	const bool LogicalCores = args[17].AsBool(false);
+	const bool MaxPhysCores = args[18].AsBool(true);
+	const bool SetAffinity = args[19].AsBool(true);
+	const int threads_rs = args[20].AsInt(0);
+	const bool LogicalCores_rs = args[21].AsBool(false);
+	const bool MaxPhysCores_rs = args[22].AsBool(true);
+	const bool SetAffinity_rs = args[23].AsBool(true);
 
 	if (rfactor < 2 || rfactor > 1024) env->ThrowError("nnedi3_rpow2:  2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	int rf = 1, ct = 0;
@@ -1582,9 +1591,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; ++i)
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
 			}
 			Y_hshift = Y_vshift = -0.5;
 		}
@@ -1598,25 +1607,25 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				v = new nnedi3(v.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = new nnedi3(v.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
 			}
 			for (int i=0; i<ct; ++i)
 			{
 				vu = env->Invoke(turnRightFunction,vu).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
 				vu = env->Invoke(turnLeftFunction,vu).AsClip();
-				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
 			}
 			for (int i=0; i<ct; ++i)
 			{
 				vv = env->Invoke(turnRightFunction,vv).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
 				vv = env->Invoke(turnLeftFunction,vv).AsClip();
-				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,env);
+				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
 			}
 
 			Y_hshift = -0.5*(rf-1);
@@ -1685,11 +1694,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			if ((type==0) || ((type!=3) && (ep0==-FLT_MAX)) ||
 				((type==3) && (ep0==-FLT_MAX) && (ep1==-FLT_MAX)))
 			{
-				AVSValue sargs[8] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
-					vi.width*rfactor, vi.height*rfactor,threads_rs };
-				const char *nargs[8] = { 0, 0, 0, "src_left", "src_top", 
-					"src_width", "src_height","threads" };
-				const uint8_t nbarg=(use_rs_mt) ? 8:7;
+				AVSValue sargs[11] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+					vi.width*rfactor, vi.height*rfactor,threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs };
+				const char *nargs[11] = { 0, 0, 0, "src_left", "src_top", 
+					"src_width", "src_height","threads","logicalCores","MaxPhysCores","SetAffinity" };
+				const uint8_t nbarg=(use_rs_mt) ? 11:7;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
@@ -1747,13 +1756,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else if ((type!=3) || (min(ep0,ep1)==-FLT_MAX))
 			{
-				AVSValue sargs[9] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+				AVSValue sargs[12] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor, type==1?AVSValue((int)(ep0+0.5f)):
-					(type==2?ep0:max(ep0,ep1)),threads_rs };
-				const char *nargs[9] = { 0, 0, 0, "src_left", "src_top", 
+					(type==2?ep0:max(ep0,ep1)),threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs };
+				const char *nargs[12] = { 0, 0, 0, "src_left", "src_top", 
 					"src_width", "src_height", type==1?"taps":(type==2?"p":(max(ep0,ep1)==ep0?"b":"c")),
-					"threads" };
-				const uint8_t nbarg=(use_rs_mt) ? 9:8;
+					"threads","logicalCores","MaxPhysCores","SetAffinity" };
+				const uint8_t nbarg=(use_rs_mt) ? 12:8;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
@@ -1811,11 +1820,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else
 			{
-				AVSValue sargs[10] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
-					vi.width*rfactor, vi.height*rfactor, ep0, ep1,threads_rs };
-				const char *nargs[10] = { 0, 0, 0, "src_left", "src_top", 
-					"src_width", "src_height", "b", "c", "threads" };
-				const uint8_t nbarg=(use_rs_mt) ? 10:9;
+				AVSValue sargs[13] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+					vi.width*rfactor, vi.height*rfactor, ep0, ep1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs };
+				const char *nargs[13] = { 0, 0, 0, "src_left", "src_top", 
+					"src_width", "src_height", "b", "c", "threads","logicalCores","MaxPhysCores","SetAffinity" };
+				const uint8_t nbarg=(use_rs_mt) ? 13:9;
 
 				v = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
@@ -1878,10 +1887,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				if (vi.IsYV12())
 				{
-					AVSValue sargs[8]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
-						(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,threads_rs};
-					const char *nargs[8]={0,0,0,"src_left","src_top","src_width","src_height","threads"};
-					const uint8_t nbarg=(SplineMT) ? 8:7;
+					AVSValue sargs[11]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
+						(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs};
+					const char *nargs[11]={0,0,0,"src_left","src_top","src_width","src_height","threads",
+					"logicalCores","MaxPhysCores","SetAffinity"};
+					const uint8_t nbarg=(SplineMT) ? 11:7;
 
 					vu = env->Invoke(Spline36,AVSValue(sargs,nbarg),nargs).AsClip();
 					sargs[0]=vv;
@@ -1931,9 +1941,9 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	AVS_linkage = vectors;
 
 	env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
-		"[threads]i[opt]i[fapprox]i", Create_nnedi3, 0);
+		"[threads]i[opt]i[fapprox]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b", Create_nnedi3, 0);
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
-		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b[threads_rs]i", Create_nnedi3_rpow2, 0);
+		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b[logicalCores]b[MaxPhysCore]b[SetAffinity]b[threads_rs]i[logicalCores_rs]b[MaxPhysCore_rs]b[SetAffinity_rs]b", Create_nnedi3_rpow2, 0);
 
 	return "NNEDI3 plugin";
 	
