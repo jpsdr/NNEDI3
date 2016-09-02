@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.27 (01/09/2016)                                         |
+                                     v0.9.4.27 (02/09/2016)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -168,7 +168,7 @@ PARAMETERS (nnedi3):
    threads -
 
       Controls how many threads will be used for processing. If set to 0, threads will
-      be set equal to the number of physical cores detected.
+      be set equal to the number of detected logical or physical cores,according logicalCores parameter.
 
       Default:  0  (int)
 
@@ -202,13 +202,15 @@ PARAMETERS (nnedi3):
 
 
    logicalCores -
+
       If threads is set to 0, it will specify if the number of threads will be the number
       of logical CPU (true) or the number of physical cores (false). If your processor doesn't
       have hyper-threading or threads<>0, this parameter has no effect.
 
-      Default: false (bool)
+      Default: true (bool)
 
    MaxPhysCore -
+
       If true, the threads repartition will use the maximum of physical cores possible. If your
       processor doesn't have hyper-threading or the SetAffinity parameter is set to false,
       this parameter has no effect.
@@ -216,10 +218,11 @@ PARAMETERS (nnedi3):
       Default: true (bool)
 
    SetAffinity -
+
       If this parameter is set to true, the pool of threads will set each thread to a specific core,
       according the status of previous parameters. If set to false, it's leaved to the OS.
 
-      Default: true (bool)
+      Default: false (bool)
 
 
 The logicalCores, MaxPhysCore and SetAffinity are parameters to specify how the pool of thread will be created,
@@ -303,27 +306,27 @@ PARAMETERS (nnedi3_rpow2):
 
    threads_rs -
 
-      threads parameter of the multithreaded resamplers if they are used, otherwise no effect.
+      threads parameter for the multithreaded resamplers if they are used, otherwise no effect.
 
       Default:  0  (int)
 
    logicalCores_rs -
 
-      logicalCores parameter of the multithreaded resamplers if they are used, otherwise no effect.
+      logicalCores parameter for the multithreaded resamplers if they are used, otherwise no effect.
 
-      Default:  false  (bool)
+      Default:  true  (bool)
 
    MaxPhysCore_rs -
 
-      MaxPhysCore parameter of the multithreaded resamplers if they are used, otherwise no effect.
+      MaxPhysCore parameter for the multithreaded resamplers if they are used, otherwise no effect.
 
       Default:  true  (bool)
 
    SetAffinity_rs -
 
-      SetAffinity parameter of the multithreaded resamplers if they are used, otherwise no effect.
+      SetAffinity parameter for the multithreaded resamplers if they are used, otherwise no effect.
 
-      Default:  true  (bool)
+      Default:  false  (bool)
 
 nnedi3_rpow2 EXAMPLES:
 
@@ -346,10 +349,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
-   01/09/2016  v0.9.4.27
+   02/09/2016  v0.9.4.27
 
-       * Minor fixes and don't use threadpool if number of threads=1.
-       + Add several parameters to control the creation of the threadpool.
+       * Minor fixes and don't use the threadpool if number of threads=1.
+       + Add several parameters to control and tune the creation of the threadpool.
 
    30/08/2016  v0.9.4.26
 
