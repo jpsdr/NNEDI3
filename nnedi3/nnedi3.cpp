@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.27 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.28 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -708,8 +708,6 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	SetMemcpyCacheLimit(Cache_Setting);
 	SetMemsetCacheLimit(Cache_Setting);
 
-	EnterCriticalSection(&CriticalSection);
-
 	if (vi.IsY8()) PlaneMax=1;
 	if (field>1)
 	{
@@ -723,6 +721,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	{
 		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,0,false))
 		{
+			LeaveCriticalSection(&CriticalSection);
 			FreeData();
 			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
 		}
@@ -773,6 +772,8 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 {
 	const int off = 1-fn;
 	PVideoFrame src = child->GetFrame(n, env);
+	
+	EnterCriticalSection(&CriticalSection);
 	
 	if (!dh)
 	{
