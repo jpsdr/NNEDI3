@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.28 (06/10/2016)                                         |
+                                     v0.9.4.29 (11/10/2016)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -349,6 +349,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   06/10/2016  v0.9.4.29
+
+       + Fix deadlock case in Threadpool interface.
+
    06/10/2016  v0.9.4.28
 
        + Attempt to fix deadlock with MT of avisynth.
