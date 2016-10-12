@@ -165,6 +165,7 @@ ThreadPoolInterface::ThreadPoolInterface(void):CSectionOk(FALSE),Status_Ok(true)
 		ThreadPoolFree[i]=NULL;
 		ThreadPoolRequested[i]=false;
 		ThreadPoolReleased[i]=false;
+		ThreadWaitEnd[i]=false;
 		JobsRunning[i]=false;
 	}
 
@@ -629,13 +630,14 @@ bool ThreadPoolInterface::RequestThreadPool(uint16_t UserId,uint8_t thread_numbe
 				{
 					TabTemp[Nbre]=ThreadPoolFree[i];
 					TabNbre[Nbre++]=i;
+					if (!ThreadPoolRequested[i]) nPool=i;
 				}
 			}
 
-			bool PoolFree=false;
-
+			bool PoolFree=(nPool==-1)?false:true;
+		
 			while (!PoolFree)
-			{
+			{	
 				LeaveCriticalSection(&CriticalSection);
 				DWORD a=WaitForMultipleObjects(Nbre,TabTemp,FALSE,INFINITE);
 				EnterCriticalSection(&CriticalSection);
@@ -674,7 +676,10 @@ bool ThreadPoolInterface::RequestThreadPool(uint16_t UserId,uint8_t thread_numbe
 	}
 	else
 	{
-		bool PoolFree=false;
+		bool PoolFree=true;
+		
+		for(uint8_t i=0; i<NbrePool; i++)
+			PoolFree=PoolFree && (!ThreadPoolRequested[i]);		
 
 		while (!PoolFree)
 		{
@@ -817,7 +822,7 @@ bool ThreadPoolInterface::StartThreads(uint16_t UserId)
 		return(false);
 	}
 
-	if ((!ThreadPoolRequested[nPool]) || ThreadPoolReleased[nPool])
+	if ((!ThreadPoolRequested[nPool]) || ThreadPoolReleased[nPool] || ThreadWaitEnd[nPool])
 	{
 		LeaveCriticalSection(&CriticalSection);
 		return(false);
@@ -873,7 +878,7 @@ bool ThreadPoolInterface::WaitThreadsEnd(uint16_t UserId)
 		return(false);
 	}
 
-	if (!ThreadPoolRequested[nPool])
+	if ((!ThreadPoolRequested[nPool]) || ThreadWaitEnd[nPool])
 	{
 		LeaveCriticalSection(&CriticalSection);
 		return(false);
@@ -884,15 +889,28 @@ bool ThreadPoolInterface::WaitThreadsEnd(uint16_t UserId)
 		LeaveCriticalSection(&CriticalSection);
 		return(true);
 	}
+	
+	ThreadWaitEnd[nPool]=true;
 
+	LeaveCriticalSection(&CriticalSection);
 	bool out=ptrPool[nPool]->WaitThreadsEnd();
+	EnterCriticalSection(&CriticalSection);
+	
+	if  (!Status_Ok)
+	{
+		ThreadWaitEnd[nPool]=false;
+		LeaveCriticalSection(&CriticalSection);
+		return(false);
+	}
 
+	ThreadWaitEnd[nPool]=false;
+	
 	if (out)
 	{
 		JobsRunning[nPool]=false;
 		SetEvent(JobsEnded[nPool]);
 	}
-
+	
 	LeaveCriticalSection(&CriticalSection);
 
 	return(out);

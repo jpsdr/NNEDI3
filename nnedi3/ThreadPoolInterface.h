@@ -5,7 +5,7 @@
 
 #include "ThreadPoolDef.h"
 
-#define THREADPOOLINTERFACE_VERSION "ThreadPoolInterface 1.3.1"
+#define THREADPOOLINTERFACE_VERSION "ThreadPoolInterface 1.4.0"
 
 typedef struct _UserData
 {
@@ -58,7 +58,7 @@ class ThreadPoolInterface
 	bool Error_Occured;
 
 	bool ThreadPoolRequested[MAX_THREAD_POOL],JobsRunning[MAX_THREAD_POOL];
-	bool ThreadPoolReleased[MAX_THREAD_POOL];
+	bool ThreadPoolReleased[MAX_THREAD_POOL],ThreadWaitEnd[MAX_THREAD_POOL];
 	bool ExclusiveMode;
 	uint8_t NbrePoolEvent;
 

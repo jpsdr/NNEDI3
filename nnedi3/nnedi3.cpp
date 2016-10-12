@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.29 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.30 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -660,11 +660,9 @@ int __stdcall nnedi3::SetCacheHints(int cachehints,int frame_range)
 {
   switch (cachehints)
   {
-  case CACHE_DONT_CACHE_ME:
-    return 1;
-  case CACHE_GET_MTMODE:
+  case CACHE_GET_MTMODE :
     return MT_MULTI_INSTANCE;
-  default:
+  default :
     return 0;
   }
 }
