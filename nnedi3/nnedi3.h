@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.30 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.31 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -67,8 +67,7 @@ protected:
 	PS_INFO pssInfo[MAX_MT_THREADS];
 	size_t Cache_Setting;
 	float *weights0,*weights1[2];
-	CRITICAL_SECTION CriticalSection;
-	BOOL CSectionOk;
+	HANDLE ghMutex;
 	uint8_t threads_number;
 	bool LogicalCores,MaxPhysCores,SetAffinity;
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];

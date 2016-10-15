@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define MAX_MT_THREADS 128
-#define MAX_THREAD_POOL 10
+#define MAX_THREAD_POOL 64
 #define MAX_USERS 2000
 
 typedef void (*ThreadPoolFunction)(void *ptr);

@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.30 (12/10/2016)                                         |
+                                     v0.9.4.31 (14/10/2016)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -349,6 +349,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   14/10/2016  v0.9.4.31
+
+       * Use Mutex instead of CriticalSection on some places and some changes in the threadpool interface.
+
    12/10/2016  v0.9.4.30
 
        * Remove CACHE_DONT_CACHE_ME and small changes in the threadpool interface.
