@@ -55,9 +55,12 @@ private:
 	int ywidth,uvwidth;
 	int yheight,uvheight;
 	bool alloc_ok;
-	uint8_t *y,*u,*v;
+	
+	bool grey,isRGBPfamily,isAlphaChannel;
+	
+	uint8_t *planar_1,*planar_2,*planar_3,*planar_4;
 	bool allocSpace(VideoInfo &viInfo);
-	bool allocSpace(int specs[4]);
+	bool allocSpace(int specs[4],bool rgbplanar,bool alphaplanar);
 	int getCPUInfo(void);
 	int checkCPU(void);
 	void checkSSEOSSupport(int &cput);
@@ -78,8 +81,8 @@ public:
 	PlanarFrame(VideoInfo &viInfo);
 	~PlanarFrame(void);
 	bool GetAllocStatus(void) {return(alloc_ok);}
-	bool createPlanar(int yheight,int uvheight,int ywidth,int uvwidth);
-	bool createPlanar(int height,int width,uint8_t chroma_format);
+	bool createPlanar(int yheight,int uvheight,int ywidth,int uvwidth,bool rgbplanar,bool alphaplanar);
+	bool createPlanar(int height,int width,uint8_t chroma_format,bool rgbplanar,bool alphaplanar);
 	bool createFromProfile(VideoInfo &viInfo);
 	bool createFromFrame(PVideoFrame &frame,VideoInfo &viInfo);
 	bool createFromPlanar(PlanarFrame &frame);

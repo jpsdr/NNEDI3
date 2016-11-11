@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.31 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.32 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -88,14 +88,12 @@ void shufflePreScrnL2L3(float *wf,float *rf,const int opt)
 	}
 }
 
-nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsize,int _nns,int _qual,int _etype,int _pscrn,
-	int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,IScriptEnvironment *env) :
-	GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),
+nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,int _pscrn,
+	int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity, bool _avsp, IScriptEnvironment *env) :
+	GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),A(_A),
 	nsize(_nsize),nns(_nns),qual(_qual),etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox),
-	LogicalCores(_LogicalCores),MaxPhysCores(_MaxPhysCores),SetAffinity(_SetAffinity)
+	LogicalCores(_LogicalCores),MaxPhysCores(_MaxPhysCores),SetAffinity(_SetAffinity),avsp(_avsp)
 {
-	uint8_t PlaneMax=3;
-
 	if ((field<-2) || (field>3)) env->ThrowError("nnedi3:  field must be set to -2, -1, 0, 1, 2, or 3!");
 	if ((threads<0) || (threads>MAX_MT_THREADS)) env->ThrowError("nnedi3:  threads must be between 0 and %d inclusive!",MAX_MT_THREADS);
 	if (dh && ((field<-1) || (field>1))) env->ThrowError("nnedi3:  field must be set to -1, 0, or 1 when dh=true!");
@@ -106,6 +104,13 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	if ((fapprox<0) || (fapprox>15)) env->ThrowError("nnedi3:  fapprox must be [0,15]!\n");
 	if ((pscrn<0) || (pscrn>4)) env->ThrowError("nnedi3:  pscrn must be [0,4]!\n");
 	if ((etype<0) || (etype>1)) env->ThrowError("nnedi3:  etype must be [0,1]!\n");
+	
+	grey = vi.IsY();
+	isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
+	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
+	
+	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
+
 	if (field==-2) field = child->GetParity(0) ? 3 : 2;
 	else
 	{
@@ -126,7 +131,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	weights0=NULL;
 	for (uint8_t i=0; i<2; i++)
 		weights1[i]=NULL;
-	for (uint8_t i=0; i<3; i++)
+	for (uint8_t i=0; i<PLANE_MAX; i++)
 		lcount[i]=NULL;
 
 	for (uint8_t i=0; i<MAX_MT_THREADS; i++)
@@ -160,9 +165,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	srcPF = new PlanarFrame();
 	if (srcPF==NULL)
 		env->ThrowError("nnedi3: Error while creating srcPF !");
-	if (vi.IsYV12())
+	if (vi.Is420())
 	{
-		if (!srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64))
+		if (!srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel))
 		{
 			FreeData();
 			env->ThrowError("nnedi3: Error while creating planar for srcPF !");
@@ -172,7 +177,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	{
 		if (vi.IsYV411())
 		{
-			if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>2)+64))
+			if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>2)+64,isRGBPfamily,isAlphaChannel))
 			{
 				FreeData();
 				env->ThrowError("nnedi3: Error while creating planar for srcPF !");
@@ -180,9 +185,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		}
 		else
 		{
-			if (vi.IsYV16() || vi.IsYUY2())
+			if (vi.Is422() || vi.IsYUY2())
 			{
-				if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>1)+64))
+				if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel))
 				{
 					FreeData();
 					env->ThrowError("nnedi3: Error while creating planar for srcPF !");
@@ -190,9 +195,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 			}
 			else
 			{
-				if (vi.IsYV24() || vi.IsRGB24())
+				if (vi.Is444() || vi.IsRGB24() || isRGBPfamily)
 				{
-					if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,vi.width+64))
+					if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,vi.width+64,isRGBPfamily,isAlphaChannel))
 					{
 						FreeData();
 						env->ThrowError("nnedi3: Error while creating planar for srcPF !");
@@ -200,21 +205,22 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 				}
 				else
 				{
-					if (vi.IsY8())
+					if (grey)
 					{
-						if (!srcPF->createPlanar(vi.height+12,0,vi.width+64,0))
+						if (!srcPF->createPlanar(vi.height+12,0,vi.width+64,0,isRGBPfamily,isAlphaChannel))
 						{
 							FreeData();
 							env->ThrowError("nnedi3: Error while creating planar for srcPF !");
 						}
 						U = false;
 						V = false;
-						PlaneMax=1;
 					}
 				}
 			}
 		}
 	}
+	if (!isAlphaChannel) A = false;
+	
 	dstPF = new PlanarFrame(vi);
 	if (dstPF==NULL)
 	{
@@ -224,7 +230,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 	if (!dstPF->GetAllocStatus())
 	{
 		FreeData();
-		env->ThrowError("nnedi3: Error while creating planar dstPF !");
+		env->ThrowError("nnedi3: Error while allocating planar dstPF !");
 	}
 
 	if (opt==0)
@@ -589,8 +595,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		}
 		free(mean);
 	}
-	int hslice[3],hremain[3];
-	int srow[3] = {6,6,6};
+	
+	int hslice[PLANE_MAX],hremain[PLANE_MAX];
+	int srow[PLANE_MAX] = {6,6,6,6};
 	for (int i=0; i<PlaneMax; ++i)
 	{
 		const int height = srcPF->GetHeight(i)-12;
@@ -625,6 +632,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsi
 		pssInfo[i].Y = Y;
 		pssInfo[i].U = U;
 		pssInfo[i].V = V;
+		pssInfo[i].A = A;
 		pssInfo[i].nns = nnsTable[nns];
 		pssInfo[i].xdia = xdiaTable[nsize];
 		pssInfo[i].ydia = ydiaTable[nsize];
@@ -676,7 +684,7 @@ void nnedi3::FreeData(void)
 		myalignedfree(pssInfo[i].input);
 	}
 	myCloseHandle(ghMutex);
-	for (int8_t i=2; i>=0; i--)
+	for (int8_t i=PLANE_MAX-1; i>=0; i--)
 		myalignedfree(lcount[i]);
 	for (int8_t i=1; i>=0; i--)
 		myalignedfree(weights1[i]);
@@ -691,18 +699,18 @@ nnedi3::~nnedi3()
 	FreeData();
 }
 
+
 void evalFunc_1(void *ps);
 void evalFunc_2(void *ps);
+
 
 PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 {
 	int field_n;
-	int PlaneMax=3;
 
 	SetMemcpyCacheLimit(Cache_Setting);
 	SetMemsetCacheLimit(Cache_Setting);
 
-	if (vi.IsY8()) PlaneMax=1;
 	if (field>1)
 	{
 		if (n&1) field_n = field == 3 ? 0 : 1;
@@ -710,18 +718,35 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	}
 	else field_n = field;
 	copyPad(field>1?(n>>1):n,field_n,env);
+	
+	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
+	int plane[4];
+	if (isRGBPfamily)
+	{
+		plane[0]=PLANAR_G;
+		plane[1]=PLANAR_B;
+		plane[2]=PLANAR_R;
+		plane[3]=PLANAR_A;		
+	}
+	else
+	{
+		plane[0]=PLANAR_Y;
+		plane[1]=PLANAR_U;
+		plane[2]=PLANAR_V;
+		plane[3]=PLANAR_A;				
+	}
 
 	for (int i=0; i<PlaneMax; ++i)
 		A_memset(lcount[i],0,dstPF->GetHeight(i)*sizeof(int));
 	PVideoFrame dst = env->NewVideoFrame(vi);
-	const int plane[3] = {PLANAR_Y,PLANAR_U,PLANAR_V};
+	
 	for (uint8_t i=0; i<threads_number; i++)
 	{
 		for (int b=0; b<PlaneMax; ++b)
 		{
 			const int srow = pssInfo[i].sheight[b];
 			pssInfo[i].field[b] = (srow&1) ? 1-field_n : field_n;
-			if (vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8() || vi.IsYV411())
+			if (vi.IsPlanar())
 			{
 				pssInfo[i].dstp[b] = dst->GetWritePtr(plane[b]);
 				pssInfo[i].dst_pitch[b] = dst->GetPitch(plane[b]);
@@ -737,26 +762,23 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 			ReleaseMutex(ghMutex);
 			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
 		}
-	}
-	
-	if (threads_number>1)
-	{
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
 	else evalFunc_1(pssInfo);
-	calcStartEnd2((vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8() || vi.IsYV411())?dst:NULL);
+	
+	calcStartEnd2((vi.IsPlanar()) ? dst:NULL);
+	
 	if (threads_number>1)
 	{
 		for (uint8_t i=0; i<threads_number; i++)
 			MT_Thread[i].f_process=2;
 
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+		poolInterface->ReleaseThreadPool(UserId);
 	}
 	else evalFunc_2(pssInfo);
 	
-	if (threads_number>1) poolInterface->ReleaseThreadPool(UserId);
-	
-	if (!(vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsY8() || vi.IsYV411())) dstPF->copyTo(dst, vi);
+	if (!vi.IsPlanar()) dstPF->copyTo(dst, vi);
 
 	ReleaseMutex(ghMutex);
 
@@ -770,13 +792,28 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 	
 	WaitForSingleObject(ghMutex,INFINITE);
 	
+	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
+	int plane[4];
+	if (isRGBPfamily)
+	{
+		plane[0]=PLANAR_G;
+		plane[1]=PLANAR_B;
+		plane[2]=PLANAR_R;
+		plane[3]=PLANAR_A;		
+	}
+	else
+	{
+		plane[0]=PLANAR_Y;
+		plane[1]=PLANAR_U;
+		plane[2]=PLANAR_V;
+		plane[3]=PLANAR_A;				
+	}
+	
 	if (!dh)
 	{
-		if (vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsYV411())
+		if (vi.IsPlanar())
 		{
-			const int plane[3] = {PLANAR_Y,PLANAR_U,PLANAR_V};
-
-			for (int b=0; b<3; ++b)
+			for (int b=0; b<PlaneMax; ++b)
 				env->BitBlt(srcPF->GetPtr(b)+srcPF->GetPitch(b)*(6+off)+32,
 					srcPF->GetPitch(b)*2,
 					src->GetReadPtr(plane[b])+src->GetPitch(plane[b])*off,
@@ -785,47 +822,34 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 		}
 		else
 		{
-			if (vi.IsY8())
+			if (vi.IsYUY2())
 			{
-				env->BitBlt(srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
-					srcPF->GetPitch(0)*2,
-					src->GetReadPtr(PLANAR_Y)+src->GetPitch(PLANAR_Y)*off,
-					src->GetPitch(PLANAR_Y)*2,src->GetRowSize(PLANAR_Y),
-					src->GetHeight(PLANAR_Y)>>1);
+				srcPF->convYUY2to422(src->GetReadPtr()+src->GetPitch()*off,
+					srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
+					srcPF->GetPtr(1)+srcPF->GetPitch(1)*(6+off)+32,
+					srcPF->GetPtr(2)+srcPF->GetPitch(2)*(6+off)+32,
+					src->GetPitch()*2,srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
+					vi.width,vi.height>>1);
 			}
 			else
 			{
-				if (vi.IsYUY2())
+				if (vi.IsRGB24())
 				{
-					srcPF->convYUY2to422(src->GetReadPtr()+src->GetPitch()*off,
+					srcPF->convRGB24to444(src->GetReadPtr()+(vi.height-1-off)*src->GetPitch(),
 						srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
 						srcPF->GetPtr(1)+srcPF->GetPitch(1)*(6+off)+32,
 						srcPF->GetPtr(2)+srcPF->GetPitch(2)*(6+off)+32,
-						src->GetPitch()*2,srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
+						-src->GetPitch()*2,srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
 						vi.width,vi.height>>1);
-				}
-				else
-				{
-					if (vi.IsRGB24())
-					{
-						srcPF->convRGB24to444(src->GetReadPtr()+(vi.height-1-off)*src->GetPitch(),
-							srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
-							srcPF->GetPtr(1)+srcPF->GetPitch(1)*(6+off)+32,
-							srcPF->GetPtr(2)+srcPF->GetPitch(2)*(6+off)+32,
-							-src->GetPitch()*2,srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
-							vi.width,vi.height>>1);
-					}
 				}
 			}
 		}
 	}
 	else
 	{
-		if (vi.IsYV12() || vi.IsYV16() || vi.IsYV24() || vi.IsYV411())
+		if (vi.IsPlanar())
 		{
-			const int plane[3] = {PLANAR_Y,PLANAR_U,PLANAR_V};
-
-			for (int b=0; b<3; ++b)
+			for (int b=0; b<PlaneMax; ++b)
 				env->BitBlt(srcPF->GetPtr(b)+srcPF->GetPitch(b)*(6+off)+32,
 					srcPF->GetPitch(b)*2,src->GetReadPtr(plane[b]),
 					src->GetPitch(plane[b]),src->GetRowSize(plane[b]),
@@ -833,43 +857,30 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 		}
 		else
 		{
-			if (vi.IsY8())
+			if (vi.IsYUY2())
 			{
-				env->BitBlt(srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
-					srcPF->GetPitch(0)*2,src->GetReadPtr(PLANAR_Y),
-					src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),
-					src->GetHeight(PLANAR_Y));
+				srcPF->convYUY2to422(src->GetReadPtr(),
+					srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
+					srcPF->GetPtr(1)+srcPF->GetPitch(1)*(6+off)+32,
+					srcPF->GetPtr(2)+srcPF->GetPitch(2)*(6+off)+32,
+					src->GetPitch(),srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
+					vi.width,vi.height>>1);
 			}
 			else
 			{
-				if (vi.IsYUY2())
+				if (vi.IsRGB24())
 				{
-					srcPF->convYUY2to422(src->GetReadPtr(),
+					srcPF->convRGB24to444(src->GetReadPtr()+((vi.height>>1)-1)*src->GetPitch(),
 						srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
 						srcPF->GetPtr(1)+srcPF->GetPitch(1)*(6+off)+32,
 						srcPF->GetPtr(2)+srcPF->GetPitch(2)*(6+off)+32,
-						src->GetPitch(),srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
+						-src->GetPitch(),srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
 						vi.width,vi.height>>1);
-				}
-				else
-				{
-					if (vi.IsRGB24())
-					{
-						srcPF->convRGB24to444(src->GetReadPtr()+((vi.height>>1)-1)*src->GetPitch(),
-							srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
-							srcPF->GetPtr(1)+srcPF->GetPitch(1)*(6+off)+32,
-							srcPF->GetPtr(2)+srcPF->GetPitch(2)*(6+off)+32,
-							-src->GetPitch(),srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
-							vi.width,vi.height>>1);
-					}
 				}
 			}
 		}
 	}
 
-	int PlaneMax=3;
-
-	if (vi.IsY8()) PlaneMax=1;
 	for (int b=0; b<PlaneMax; ++b)
 	{
 		uint8_t *dstp = srcPF->GetPtr(b);
@@ -918,11 +929,11 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 
 void nnedi3::calcStartEnd2(PVideoFrame dst)
 {
-	const int plane[3]={PLANAR_Y,PLANAR_U,PLANAR_V};
-
-	for (int b=0; b<3; ++b)
+	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
+	
+	for (int b=0; b<PlaneMax; ++b)
 	{
-		if (((b==0) && !Y) || ((b==1) && !U) || ((b==2) && !V)) continue;
+		if (((b==0) && !Y) || ((b==1) && !U) || ((b==2) && !V) || ((b==3) && !A)) continue;
 
 		const int height = dstPF->GetHeight(b);
 		int total=0,fl=-1,ll=0;
@@ -1161,9 +1172,9 @@ void evalFunc_1(void *ps)
 		if (opt==1) computeNetwork0=computeNetwork0new_C;
 		else computeNetwork0=computeNetwork0new_SSE2;
 	}
-	for (int b=0; b<3; ++b)
+	for (int b=0; b<PLANE_MAX; ++b)
 	{
-		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V)) continue;
+		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
 
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
@@ -1413,9 +1424,9 @@ void evalFunc_2(void *ps)
 		if (opt==1) expf=e0_m16_C;
 		else expf=e0_m16_SSE2;
 	}
-	for (int b=0; b<3; ++b)
+	for (int b=0; b<PLANE_MAX; ++b)
 	{
-		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V)) continue;
+		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
 
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
@@ -1476,23 +1487,52 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	if (!args[0].IsClip())
 		env->ThrowError("nnedi3:  arg 0 must be a clip!");
 	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
-	if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24() && !vi.IsYV16() && !vi.IsYV24()
-		&& !vi.IsY8() && !vi.IsYV411())
-		env->ThrowError("nnedi3:  only YV12, YV411, YUY2, YV16, YV24, Y8 and RGB24 input are supported!");
+	
+  const bool avsp=env->FunctionExists("ConvertBits");
+  const bool RGB32=vi.IsRGB32();
+ 
+  if (vi.ComponentSize()>1) env->ThrowError("nnedi3: Only 8 bits supported!");
+	
+	if (avsp)
+	{
+		if (!vi.IsPlanar() && !vi.IsYUY2() && !vi.IsRGB24() && !RGB32)
+			env->ThrowError("nnedi3: only planar, YUY2, RGB32 and RGB24 input are supported!");				
+	}
+	else
+	{
+		if (!vi.IsPlanar() && !vi.IsYUY2() && !vi.IsRGB24())
+			env->ThrowError("nnedi3: only planar, YUY2 and RGB24 input are supported!");				
+	}
+			
 	const bool dh = args[2].AsBool(false);
 	if ((vi.height&1) && !dh)
-		env->ThrowError("nnedi3:  height must be mod 2 when dh=false (%d)!", vi.height);
+		env->ThrowError("nnedi3: height must be mod 2 when dh=false (%d)!", vi.height);
 	if (!vi.IsY8())
-		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
-				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),
+	{
+		if (RGB32)
+		{
+			AVSValue v=args[0].AsClip();
+			
+			v=env->Invoke("ConvertToPlanarRGBA",v).AsClip();
+			v= new nnedi3(v.AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
+				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
 				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
 				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),
-				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),env);
+				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),avsp,env);
+			return env->Invoke("ConvertToRGB32",v).AsClip();			
+		}
+		else return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
+				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
+				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
+				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),
+				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),avsp,env);
+			
+	}
 	else
 		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
-				args[3].AsBool(true),false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),
+				args[3].AsBool(true),false,false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),
 				args[9].AsInt(0),args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),
-				args[13].AsInt(15),args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),env);
+				args[13].AsInt(15),args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),avsp,env);
 }
 
 
@@ -1500,11 +1540,29 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 {
 	if (!args[0].IsClip()) env->ThrowError("nnedi3_rpow2:  arg 0 must be a clip!");
 	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
-	if (!vi.IsYV12() && !vi.IsYUY2() && !vi.IsRGB24() && !vi.IsYV16() && !vi.IsYV24()
-		&& !vi.IsY8() && !vi.IsYV411())
-		env->ThrowError("nnedi3_rpow2:  only YV12, YV411, YUY2, YV16, YV24, Y8 and RGB24 input are supported!");
+
+  const bool avsp=env->FunctionExists("ConvertBits");  
+  const bool RGB32=vi.IsRGB32();
+  const bool RGB24=vi.IsRGB24();  
+  const bool isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
+  const bool grey = vi.IsY();  
+  const bool isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
+	
+  if (vi.ComponentSize()>1) env->ThrowError("nnedi3: Only 8 bits supported!");
+  
+	if (avsp)
+	{
+		if (!vi.IsPlanar() && !vi.IsYUY2() && !RGB24 && !RGB32)
+			env->ThrowError("nnedi3: only planar, YUY2, RGB32 and RGB24 input are supported!");				
+	}
+	else
+	{
+		if (!vi.IsPlanar() && !vi.IsYUY2() && !RGB24)
+			env->ThrowError("nnedi3: only planar, YUY2 and RGB24 input are supported!");				
+	}
+  
 	if ((vi.IsYUY2() || vi.IsYV16()|| vi.IsYV12() || vi.IsYV411()) && (vi.width&3))
-		env->ThrowError("nnedi3_rpow2:  for YV12, YV411, YUY2 and YV16 input width must be mod 4 (%d)!", vi.width);
+		env->ThrowError("nnedi3_rpow2: for YV12, YV411, YUY2 and YV16 input width must be mod 4 (%d)!", vi.width);
 	const int rfactor = args[1].AsInt(-1);
 	const int nsize = args[2].AsInt(0);
 	const int nns = args[3].AsInt(3);
@@ -1556,8 +1614,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 	AVSValue v = args[0].AsClip();
 
-	const bool FTurnL=(env->FunctionExists("FTurnLeft") && ((env->GetCPUFlags() & CPUF_SSE2)!=0));
-	const bool FTurnR=(env->FunctionExists("FTurnRight") && ((env->GetCPUFlags() & CPUF_SSE2)!=0));
+	const bool FTurnL=(!avsp) && (env->FunctionExists("FTurnLeft") && ((env->GetCPUFlags() & CPUF_SSE2)!=0));
+	const bool FTurnR=(!avsp) && (env->FunctionExists("FTurnRight") && ((env->GetCPUFlags() & CPUF_SSE2)!=0));
 	const bool SplineMT=env->FunctionExists("Spline36ResizeMT");
 
 	auto turnRightFunction = (FTurnR) ? "FTurnRight" : "TurnRight";
@@ -1568,60 +1626,96 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	{
 		double Y_hshift=0.0,Y_vshift=0.0,C_hshift=0.0,C_vshift=0.0;
 
-		AVSValue vv,vu;
+		AVSValue vv,vu,va;
 
-		if (vi.IsRGB24() || vi.IsYV24() || vi.IsY8())
+		if (RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily)
 		{
-			if (vi.IsRGB24())
+			if (RGB24)
 			{
-				AVSValue sargs[3] = {v,"Y8",0};
-				vu=env->Invoke("ShowRed",AVSValue(sargs,2)).AsClip();
-				vv=env->Invoke("ShowGreen",AVSValue(sargs,2)).AsClip();
-				v=env->Invoke("ShowBlue",AVSValue(sargs,2)).AsClip();
-				sargs[0]=vu; sargs[1]=vv; sargs[2]=v;
-				v=env->Invoke("Interleave",AVSValue(sargs,3)).AsClip();
+				if (avsp) v=env->Invoke("ConvertToPlanarRGB",v).AsClip();
+				else
+				{
+					AVSValue sargs[3] = {v,"Y8",0};
+					
+					vu=env->Invoke("ShowRed",AVSValue(sargs,2)).AsClip();
+					vv=env->Invoke("ShowGreen",AVSValue(sargs,2)).AsClip();
+					v=env->Invoke("ShowBlue",AVSValue(sargs,2)).AsClip();
+					sargs[0]=vu; sargs[1]=vv; sargs[2]=v;
+					v=env->Invoke("Interleave",AVSValue(sargs,3)).AsClip();
+				}					
 			}
+			
+			if (RGB32) v=env->Invoke("ConvertToPlanarRGBA",v).AsClip();
 
-			const bool UV_process=!(vi.IsY8() || vi.IsRGB24());
+			const bool UV_process=!(vi.IsY() || (RGB24 && !avsp));
 
 			for (int i=0; i<ct; ++i)
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,avsp,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,avsp,env);
 			}
 			Y_hshift = Y_vshift = -0.5;
 		}
 		else
 		{
-			vu = env->Invoke("UtoY8",v).AsClip();
-			vv = env->Invoke("VtoY8",v).AsClip();
-			v = env->Invoke("ConvertToY8",v).AsClip();
+			if (avsp)
+			{
+				AVSValue sargs[2] = {v,"U"};
+				
+				vu=env->Invoke("PlaneToY",AVSValue(sargs,2)).AsClip();
+				sargs[1]="V";				
+				vv=env->Invoke("PlaneToY",AVSValue(sargs,2)).AsClip();
+				if (isAlphaChannel)
+				{
+					sargs[1]="A";
+					va=env->Invoke("PlaneToY",AVSValue(sargs,2)).AsClip();					
+				}
+				sargs[1]="Y";
+				v=env->Invoke("PlaneToY",AVSValue(sargs,2)).AsClip();				
+			}
+			else
+			{
+				vu = env->Invoke("UtoY8",v).AsClip();
+				vv = env->Invoke("VtoY8",v).AsClip();
+				v = env->Invoke("ConvertToY8",v).AsClip();				
+			}
 
 			for (int i=0; i<ct; ++i)
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				v = new nnedi3(v.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
+				v = new nnedi3(v.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,avsp,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,avsp,env);
 			}
 			for (int i=0; i<ct; ++i)
 			{
 				vu = env->Invoke(turnRightFunction,vu).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
+				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,avsp,env);
 				vu = env->Invoke(turnLeftFunction,vu).AsClip();
-				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
+				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,avsp,env);
 			}
 			for (int i=0; i<ct; ++i)
 			{
 				vv = env->Invoke(turnRightFunction,vv).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
+				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,avsp,env);
 				vv = env->Invoke(turnLeftFunction,vv).AsClip();
-				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,env);
+				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,avsp,env);
+			}
+			if (isAlphaChannel)
+			{
+				for (int i=0; i<ct; ++i)
+				{
+					va = env->Invoke(turnRightFunction,va).AsClip();
+					// always use field=1 to keep chroma/luma horizontal alignment
+					va = new nnedi3(va.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,avsp,env);
+					va = env->Invoke(turnLeftFunction,va).AsClip();
+					va = new nnedi3(va.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,avsp,env);
+				}				
 			}
 
 			Y_hshift = -0.5*(rf-1);
@@ -1630,7 +1724,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			C_hshift=Y_hshift;
 			C_vshift=Y_vshift;
 
-			if (vi.IsYV12())
+			if (vi.Is420())
 			{
 				// Correct chroma shift (it's always 1/2 pixel upwards).
 				C_vshift-=0.5;
@@ -1698,12 +1792,12 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
-				if (!(vi.IsRGB24() || vi.IsYV24() || vi.IsY8()))
+				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
 				{
 					sargs[3]=C_hshift;
 					sargs[4]=C_vshift;
 
-					if (vi.IsYV12())
+					if (vi.Is420())
 					{
 						sargs[1]=fwidth >> 1;
 						sargs[2]=fheight >> 1;
@@ -1729,25 +1823,31 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					sargs[0]=vv;
 					vv = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
-					AVSValue ytouvargs[3] = {vu,vv,v};
-					v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
+					AVSValue ytouvargs[4] = {vu,vv,v,va};
+					if (isAlphaChannel) v=env->Invoke("YtoUV",AVSValue(ytouvargs,4)).AsClip();
+					else v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
 
 					if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
 				}
 				else
 				{
-					if (vi.IsRGB24())
+					if (RGB24)
 					{
-						sargs[0]=v; sargs[1]=3;
-						sargs[2]=0;
-						vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-						sargs[2]=1;
-						vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-						sargs[2]=2;
-						v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-						sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
-						v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();
+						if (avsp) v=env->Invoke("ConvertToRGB24",v).AsClip();
+						else
+						{
+							sargs[0]=v; sargs[1]=3;
+							sargs[2]=0;
+							vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+							sargs[2]=1;
+							vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+							sargs[2]=2;
+							v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+							sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
+							v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();							
+						}
 					}
+					if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
 				}
 			}
 			else if ((type!=3) || (min(ep0,ep1)==-FLT_MAX))
@@ -1762,12 +1862,12 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
-				if (!(vi.IsRGB24() || vi.IsYV24() || vi.IsY8()))
+				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
 				{
 					sargs[3]=C_hshift;
 					sargs[4]=C_vshift;
 
-					if (vi.IsYV12())
+					if (vi.Is420())
 					{
 						sargs[1]=fwidth >> 1;
 						sargs[2]=fheight >> 1;
@@ -1793,25 +1893,30 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					sargs[0]=vv;
 					vv = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
-					AVSValue ytouvargs[3] = {vu,vv,v};
-					v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
+					AVSValue ytouvargs[4] = {vu,vv,v,va};
+					if (isAlphaChannel) v=env->Invoke("YtoUV",AVSValue(ytouvargs,4)).AsClip();
+					else v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
 
 					if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
 				}
 				else
 				{
-					if (vi.IsRGB24())
+					if (RGB24)
 					{
-						sargs[0]=v; sargs[1]=3;
-						sargs[2]=0;
-						vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-						sargs[2]=1;
-						vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-						sargs[2]=2;
-						v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-						sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
-						v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();
+						if (avsp) v=env->Invoke("ConvertToRGB24",v).AsClip();
+						{
+							sargs[0]=v; sargs[1]=3;
+							sargs[2]=0;
+							vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+							sargs[2]=1;
+							vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+							sargs[2]=2;
+							v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+							sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
+							v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();							
+						}
 					}
+					if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
 				}
 			}
 			else
@@ -1824,12 +1929,12 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 				v = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
-				if (!(vi.IsRGB24() || vi.IsYV24() || vi.IsY8()))
+				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
 				{
 					sargs[3]=C_hshift;
 					sargs[4]=C_vshift;
 
-					if (vi.IsYV12())
+					if (vi.Is420())
 					{
 						sargs[1]=fwidth >> 1;
 						sargs[2]=fheight >> 1;
@@ -1855,33 +1960,38 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					sargs[0]=vv;
 					vv = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
-					AVSValue ytouvargs[3] = {vu,vv,v};
-					v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
+					AVSValue ytouvargs[4] = {vu,vv,v,va};
+					if (isAlphaChannel) v=env->Invoke("YtoUV",AVSValue(ytouvargs,4)).AsClip();
+					else v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
 
 					if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
 				}
 				else
 				{
-					if (vi.IsRGB24())
+					if (RGB24)
 					{
-						sargs[0]=v; sargs[1]=3;
-						sargs[2]=0;
-						vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-						sargs[2]=1;
-						vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-						sargs[2]=2;
-						v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-						sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
-						v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();
+						if (avsp) v=env->Invoke("ConvertToRGB24",v).AsClip();
+						{
+							sargs[0]=v; sargs[1]=3;
+							sargs[2]=0;
+							vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+							sargs[2]=1;
+							vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+							sargs[2]=2;
+							v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+							sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
+							v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();							
+						}
 					}
+					if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
 				}
 			}
 		}
 		else
 		{
-			if (!(vi.IsRGB24() || vi.IsYV24() || vi.IsY8()))
+			if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
 			{
-				if (vi.IsYV12())
+				if (vi.Is420())
 				{
 					AVSValue sargs[11]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
 						(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs};
@@ -1894,27 +2004,33 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					vv = env->Invoke(Spline36,AVSValue(sargs,nbarg),nargs).AsClip();
 				}
 
-				AVSValue ytouvargs[3] = {vu,vv,v};
-				v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
+				AVSValue ytouvargs[4] = {vu,vv,v,va};
+				if (isAlphaChannel) v=env->Invoke("YtoUV",AVSValue(ytouvargs,4)).AsClip();
+				else v=env->Invoke("YtoUV",AVSValue(ytouvargs,3)).AsClip();
 
 				if (vi.IsYUY2()) v=env->Invoke("ConvertToYUY2",v).AsClip();
 			}
 			else
 			{
-				if (vi.IsRGB24())
+				if (RGB24)
 				{
-					AVSValue sargs[4];
+					if (avsp) v=env->Invoke("ConvertToRGB24",v).AsClip();
+					else
+					{
+						AVSValue sargs[4];
 
-					sargs[0]=v; sargs[1]=3;
-					sargs[2]=0;
-					vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-					sargs[2]=1;
-					vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-					sargs[2]=2;
-					v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
-					sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
-					v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();
-				}
+						sargs[0]=v; sargs[1]=3;
+						sargs[2]=0;
+						vu=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[2]=1;
+						vv=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[2]=2;
+						v=env->Invoke("SelectEvery",AVSValue(sargs,3)).AsClip();
+						sargs[0]=vu; sargs[1]=vv; sargs[2]=v; sargs[3]="RGB24";
+						v=env->Invoke("MergeRGB",AVSValue(sargs,4)).AsClip();						
+					}
+				}				
+				if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
 			}
 		}
 	}
@@ -1937,7 +2053,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	AVS_linkage = vectors;
 
 	env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
-		"[threads]i[opt]i[fapprox]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b", Create_nnedi3, 0);
+		"[threads]i[opt]i[fapprox]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[A]b", Create_nnedi3, 0);
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
 		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b[logicalCores]b[MaxPhysCore]b" \
 		"[SetAffinity]b[threads_rs]i[logicalCores_rs]b[MaxPhysCore_rs]b[SetAffinity_rs]b", Create_nnedi3_rpow2, 0);

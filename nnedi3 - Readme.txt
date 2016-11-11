@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.31 (14/10/2016)                                         |
+                                     v0.9.4.32 (xx/11/2016)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -11,7 +11,8 @@ INFO:
 
       nnedi3 is an intra-field only deinterlacer. It takes in a frame, throws away one field, and
    then interpolates the missing pixels using only information from the kept field. It has same
-      rate and double rate modes, and works with YV12, YV411, YV16, YV24, Y8, YUY2, and RGB24 input.
+      rate and double rate modes, and works with all planar modes, YUY2, RGB32 (avs+ only) and RGB24 input.
+      Note : Only 8 bits input is supported.
        nnedi3 is also very good for enlarging images by powers of 2, and includes a function
                                   'nnedi3_rpow2' for that purpose.
 
@@ -19,7 +20,8 @@ INFO:
   Syntax =>
 
     nnedi3(int field, bool dh, bool Y, bool U, bool V, int nsize, int nns, int qual, int etype,
-           int pscrn, int threads, int opt, int fapprox, bool logicalCores, bool MaxPhysCore, bool SetAffinity)
+           int pscrn, int threads, int opt, int fapprox, bool logicalCores, bool MaxPhysCore, bool SetAffinity,
+           bool A)
 
     nnedi3_rpow2(int rfactor, int nsize, int nns, int qual, int etype, int pscrn, string cshift,
                  int fwidth, int fheight, float ep0, float ep1, int threads, int opt, int fapprox,
@@ -61,16 +63,19 @@ PARAMETERS (nnedi3):
       Default:  false  (int)
 
 
-   Y, U, V -
+   Y, U, V, A -
 
       These control whether or not the specified plane is processed. Set to true to
       process or false to ignore. Ignored planes are not copied, zero'd, or even
       considered. So what the ignored planes happen to contain on output is unpredictable.
+      The A parameter for the alpha channel has effect only on avs+.
       For RGB24 input Y=B, U=G, V=R.
+      For RGB32 input Y=G, U=B, V=R (avs+ only).
 
       Default:  Y = true  (bool)
                 U = true  (bool)
                 V = true  (bool)
+                A = true  (true)
 
 
    nsize -
@@ -349,6 +354,11 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   xx/11/2016  v0.9.4.32
+
+       + Update to new avisynth header and add support for RGB32, RGBPlanar and alpha channel on avs+.
+       + Add A paremeter (for alpha channel) on nnedi3.
+
    14/10/2016  v0.9.4.31
 
        * Use Mutex instead of CriticalSection on some places and some changes in the threadpool interface.
@@ -359,11 +369,11 @@ CHANGE LIST:
 
    11/10/2016  v0.9.4.29
 
-       + Fix deadlock case in Threadpool interface.
+       * Fix deadlock case in Threadpool interface.
 
    06/10/2016  v0.9.4.28
 
-       + Attempt to fix deadlock with MT of avisynth.
+       * Attempt to fix deadlock with MT of avisynth.
 
    02/09/2016  v0.9.4.27
 

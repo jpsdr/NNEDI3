@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.31 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.32 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -39,19 +39,21 @@ const int nnsTablePow2[NUM_NNS] = {4,5,6,7,8};
 
 #define CB2(n) max(min((n),254),0)
 
+#define PLANE_MAX 4
+
 struct PS_INFO {
-	int field[3], ident;
-	const uint8_t *srcp[3];
-	uint8_t *dstp[3];
-	int src_pitch[3],dst_pitch[3];
-	int height[3],width[3];
-	int sheight[3],eheight[3];
-	int sheight2[3],eheight2[3];
-	int *lcount[3],opt,qual;
+	int field[PLANE_MAX], ident;
+	const uint8_t *srcp[PLANE_MAX];
+	uint8_t *dstp[PLANE_MAX];
+	int src_pitch[PLANE_MAX],dst_pitch[PLANE_MAX];
+	int height[PLANE_MAX],width[PLANE_MAX];
+	int sheight[PLANE_MAX],eheight[PLANE_MAX];
+	int sheight2[PLANE_MAX],eheight2[PLANE_MAX];
+	int *lcount[PLANE_MAX],opt,qual;
 	float *input,*temp;
 	float *weights0,**weights1;
 	int asize,nns,xdia,ydia,fapprox;
-	bool Y,U,V;
+	bool Y,U,V,A;
 	int pscrn;
 	IScriptEnvironment *env;
 };
@@ -59,10 +61,10 @@ struct PS_INFO {
 class nnedi3 : public GenericVideoFilter
 {
 protected:
-	bool dh,Y,U,V;
+	bool dh,Y,U,V,A;
 	int pscrn;
 	int field,threads,opt,nns,etype;
-	int *lcount[3],qual,nsize,fapprox;
+	int *lcount[PLANE_MAX],qual,nsize,fapprox;
 	PlanarFrame *srcPF,*dstPF;
 	PS_INFO pssInfo[MAX_MT_THREADS];
 	size_t Cache_Setting;
@@ -72,6 +74,8 @@ protected:
 	bool LogicalCores,MaxPhysCores,SetAffinity;
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
 	uint16_t UserId;
+	
+	bool grey,avsp,isRGBPfamily,isAlphaChannel;
 
 	void calcStartEnd2(PVideoFrame dst);
 	void copyPad(int n,int fn,IScriptEnvironment *env);
@@ -83,8 +87,8 @@ protected:
 	void FreeData(void);
 
 public:
-	nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,int _nsize,int _nns,int _qual,int _etype,
-		int _pscrn,int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,
+	nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,
+		int _pscrn,int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity, bool _asvp,
 		IScriptEnvironment *env);
 	~nnedi3();
 	PVideoFrame __stdcall nnedi3::GetFrame(int n,IScriptEnvironment *env);
