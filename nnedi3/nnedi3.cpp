@@ -1660,7 +1660,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		}
 		else
 		{
-			if (avsp)
+			if (avsp && !vi.IsYUY2())
 			{
 				AVSValue sargs[2] = {v,"U"};
 				
