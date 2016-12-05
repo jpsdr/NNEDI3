@@ -1791,6 +1791,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				const uint8_t nbarg=(use_rs_mt) ? 11:7;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
+				if (isAlphaChannel)
+				{
+					sargs[0]=va;
+					va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
+				}
 
 				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
 				{
@@ -1861,6 +1866,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				const uint8_t nbarg=(use_rs_mt) ? 12:8;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
+				if (isAlphaChannel)
+				{
+					sargs[0]=va;
+					va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
+				}	
 
 				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
 				{
@@ -1904,6 +1914,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					if (RGB24)
 					{
 						if (avsp) v=env->Invoke("ConvertToRGB24",v).AsClip();
+						else
 						{
 							sargs[0]=v; sargs[1]=3;
 							sargs[2]=0;
@@ -1928,6 +1939,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				const uint8_t nbarg=(use_rs_mt) ? 13:9;
 
 				v = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
+				if (isAlphaChannel)
+				{
+					sargs[0]=va;
+					va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
+				}				
 
 				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
 				{
@@ -1971,6 +1987,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					if (RGB24)
 					{
 						if (avsp) v=env->Invoke("ConvertToRGB24",v).AsClip();
+						else
 						{
 							sargs[0]=v; sargs[1]=3;
 							sargs[2]=0;

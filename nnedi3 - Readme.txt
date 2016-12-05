@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.32 (xx/11/2016)                                         |
+                                     v0.9.4.32 (05/12/2016)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ PARAMETERS (nnedi3):
       Default:  Y = true  (bool)
                 U = true  (bool)
                 V = true  (bool)
-                A = true  (true)
+                A = true  (bool)
 
 
    nsize -
@@ -354,10 +354,12 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
-   xx/11/2016  v0.9.4.32
+   05/12/2016  v0.9.4.32
 
        + Update to new avisynth header and add support for RGB32, RGBPlanar and alpha channel on avs+.
        + Add A paremeter (for alpha channel) on nnedi3.
+       * Update asmlib to 2.50
+       * Use /MD (dynamic link) instead of /MT (static link) for building.
 
    14/10/2016  v0.9.4.31
 
