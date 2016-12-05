@@ -1771,6 +1771,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				|| (_strnicmp(cshift,"sincresizemt",12)==0));
 
 			int type = 0;
+			
 			if ((_strnicmp(cshift,"blackmanresize",14)==0) || (_strnicmp(cshift,"lanczosresize",13)==0)
 				|| (_strnicmp(cshift,"sincresize",10)==0)) type=1;
 			else
@@ -1781,6 +1782,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					if (_strnicmp(cshift,"bicubicresize",13)==0) type=3;
 				}
 			}
+			
 			if ((type==0) || ((type!=3) && (ep0==-FLT_MAX)) ||
 				((type==3) && (ep0==-FLT_MAX) && (ep1==-FLT_MAX)))
 			{
@@ -1791,14 +1793,15 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				const uint8_t nbarg=(use_rs_mt) ? 11:7;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
-				if (isAlphaChannel)
-				{
-					sargs[0]=va;
-					va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
-				}
 
 				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
 				{
+					if (isAlphaChannel)
+					{
+						sargs[0]=va;
+						va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
+					}
+					
 					sargs[3]=C_hshift;
 					sargs[4]=C_vshift;
 
@@ -1866,14 +1869,15 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				const uint8_t nbarg=(use_rs_mt) ? 12:8;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
-				if (isAlphaChannel)
-				{
-					sargs[0]=va;
-					va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
-				}	
 
 				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
 				{
+					if (isAlphaChannel)
+					{
+						sargs[0]=va;
+						va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
+					}
+					
 					sargs[3]=C_hshift;
 					sargs[4]=C_vshift;
 
@@ -1939,14 +1943,15 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				const uint8_t nbarg=(use_rs_mt) ? 13:9;
 
 				v = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
-				if (isAlphaChannel)
-				{
-					sargs[0]=va;
-					va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
-				}				
 
 				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
 				{
+					if (isAlphaChannel)
+					{
+						sargs[0]=va;
+						va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
+					}
+					
 					sargs[3]=C_hshift;
 					sargs[4]=C_vshift;
 
