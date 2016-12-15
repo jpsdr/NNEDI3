@@ -5,7 +5,7 @@
 
 #include "ThreadPoolDef.h"
 
-#define THREADPOOL_VERSION "ThreadPool 1.2.0"
+#define THREADPOOL_VERSION "ThreadPool 1.3.0"
 
 typedef struct _MT_Data_Thread
 {
@@ -36,11 +36,11 @@ class ThreadPool
 	public :
 
 	uint8_t GetThreadNumber(uint8_t thread_number,bool logical);
-	bool AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity);
-	bool ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity);
+	bool AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep);
+	bool ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep);
 	bool DeAllocateThreads(void);
 	bool RequestThreadPool(uint8_t thread_number,Public_MT_Data_Thread *Data);
-	bool ReleaseThreadPool(void);
+	bool ReleaseThreadPool(bool sleep);
 	bool StartThreads(void);
 	bool WaitThreadsEnd(void);
 	bool GetThreadPoolStatus(void) {return(Status_Ok);}
@@ -56,12 +56,13 @@ class ThreadPool
 	HANDLE thds[MAX_MT_THREADS];
 	DWORD tids[MAX_MT_THREADS];
 	ULONG_PTR ThreadMask[MAX_MT_THREADS];
+	bool ThreadSleep[MAX_MT_THREADS];
 
 	bool Status_Ok;
 	uint8_t TotalThreadsRequested,CurrentThreadsAllocated,CurrentThreadsUsed;
 	
 	void FreeThreadPool(void);
-	void CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity);
+	void CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep);
 
 	private :
 

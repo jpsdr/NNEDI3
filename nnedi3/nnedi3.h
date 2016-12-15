@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.32 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.33 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -71,7 +71,7 @@ protected:
 	float *weights0,*weights1[2];
 	HANDLE ghMutex;
 	uint8_t threads_number;
-	bool LogicalCores,MaxPhysCores,SetAffinity;
+	bool LogicalCores,MaxPhysCores,SetAffinity,Sleep;
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
 	uint16_t UserId;
 	
@@ -88,8 +88,8 @@ protected:
 
 public:
 	nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,
-		int _pscrn,int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity, bool _asvp,
-		IScriptEnvironment *env);
+		int _pscrn,int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,
+		bool _Sleep,bool _asvp,IScriptEnvironment *env);
 	~nnedi3();
 	PVideoFrame __stdcall nnedi3::GetFrame(int n,IScriptEnvironment *env);
 

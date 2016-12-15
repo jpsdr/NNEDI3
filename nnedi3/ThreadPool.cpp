@@ -109,6 +109,8 @@ static ULONG_PTR GetCPUMask(ULONG_PTR bitMask, uint8_t CPU_Nb)
 
 static void CreateThreadsMasks(Arch_CPU cpu, ULONG_PTR *TabMask,uint8_t NbThread,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore)
 {
+	if (NbThread==0) return;
+
 	memset(TabMask,0,NbThread*sizeof(ULONG_PTR));
 
 	if ((cpu.NbLogicCPU==0) || (cpu.NbPhysCore==0)) return;
@@ -218,6 +220,7 @@ ThreadPool::ThreadPool(void): Status_Ok(true)
 		MT_Thread[i].jobFinished=NULL;
 		MT_Thread[i].nextJob=NULL;
 		thds[i]=NULL;
+		ThreadSleep[i]=true;
 	}
 	TotalThreadsRequested=0;
 	CurrentThreadsAllocated=0;
@@ -239,6 +242,7 @@ void ThreadPool::FreeThreadPool(void)
 		{
 			if (thds[i]!=NULL)
 			{
+				if (ThreadSleep[i]) ResumeThread(thds[i]);
 				MT_Thread[i].f_process=255;
 				SetEvent(nextJob[i]);
 				WaitForSingleObject(thds[i],INFINITE);
@@ -268,24 +272,24 @@ uint8_t ThreadPool::GetThreadNumber(uint8_t thread_number,bool logical)
 }
 
 
-bool ThreadPool::AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity)
+bool ThreadPool::AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep)
 {
 	if ((!Status_Ok) || (thread_number==0)) return(false);
 
 	if (thread_number>CurrentThreadsAllocated)
 	{
 		TotalThreadsRequested=thread_number;
-		CreateThreadPool(offset_core,offset_ht,UseMaxPhysCore,SetAffinity);
+		CreateThreadPool(offset_core,offset_ht,UseMaxPhysCore,SetAffinity,sleep);
 	}
 
 	return(Status_Ok);
 }
 
-bool ThreadPool::ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity)
+bool ThreadPool::ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep)
 {
 	if ((!Status_Ok) || (CurrentThreadsAllocated==0)) return(false);
 
-	CreateThreadPool(offset_core,offset_ht,UseMaxPhysCore,SetAffinity);
+	CreateThreadPool(offset_core,offset_ht,UseMaxPhysCore,SetAffinity,sleep);
 
 	return(Status_Ok);
 }
@@ -301,14 +305,14 @@ bool ThreadPool::DeAllocateThreads(void)
 
 
 
-void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity)
+void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep)
 {
 	int16_t i;
 
-	if (CurrentThreadsAllocated>0)
+	for(i=0; i<CurrentThreadsAllocated; i++)
 	{
-		for(i=0; i<CurrentThreadsAllocated; i++)
-			SuspendThread(thds[i]);
+		SuspendThread(thds[i]);
+		ThreadSleep[i]=true;
 	}
 
 	CreateThreadsMasks(CPU,ThreadMask,TotalThreadsRequested,offset_core,offset_ht,UseMaxPhysCore);
@@ -317,7 +321,11 @@ void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool Use
 	{
 		if (SetAffinity) SetThreadAffinityMask(thds[i],ThreadMask[i]);
 		else SetThreadAffinityMask(thds[i],CPU.FullMask);
-		ResumeThread(thds[i]);
+		if (!sleep)
+		{
+			ResumeThread(thds[i]);
+			ThreadSleep[i]=false;
+		}
 	}
 
 	if (CurrentThreadsAllocated==TotalThreadsRequested) return;
@@ -347,7 +355,11 @@ void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool Use
 		{
 			if (SetAffinity) SetThreadAffinityMask(thds[i],ThreadMask[i]);
 			else SetThreadAffinityMask(thds[i],CPU.FullMask);
-			ResumeThread(thds[i]);
+			if (!sleep)
+			{
+				ResumeThread(thds[i]);
+				ThreadSleep[i]=false;
+			}
 		}
 		i++;
 	}
@@ -367,7 +379,14 @@ bool ThreadPool::RequestThreadPool(uint8_t thread_number,Public_MT_Data_Thread *
 	if ((!Status_Ok) || (thread_number>CurrentThreadsAllocated)) return(false);
 	
 	for(uint8_t i=0; i<thread_number; i++)
+	{
 		MT_Thread[i].MTData=Data+i;
+		if (ThreadSleep[i])
+		{
+			ResumeThread(thds[i]);
+			ThreadSleep[i]=false;
+		}
+	}
 	
 	CurrentThreadsUsed=thread_number;
 
@@ -375,12 +394,19 @@ bool ThreadPool::RequestThreadPool(uint8_t thread_number,Public_MT_Data_Thread *
 }
 
 
-bool ThreadPool::ReleaseThreadPool(void)
+bool ThreadPool::ReleaseThreadPool(bool sleep)
 {
 	if (!Status_Ok) return(false);
 
 	for(uint8_t i=0; i<CurrentThreadsUsed; i++)
+	{
+		if (sleep)
+		{
+			SuspendThread(thds[i]);
+			ThreadSleep[i]=true;
+		}
 		MT_Thread[i].MTData=NULL;
+	}
 	CurrentThreadsUsed=0;
 
 	return(true);
