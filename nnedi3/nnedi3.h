@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.33 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.32 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -55,6 +55,8 @@ struct PS_INFO {
 	int asize,nns,xdia,ydia,fapprox;
 	bool Y,U,V,A;
 	int pscrn;
+	bool int16_prescreener, int16_predictor;
+	uint16_t limit16bits;
 	IScriptEnvironment *env;
 };
 
@@ -76,6 +78,8 @@ protected:
 	uint16_t UserId;
 	
 	bool grey,avsp,isRGBPfamily,isAlphaChannel;
+	uint8_t pixelsize; // AVS16
+	uint8_t bits_per_pixel;
 
 	void calcStartEnd2(PVideoFrame dst);
 	void copyPad(int n,int fn,IScriptEnvironment *env);

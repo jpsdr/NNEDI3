@@ -30,7 +30,7 @@
 #include "internal.h"
 
 #define MIN_PAD 10
-#define MIN_ALIGNMENT 16
+#define MIN_ALIGNMENT 64
 #define CPU_MMX 0x00000001
 #define CPU_ISSE 0x00000002
 #define CPU_SSE 0x00000004
@@ -57,10 +57,12 @@ private:
 	bool alloc_ok;
 	
 	bool grey,isRGBPfamily,isAlphaChannel;
+	uint8_t pixelsize; // AVS16
+	uint8_t bits_per_pixel;
 	
 	uint8_t *planar_1,*planar_2,*planar_3,*planar_4;
 	bool allocSpace(VideoInfo &viInfo);
-	bool allocSpace(int specs[4],bool rgbplanar,bool alphaplanar);
+	bool allocSpace(int specs[4],bool rgbplanar,bool alphaplanar,uint8_t _pixelsize,uint8_t _bits_per_pixel);
 	int getCPUInfo(void);
 	int checkCPU(void);
 	void checkSSEOSSupport(int &cput);
@@ -81,8 +83,8 @@ public:
 	PlanarFrame(VideoInfo &viInfo);
 	~PlanarFrame(void);
 	bool GetAllocStatus(void) {return(alloc_ok);}
-	bool createPlanar(int yheight,int uvheight,int ywidth,int uvwidth,bool rgbplanar,bool alphaplanar);
-	bool createPlanar(int height,int width,uint8_t chroma_format,bool rgbplanar,bool alphaplanar);
+	bool createPlanar(int yheight,int uvheight,int ywidth,int uvwidth,bool rgbplanar,bool alphaplanar,uint8_t pixelsize,uint8_t bits_per_pixel);
+	bool createPlanar(int height,int width,uint8_t chroma_format,bool rgbplanar,bool alphaplanar,uint8_t pixelsize,uint8_t bits_per_pixel);
 	bool createFromProfile(VideoInfo &viInfo);
 	bool createFromFrame(PVideoFrame &frame,VideoInfo &viInfo);
 	bool createFromPlanar(PlanarFrame &frame);

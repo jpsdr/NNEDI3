@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.33 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.32 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -65,28 +65,30 @@ int roundds(const double f)
 	return max((int)floor(f),-32768);
 }
 
-void shufflePreScrnL2L3(float *wf,float *rf,const int opt)
+void shufflePreScrnL2L3(float *wf, float *rf, const int opt)
 {
-	int j_a=0;
+	int j_a = 0;
 
-	for (int j=0; j<4; ++j)
+	for (int j = 0; j<4; j++)
 	{
-		for (int k=0; k<4; ++k)
-			wf[(k << 2)+j] = rf[j_a+k];
-		j_a+=4;
+		for (int k = 0; k<4; k++)
+			wf[(k << 2) + j] = rf[j_a + k];
+		j_a += 4;
 	}
-	rf+=20;
-	wf+=20;
-	const int jtable[4] = {0,2,1,3};
-	for (int j=0; j<4; ++j)
+	rf += 20;
+	wf += 20;
+	const int jtable[4] = { 0,2,1,3 };
+	for (int j = 0; j<4; j++)
 	{
-		int j_8=jtable[j] << 3;
+		int j_8 = jtable[j] << 3;
 
-		for (int k=0; k<8; ++k)
-			wf[(k << 2)+j] = rf[j_8+k];
-		wf[32+j] = rf[32+jtable[j]];
+		for (int k = 0; k<8; k++)
+			wf[(k << 2) + j] = rf[j_8 + k];
+
+		wf[32 + j] = rf[32 + jtable[j]];
 	}
 }
+
 
 nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,int _pscrn,
 	int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _Sleep,
@@ -109,6 +111,15 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	grey = vi.IsY();
 	isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
 	isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
+	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
+	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
+
+	bool int16_predictor, int16_prescreener;
+
+	if ((pscrn>1) && (pixelsize>2)) pscrn = 1;
+
+	int16_predictor = (((fapprox & 2) != 0) && (bits_per_pixel <= 15));
+	int16_prescreener = (((fapprox & 1) != 0) && (pixelsize <= 2));
 	
 	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 
@@ -148,10 +159,11 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	ghMutex=NULL;
 	UserId=0;
 
-	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("nnedi3: Error with the TheadPool status!");
+	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("nnedi3: Error with the TheadPool status !");
 
 	threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
-	if (threads_number==0) env->ThrowError("nnedi3: Error with the TheadPool while getting CPU info!");
+	if (threads_number==0)
+		env->ThrowError("nnedi3: Error with the TheadPool while getting CPU info !");
 
 	const size_t img_size=vi.BMPSize();
 
@@ -164,53 +176,53 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	srcPF = new PlanarFrame();
 	if (srcPF==NULL)
-		env->ThrowError("nnedi3: Error while creating srcPF!");
+		env->ThrowError("nnedi3: Error while creating srcPF !");
 	if (vi.Is420())
 	{
-		if (!srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel))
+		if (!srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 		{
 			FreeData();
-			env->ThrowError("nnedi3: Error while creating planar for srcPF!");
+			env->ThrowError("nnedi3: Error while creating planar for srcPF !");
 		}
 	}
 	else
 	{
 		if (vi.IsYV411())
 		{
-			if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>2)+64,isRGBPfamily,isAlphaChannel))
+			if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>2)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 			{
 				FreeData();
-				env->ThrowError("nnedi3: Error while creating planar for srcPF!");
+				env->ThrowError("nnedi3: Error while creating planar for srcPF !");
 			}
 		}
 		else
 		{
 			if (vi.Is422() || vi.IsYUY2())
 			{
-				if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel))
+				if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 				{
 					FreeData();
-					env->ThrowError("nnedi3: Error while creating planar for srcPF!");
+					env->ThrowError("nnedi3: Error while creating planar for srcPF !");
 				}
 			}
 			else
 			{
 				if (vi.Is444() || vi.IsRGB24() || isRGBPfamily)
 				{
-					if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,vi.width+64,isRGBPfamily,isAlphaChannel))
+					if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,vi.width+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 					{
 						FreeData();
-						env->ThrowError("nnedi3: Error while creating planar for srcPF!");
+						env->ThrowError("nnedi3: Error while creating planar for srcPF !");
 					}
 				}
 				else
 				{
 					if (grey)
 					{
-						if (!srcPF->createPlanar(vi.height+12,0,vi.width+64,0,isRGBPfamily,isAlphaChannel))
+						if (!srcPF->createPlanar(vi.height+12,0,vi.width+64,0,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 						{
 							FreeData();
-							env->ThrowError("nnedi3: Error while creating planar for srcPF!");
+							env->ThrowError("nnedi3: Error while creating planar for srcPF !");
 						}
 						U = false;
 						V = false;
@@ -225,12 +237,12 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if (dstPF==NULL)
 	{
 		FreeData();
-		env->ThrowError("nnedi3: Error while creating dstPF!");
+		env->ThrowError("nnedi3: Error while creating dstPF !");
 	}
 	if (!dstPF->GetAllocStatus())
 	{
 		FreeData();
-		env->ThrowError("nnedi3: Error while allocating planar dstPF!");
+		env->ThrowError("nnedi3: Error while allocating planar dstPF !");
 	}
 
 	if (opt==0)
@@ -240,7 +252,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		if ((cpuf&CPU_SSE2)!=0) opt=2;
 		else opt=1;
 		char buf[512];
-		sprintf_s(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,cpuf);
+		sprintf_s(buf,512,"nnedi3:  auto-detected opt setting = %d (%d)\n",opt,cpuf);
 		OutputDebugString(buf);
 	}
 	const int dims0 = 49*4+5*4+9*4;
@@ -262,7 +274,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if (weights0==NULL)
 	{
 		FreeData();
-		env->ThrowError("nnedi3: Error while allocating weights0!");
+		env->ThrowError("nnedi3: Error while allocating weights0 !");
 	}
 	for (uint8_t i=0; i<2; i++)
 	{
@@ -270,7 +282,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		if (weights1[i]==NULL)
 		{
 			FreeData();
-			env->ThrowError("nnedi3: Error while allocating weights1[%d]!",i);
+			env->ThrowError("nnedi3: Error while allocating weights1[%d] !",i);
 		}
 	}
 	for (uint8_t i=0; i<PlaneMax; i++)
@@ -279,7 +291,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		if (lcount[i]==NULL)
 		{
 			FreeData();
-			env->ThrowError("nnedi3: Error while allocating lcount[%d]!",i);
+			env->ThrowError("nnedi3: Error while allocating lcount[%d] !",i);
 		}
 	}
 	char nbuf[512];
@@ -297,10 +309,12 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if ((hmod==NULL) || (hrsrc==NULL) || (hglob==NULL) || (lplock==NULL) || (dwSize!=(dims0+dims0new*3+dims1tsize*2)*sizeof(float)))
 	{
 		FreeData();
-		env->ThrowError("nnedi3: error loading resource (%x,%x,%x,%x,%d,%d)!",hmod,hrsrc,hglob,lplock,dwSize,
+		env->ThrowError("nnedi3:  error loading resource (%x,%x,%x,%x,%d,%d)!",hmod,hrsrc,hglob,lplock,dwSize,
 		(dims0+dims0new*3+dims1tsize*2)*sizeof(float));
 	}
+
 	float *bdata = (float*)lplock;
+
 	// Adjust prescreener weights
 	if (pscrn>=2) // using new prescreener
 	{
@@ -338,7 +352,12 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			mean[j] = cmean/64.0;
 			j_a+=64;
 		}
-		// Factor mean removal and 1.0/127.5 scaling 
+
+		// 16 bit pixels will be shifted by 1 for the prescreener.
+		const int prescreener_bits = min(bits_per_pixel, 15);
+		const double half = (((int)1 << prescreener_bits) - 1) / 2.0;
+
+		// Factor mean removal and 1.0/half scaling
 		// into first layer weights. scale to int16 range
 		j_a=0;
 		for (int j=0; j<4; ++j)
@@ -346,10 +365,13 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			double mval = 0.0;
 
 			for (int k=0; k<64; ++k)
-				mval = max(mval,fabs((bdw[offt[j_a+k]]-mean[j])/127.5));
+				mval = max(mval,fabs((bdw[offt[j_a+k]]-mean[j])/half));
+
 			const double scale = 32767.0/mval;
+
 			for (int k=0; k<64; ++k)
-				ws[offt[j_a+k]] = roundds(((bdw[offt[j_a+k]]-mean[j])/127.5)*scale);
+				ws[offt[j_a+k]] = roundds(((bdw[offt[j_a+k]]-mean[j])/half)*scale);
+
 			wf[j] = (float)(mval/32767.0);
 			j_a+=64;
 		}
@@ -372,11 +394,16 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			mean[j] = cmean/48.0;
 			j_a+=48;
 		}
-		if (fapprox&1) // use int16 dot products in first layer
+		if (int16_prescreener) // use int16 dot products in first layer
 		{
 			int16_t *ws = (int16_t*)weights0;
 			float *wf = (float*)&ws[4*48];
-			// Factor mean removal and 1.0/127.5 scaling 
+
+			// 16 bit pixels will be shifted by 1 for the prescreener.
+			const int prescreener_bits = min(bits_per_pixel, 15);
+			const double half = (((int)1 << prescreener_bits) - 1) / 2.0;
+
+			// Factor mean removal and 1.0/half scaling
 			// into first layer weights. scale to int16 range
 			j_a=0;
 			for (int j=0; j<4; ++j)
@@ -384,10 +411,13 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				double mval = 0.0;
 
 				for (int k=0; k<48; ++k)
-					mval = max(mval,fabs((bdata[j_a+k]-mean[j])/127.5));
+					mval = max(mval,fabs((bdata[j_a+k]-mean[j])/half));
+
 				const double scale = 32767.0/mval;
+
 				for (int k=0; k<48; ++k)
-					ws[j_a+k] = roundds(((bdata[j_a+k]-mean[j])/127.5)*scale);
+					ws[j_a+k] = roundds(((bdata[j_a+k]-mean[j])/half)*scale);
+
 				wf[j] = (float)(mval/32767.0);
 				j_a+=48;
 			}
@@ -395,6 +425,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			if (opt>1) // shuffle weight order for asm
 			{
 				int16_t *rs = (int16_t*)malloc(dims0*sizeof(float));
+
 				if (rs==NULL)
 				{
 					FreeData();
@@ -417,13 +448,18 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		}
 		else // use float dot products in first layer
 		{
-			// Factor mean removal and 1.0/127.5 scaling 
+			double half = ((int)1 << bits_per_pixel) - 1;
+
+			if (pixelsize == 4) half = 1.0;
+			half /= 2.0;
+
+			// Factor mean removal and 1.0/half scaling
 			// into first layer weights.
 			j_a=0;
 			for (int j=0; j<4; ++j)
 			{
 				for (int k=0; k<48; ++k)
-					weights0[j_a+k] = (float)((bdata[j_a+k]-mean[j])/127.5);
+					weights0[j_a+k] = (float)((bdata[j_a+k]-mean[j])/half);
 				j_a+=48;
 			}
 			memcpy(weights0+4*48,bdata+4*48,(dims0-4*48)*sizeof(float));
@@ -451,6 +487,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			}
 		}
 	}
+
 	// Adjust prediction weights
 	for (int i=0; i<2; ++i)
 	{
@@ -479,6 +516,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			mean[asize+1+j] = cmean/(double)asize;
 			j_a+=asize;
 		}
+
 		// Calculate mean softmax neuron
 		j_a=0;
 		j_d=asize+1;
@@ -492,10 +530,12 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		}
 		for (int j=0; j<asize+1; ++j)
 			mean[j] /= (double)(nnst);
-		if (fapprox&2) // use int16 dot products
+
+		if (int16_predictor) // use int16 dot products
 		{
 			int16_t *ws = (int16_t*)weights1[i];
 			float *wf = (float*)&ws[asize*nnst2];
+
 			// Factor mean removal into weights, remove global offset from
 			// softmax neurons, and scale weights to int16 range.
 			j_a=0;
@@ -507,28 +547,36 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 				for (int k=0; k<asize; ++k)
 					mval = max(mval,fabs(bdataT[j_a+k]-mean[j_d]-mean[k]));
+
 				const double scale = 32767.0/mval;
+
 				for (int k=0; k<asize; ++k)
 					ws[j_a+k] = roundds((bdataT[j_a+k]-mean[j_d]-mean[k])*scale);
+
 				wf[((j >> 2) << 3)+(j&3)] = (float)(mval/32767.0);
 				wf[((j >> 2) << 3)+(j&3)+4] = (float)(bdataT[boff+j]-mean[asize]);
 				j_a+=asize;
 				j_d++;
 			}
+
 			for (int j=nnst; j<nnst2; ++j) // elliott neurons
 			{
 				double mval = 0.0;
 
 				for (int k=0; k<asize; ++k)
 					mval = max(mval,fabs(bdataT[j_a+k]-mean[j_d]));
+
 				const double scale = 32767.0/mval;
+
 				for (int k=0; k<asize; ++k)
 					ws[j_a+k] = roundds((bdataT[j_a+k]-mean[j_d])*scale);
+
 				wf[((j >> 2) << 3)+(j&3)] = (float)(mval/32767.0);
 				wf[((j >> 2) << 3)+(j&3)+4] = bdataT[boff+j];
 				j_a+=asize;
 				j_d++;
 			}
+
 			if (opt>1) // shuffle weight order for asm
 			{
 				int16_t *rs = (int16_t*)malloc(nnst2*asize*sizeof(int16_t));
@@ -610,7 +658,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if (ghMutex==NULL)
 	{
 		FreeData();
-		env->ThrowError("nnedi3: Unable to create Mutex!");
+		env->ThrowError("nnedi3: Unable to create Mutex !");
 	}
 
 	for (uint8_t i=0; i<threads_number; i++)
@@ -638,6 +686,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		pssInfo[i].ydia = ydiaTable[nsize];
 		pssInfo[i].asize = xdiaTable[nsize]*ydiaTable[nsize];
 		pssInfo[i].fapprox = fapprox;
+		pssInfo[i].int16_predictor = int16_predictor;
+		pssInfo[i].int16_prescreener = int16_prescreener;
+		pssInfo[i].limit16bits = (uint16_t)(((int)1 << bits_per_pixel) - 1);
 		for (int b=0; b<PlaneMax; ++b)
 		{
 			pssInfo[i].lcount[b] = lcount[b];
@@ -658,7 +709,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		if (!poolInterface->AllocateThreads(UserId,threads_number,0,0,MaxPhysCores,SetAffinity,Sleep,-1))
 		{
 			FreeData();
-			env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
+			env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool !");
 		}
 	}
 }
@@ -702,6 +753,8 @@ nnedi3::~nnedi3()
 
 void evalFunc_1(void *ps);
 void evalFunc_2(void *ps);
+void evalFunc_1_16(void *ps);
+void evalFunc_2_16(void *ps);
 
 
 PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
@@ -721,6 +774,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	
 	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
+
 	if (isRGBPfamily)
 	{
 		plane[0]=PLANAR_G;
@@ -736,23 +790,35 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		plane[3]=PLANAR_A;				
 	}
 
-	for (int i=0; i<PlaneMax; ++i)
+	for (int i=0; i<PlaneMax; i++)
 		A_memset(lcount[i],0,dstPF->GetHeight(i)*sizeof(int));
+
 	PVideoFrame dst = env->NewVideoFrame(vi);
+
+	uint8_t f_proc_1=0,f_proc_2=0;
+
+	switch (pixelsize)
+	{
+		case 1 : f_proc_1=1; f_proc_2=2; break;
+		case 2 : f_proc_1=3; f_proc_2=4; break;
+		case 4 : f_proc_1=5; f_proc_2=6; break;
+		default : ;
+	}
 	
 	for (uint8_t i=0; i<threads_number; i++)
 	{
-		for (int b=0; b<PlaneMax; ++b)
+		for (int b=0; b<PlaneMax; b++)
 		{
 			const int srow = pssInfo[i].sheight[b];
+
 			pssInfo[i].field[b] = (srow&1) ? 1-field_n : field_n;
-			if (vi.IsPlanar())
+			if (vi.IsPlanar() || isRGBPfamily)
 			{
 				pssInfo[i].dstp[b] = dst->GetWritePtr(plane[b]);
 				pssInfo[i].dst_pitch[b] = dst->GetPitch(plane[b]);
 			}
 		}
-		MT_Thread[i].f_process=1;
+		MT_Thread[i].f_process=f_proc_1;
 	}
 	
 	if (threads_number>1)
@@ -760,30 +826,48 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
 		{
 			ReleaseMutex(ghMutex);
-			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool!");
+			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
 		}
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 	}
-	else evalFunc_1(pssInfo);
+	else
+	{
+		switch (f_proc_1)
+		{
+			case 1 : evalFunc_1(pssInfo); break;
+			case 3 : evalFunc_1_16(pssInfo); break;
+			default : ;
+		}
+	}
 	
-	calcStartEnd2((vi.IsPlanar()) ? dst:NULL);
+	calcStartEnd2((vi.IsPlanar() || isRGBPfamily) ? dst:NULL);
 	
 	if (threads_number>1)
 	{
 		for (uint8_t i=0; i<threads_number; i++)
-			MT_Thread[i].f_process=2;
+			MT_Thread[i].f_process= f_proc_2;
 
 		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 		poolInterface->ReleaseThreadPool(UserId,Sleep);
 	}
-	else evalFunc_2(pssInfo);
+	else
+	{
+		switch (f_proc_2)
+		{
+			case 2 : evalFunc_2(pssInfo); break;
+			case 4 : evalFunc_2_16(pssInfo); break;
+			default :;
+		}
+	}
+
 	
-	if (!vi.IsPlanar()) dstPF->copyTo(dst, vi);
+	if (!(vi.IsPlanar() || isRGBPfamily)) dstPF->copyTo(dst, vi);
 
 	ReleaseMutex(ghMutex);
 
 	return dst;
 }
+
 
 void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 {
@@ -811,13 +895,13 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 	
 	if (!dh)
 	{
-		if (vi.IsPlanar())
+		if (vi.IsPlanar() || isRGBPfamily)
 		{
-			for (int b=0; b<PlaneMax; ++b)
-				env->BitBlt(srcPF->GetPtr(b)+srcPF->GetPitch(b)*(6+off)+32,
-					srcPF->GetPitch(b)*2,
+			for (int b=0; b<PlaneMax; b++)
+				env->BitBlt(srcPF->GetPtr(b)+(srcPF->GetPitch(b)*(6+off)+32*(int)pixelsize),
+					srcPF->GetPitch(b) << 1,
 					src->GetReadPtr(plane[b])+src->GetPitch(plane[b])*off,
-					src->GetPitch(plane[b])*2,src->GetRowSize(plane[b]),
+					src->GetPitch(plane[b])<<1,src->GetRowSize(plane[b]),
 					src->GetHeight(plane[b])>>1);
 		}
 		else
@@ -825,10 +909,10 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 			if (vi.IsYUY2())
 			{
 				srcPF->convYUY2to422(src->GetReadPtr()+src->GetPitch()*off,
-					srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
-					srcPF->GetPtr(1)+srcPF->GetPitch(1)*(6+off)+32,
-					srcPF->GetPtr(2)+srcPF->GetPitch(2)*(6+off)+32,
-					src->GetPitch()*2,srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
+					srcPF->GetPtr(0)+(srcPF->GetPitch(0)*(6+off)+32),
+					srcPF->GetPtr(1)+(srcPF->GetPitch(1)*(6+off)+32),
+					srcPF->GetPtr(2)+(srcPF->GetPitch(2)*(6+off)+32),
+					src->GetPitch() << 1,srcPF->GetPitch(0) << 1,srcPF->GetPitch(1) << 1,
 					vi.width,vi.height>>1);
 			}
 			else
@@ -836,10 +920,10 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 				if (vi.IsRGB24())
 				{
 					srcPF->convRGB24to444(src->GetReadPtr()+(vi.height-1-off)*src->GetPitch(),
-						srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
-						srcPF->GetPtr(1)+srcPF->GetPitch(1)*(6+off)+32,
-						srcPF->GetPtr(2)+srcPF->GetPitch(2)*(6+off)+32,
-						-src->GetPitch()*2,srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
+						srcPF->GetPtr(0)+(srcPF->GetPitch(0)*(6+off)+32),
+						srcPF->GetPtr(1)+(srcPF->GetPitch(1)*(6+off)+32),
+						srcPF->GetPtr(2)+(srcPF->GetPitch(2)*(6+off)+32),
+						-src->GetPitch() << 1,srcPF->GetPitch(0) << 1,srcPF->GetPitch(1) << 1,
 						vi.width,vi.height>>1);
 				}
 			}
@@ -847,11 +931,11 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 	}
 	else
 	{
-		if (vi.IsPlanar())
+		if (vi.IsPlanar() || isRGBPfamily)
 		{
-			for (int b=0; b<PlaneMax; ++b)
-				env->BitBlt(srcPF->GetPtr(b)+srcPF->GetPitch(b)*(6+off)+32,
-					srcPF->GetPitch(b)*2,src->GetReadPtr(plane[b]),
+			for (int b=0; b<PlaneMax; b++)
+				env->BitBlt(srcPF->GetPtr(b)+(srcPF->GetPitch(b)*(6+off)+32*(int)pixelsize),
+					srcPF->GetPitch(b) << 1,src->GetReadPtr(plane[b]),
 					src->GetPitch(plane[b]),src->GetRowSize(plane[b]),
 					src->GetHeight(plane[b]));
 		}
@@ -860,10 +944,10 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 			if (vi.IsYUY2())
 			{
 				srcPF->convYUY2to422(src->GetReadPtr(),
-					srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
-					srcPF->GetPtr(1)+srcPF->GetPitch(1)*(6+off)+32,
-					srcPF->GetPtr(2)+srcPF->GetPitch(2)*(6+off)+32,
-					src->GetPitch(),srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
+					srcPF->GetPtr(0)+(srcPF->GetPitch(0)*(6+off)+32),
+					srcPF->GetPtr(1)+(srcPF->GetPitch(1)*(6+off)+32),
+					srcPF->GetPtr(2)+(srcPF->GetPitch(2)*(6+off)+32),
+					src->GetPitch(),srcPF->GetPitch(0) << 1,srcPF->GetPitch(1) << 1,
 					vi.width,vi.height>>1);
 			}
 			else
@@ -871,17 +955,17 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 				if (vi.IsRGB24())
 				{
 					srcPF->convRGB24to444(src->GetReadPtr()+((vi.height>>1)-1)*src->GetPitch(),
-						srcPF->GetPtr(0)+srcPF->GetPitch(0)*(6+off)+32,
-						srcPF->GetPtr(1)+srcPF->GetPitch(1)*(6+off)+32,
-						srcPF->GetPtr(2)+srcPF->GetPitch(2)*(6+off)+32,
-						-src->GetPitch(),srcPF->GetPitch(0)*2,srcPF->GetPitch(1)*2,
+						srcPF->GetPtr(0)+(srcPF->GetPitch(0)*(6+off)+32),
+						srcPF->GetPtr(1)+(srcPF->GetPitch(1)*(6+off)+32),
+						srcPF->GetPtr(2)+(srcPF->GetPitch(2)*(6+off)+32),
+						-src->GetPitch(),srcPF->GetPitch(0) << 1,srcPF->GetPitch(1) << 1,
 						vi.width,vi.height>>1);
 				}
 			}
 		}
 	}
 
-	for (int b=0; b<PlaneMax; ++b)
+	for (int b=0; b<PlaneMax; b++)
 	{
 		uint8_t *dstp = srcPF->GetPtr(b);
 		const int dst_pitch = srcPF->GetPitch(b);
@@ -891,27 +975,75 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 		const int width = srcPF->GetWidth(b);
 
 		dstp += (6+off)*dst_pitch;
-		for (int y=6+off; y<height_6; y+=2)
+		if (pixelsize == 1)
 		{
-			for (int x=0; x<32; ++x)
-				dstp[x] = dstp[64-x];
-
-			int x_c=width-34;
-
-			for (int x=width-32; x<width; ++x)
+			for (int y = 6 + off; y<height_6; y += 2)
 			{
-				dstp[x] = dstp[x_c];
-				x_c--;
+				for (int x = 0; x<32; x++)
+					dstp[x] = dstp[64 - x];
+
+				int x_c = width - 34;
+
+				for (int x = width - 32; x<width; x++)
+				{
+					dstp[x] = dstp[x_c];
+					x_c--;
+				}
+
+				dstp += dst_pitch2;
 			}
-			dstp+=dst_pitch2;
 		}
+		else
+		{
+			if (pixelsize == 2)
+			{
+				for (int y = 6 + off; y<height_6; y += 2)
+				{
+					uint16_t *dst0 = (uint16_t *)dstp;
+
+					for (int x = 0; x<32; x++)
+						dst0[x] = dst0[64 - x];
+
+					int x_c = width - 34;
+
+					for (int x = width - 32; x<width; x++)
+					{
+						dst0[x] = dst0[x_c];
+						x_c--;
+					}
+
+					dstp += dst_pitch2;
+				}
+			}
+			else
+			{
+				for (int y = 6 + off; y<height_6; y += 2)
+				{
+					float *dst0 = (float *)dstp;
+
+					for (int x = 0; x<32; x++)
+						dst0[x] = dst0[64 - x];
+
+					int x_c = width - 34;
+
+					for (int x = width - 32; x<width; x++)
+					{
+						dst0[x] = dst0[x_c];
+						x_c--;
+					}
+
+					dstp += dst_pitch2;
+				}
+			}
+		}
+
 		dstp = srcPF->GetPtr(b);
 
 		int off1=off*dst_pitch,off2=(12+off)*dst_pitch;
 
 		for (int y=off; y<6; y+=2)
 		{
-			env->BitBlt(dstp+off1,dst_pitch,dstp+off2,dst_pitch,width,1);
+			env->BitBlt(dstp+off1,dst_pitch,dstp+off2,dst_pitch,width*(int)pixelsize,1);
 			off1+=dst_pitch2;
 			off2-=dst_pitch2;
 		}
@@ -920,216 +1052,233 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 		off2=(height-10+off)*dst_pitch;
 		for (int y=height-6+off; y<height; y+=2)
 		{
-			env->BitBlt(dstp+off1,dst_pitch,dstp+off2,dst_pitch,width,1);
+			env->BitBlt(dstp+off1,dst_pitch,dstp+off2,dst_pitch,width*(int)pixelsize,1);
 			off1+=dst_pitch2;
 			off2-=dst_pitch2;
 		}
 	}
 }
 
+
 void nnedi3::calcStartEnd2(PVideoFrame dst)
 {
-	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
-	
-	for (int b=0; b<PlaneMax; ++b)
+	const int PlaneMax = (grey) ? 1 : (isAlphaChannel) ? 4 : 3;
+
+	for (int b = 0; b<PlaneMax; b++)
 	{
-		if (((b==0) && !Y) || ((b==1) && !U) || ((b==2) && !V) || ((b==3) && !A)) continue;
+		if (((b == 0) && !Y) || ((b == 1) && !U) || ((b == 2) && !V) || ((b == 3) && !A)) continue;
 
 		const int height = dstPF->GetHeight(b);
-		int total=0,fl=-1,ll=0;
+		int total = 0, fl = -1, ll = 0;
 
-		for (int j=0; j<height; ++j)
-		{ 
-			total+=lcount[b][j];
+		for (int j = 0; j<height; j++)
+		{
+			total += lcount[b][j];
 			if ((fl<0) && (lcount[b][j]>0)) fl = j;
 		}
-		if (total==0) fl=height;
+		if (total == 0) fl = height;
 		else
 		{
-			for (int j=height-1; j>=0; --j)
+			for (int j = height - 1; j >= 0; j--)
 			{
-				if (lcount[b][j]!=0) break;
-				++ll;
+				if (lcount[b][j] != 0) break;
+				ll++;
 			}
 		}
-		int tslice=int(total/double(threads_number)+0.95);
-		int count=0,countt=0,y=fl,yl=fl,th=0;
+		int tslice = int(total / double(threads_number) + 0.95);
+		int count = 0, countt = 0, y = fl, yl = fl, th = 0;
 
-		const int height_ll=height-ll;
+		const int height_ll = height - ll;
 
 		while (y<height_ll)
 		{
-			count+=lcount[b][y++];
-			if (count>=tslice)
+			count += lcount[b][y++];
+			if (count >= tslice)
 			{
-				pssInfo[th].sheight2[b]=yl;
-				countt+=count;
-				if (countt==total) y=height_ll;
-				pssInfo[th].eheight2[b]=y;
-				while ((y<height_ll) && (lcount[b][y]==0))
-					++y;
-				yl=y;
-				count=0;
-				++th;
+				pssInfo[th].sheight2[b] = yl;
+				countt += count;
+				if (countt == total) y = height_ll;
+				pssInfo[th].eheight2[b] = y;
+				while ((y<height_ll) && (lcount[b][y] == 0))
+					y++;
+				yl = y;
+				count = 0;
+				th++;
 			}
 		}
-		if (yl!=y)
+		if (yl != y)
 		{
-			pssInfo[th].sheight2[b]=yl;
-			countt+=count;
-			if (countt==total) y=height_ll;
-			pssInfo[th].eheight2[b]=y;
-			++th;
+			pssInfo[th].sheight2[b] = yl;
+			countt += count;
+			if (countt == total) y = height_ll;
+			pssInfo[th].eheight2[b] = y;
+			th++;
 		}
-		for (; th<(int)threads_number; ++th)
+		for (; th<(int)threads_number; th++)
 			pssInfo[th].sheight2[b] = pssInfo[th].eheight2[b] = height;
 	}
 }
 
-void elliott_C(float *data,const int n)
+
+void elliott_C(float *data, const int n)
 {
-	for (int i=0; i<n; ++i)
-		data[i] = data[i]/(1.0f+fabsf(data[i]));
+	for (int i = 0; i<n; i++)
+		data[i] /= 1.0f+fabsf(data[i]);
 }
 
-void dotProd_C(const float *data,const float *weights,float *vals,const int n,const int len,const float *scale)
+void dotProd_C(const float *data, const float *weights, float *vals, const int n, const int len, const float *scale)
 {
-	int i_len=0;
-	const int n_len=n*len;
+	int i_len = 0;
+	const int n_len = n*len;
 
-	for (int i=0; i<n; ++i)
+	for (int i = 0; i<n; i++)
 	{
 		float sum = 0.0f;
 
-		for (int j=0; j<len; ++j)
+		for (int j = 0; j<len; j++)
 			sum += data[j]*weights[i_len+j];
-		vals[i] = sum*scale[0]+weights[n_len+i];
-		i_len+=len;
+
+		vals[i] = sum*(*scale)+weights[n_len+i];
+		i_len += len;
 	}
 }
 
-void dotProdS_C(const float *dataf,const float *weightsf,float *vals,const int n,const int len,const float *scale)
+void dotProdS_C(const float *dataf, const float *weightsf, float *vals, const int n, const int len, const float *scale)
 {
 	const int16_t *data = (int16_t*)dataf;
 	const int16_t *weights = (int16_t*)weightsf;
 	const float *wf = (float*)&weights[n*len];
-	int i_len=0;
+	int i_len = 0;
 
-	for (int i=0; i<n; ++i)
+	for (int i = 0; i<n; i++)
 	{
-		int sum = 0, off = ((i >> 2) << 3)+(i&3);
+		int sum = 0, off = ((i>>2)<< 3)+(i&3);
 
-		for (int j=0; j<len; ++j)
+		for (int j = 0; j<len; j++)
 			sum += data[j]*weights[i_len+j];
-		vals[i] = sum*wf[off]*scale[0]+wf[off+4];
-		i_len+=len;
+
+		vals[i] = sum*wf[off]*(*scale)+wf[off+4];
+		i_len += len;
 	}
 }
 
-void computeNetwork0_C(const float *input,const float *weights,uint8_t *d)
+void computeNetwork0_C(const float *input, const float *weights, uint8_t *d)
 {
-	float temp[12], scale = 1.0f;
+	float temp[12],scale=1.0f;
+
 	dotProd_C(input,weights,temp,4,48,&scale);
-	const float t = temp[0];
+
+	const float t=temp[0];
+
 	elliott_C(temp,4);
-	temp[0]=t;
+	temp[0] = t;
 	dotProd_C(temp,weights+4*49,temp+4,4,4,&scale);
 	elliott_C(temp+4,4);
 	dotProd_C(temp,weights+4*49+4*5,temp+8,4,8,&scale);
+
 	if (max(temp[10],temp[11])<=max(temp[8],temp[9])) d[0]=1;
 	else d[0]=0;
 }
 
 
-void computeNetwork0_i16_C(const float *inputf,const float *weightsf,uint8_t *d)
+void computeNetwork0_i16_C(const float *inputf, const float *weightsf, uint8_t *d)
 {
 	const float *wf = weightsf+2*48;
-	float temp[12], scale = 1.0f;
+	float temp[12],scale=1.0f;
+
 	dotProdS_C(inputf,weightsf,temp,4,48,&scale);
-	const float t = temp[0];
+
+	const float t=temp[0];
+
 	elliott_C(temp,4);
-	temp[0]=t;
+	temp[0] = t;
 	dotProd_C(temp,wf+8,temp+4,4,4,&scale);
 	elliott_C(temp+4,4);
 	dotProd_C(temp,wf+8+4*5,temp+8,4,8,&scale);
-	if (max(temp[10],temp[11])<=max(temp[8],temp[9])) d[0] = 1;
-	else d[0] = 0;
+
+	if (max(temp[10],temp[11])<=max(temp[8],temp[9])) d[0]=1;
+	else d[0]=0;
 }
 
 
-void uc2f48_C(const uint8_t *t,const int pitch,float *p)
+void uc2f48_C(const uint8_t *t, const int pitch, float *p)
 {
-	int y_pitch2=0,y_12=0;
-	const int pitch2=pitch << 1;
+	const int pitch2 = pitch << 1;
 
-	for (int y=0; y<4; ++y)
+	for (int y = 0; y<4; y++)
 	{
-		for (int x=0; x<12; ++x)
-			p[y_12+x] = t[y_pitch2+x];
-		y_12+=12;
-		y_pitch2+=pitch2;
+		for (int x = 0; x<12; x++)
+			p[x] = t[x];
+
+		p += 12;
+		t += pitch2;
 	}
 }
 
 
-void uc2s48_C(const uint8_t *t,const int pitch,float *pf)
+void uc2s48_C(const uint8_t *t, const int pitch, float *pf)
 {
-	int y_pitch2=0,y_12=0;
-	const int pitch2=pitch << 1;
+	const int pitch2 = pitch << 1;
 	int16_t *p = (int16_t*)pf;
 
-	for (int y=0; y<4; ++y)
+	for (int y = 0; y<4; y++)
 	{
-		for (int x=0; x<12; ++x)
-			p[y_12+x] = t[y_pitch2+x];
-		y_12+=12;
-		y_pitch2+=pitch2;
+		for (int x = 0; x<12; x++)
+			p[x] = t[x];
+
+		p += 12;
+		t += pitch2;
 	}
 }
 
-int processLine0_C(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch)
+int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch)
 {
-	int count=0;
-	const int src_pitch2=src_pitch << 1,src_pitch4=src_pitch << 2,src_pitch6=src_pitch*6;
+	int count = 0;
+	const uint8_t *src2 = src3p+(src_pitch << 1);
+	const uint8_t *src4 = src3p+(src_pitch << 2);
+	const uint8_t *src6 = src3p+(src_pitch*6);
 
-	for (int x=0; x<width; ++x)
+	for (int x = 0; x<width; x++)
 	{
 		if (tempu[x])
-			dstp[x] = CB2((19*(src3p[x+src_pitch2]+src3p[x+src_pitch4])-
-				3*(src3p[x]+src3p[x+src_pitch6])+16)>>5);
+			dstp[x] = CB2((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5);
 		else
 		{
-			dstp[x] = 255;
-			++count;
+			dstp[x]=255;
+			count++;
 		}
 	}
 	return count;
 }
 
 
-int processLine0_SSE2(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch)
+
+int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch)
 {
 	int count;
-	const int remain = width&15;
-	const int src_pitch2=src_pitch << 1,src_pitch4=src_pitch << 2,src_pitch6=src_pitch*6;
+	const int width_m = width;
+	const int remain = width & 15;
+	const uint8_t *src2 = src3p+(src_pitch << 1);
+	const uint8_t *src4 = src3p+(src_pitch << 2);
+	const uint8_t *src6 = src3p+(src_pitch*6);
 
 	width -= remain;
-	if (width) count=processLine0_SSE2_ASM(tempu,width,dstp,src3p,src_pitch);
-	else count=0;
+	if (width != 0) count = processLine0_SSE2_ASM(tempu, width, dstp, src3p, src_pitch);
+	else count = 0;
 
-	for (int x=width; x<width+remain; ++x)
+	for (int x = width; x<width_m; x++)
 	{
 		if (tempu[x])
-			dstp[x] = CB2((19*(src3p[x+src_pitch2]+src3p[x+src_pitch4])-
-				3*(src3p[x]+src3p[x+src_pitch6])+16)>>5);
+			dstp[x] = CB2((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5);
 		else
 		{
-			dstp[x] = 255;
-			++count;
+			dstp[x]=255;
+			count++;
 		}
 	}
 	return count;
 }
+
 
 void evalFunc_1(void *ps)
 {
@@ -1141,6 +1290,7 @@ void evalFunc_1(void *ps)
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
 	const int fapprox = pss->fapprox;
+	const bool int16_prescreener = pss->int16_prescreener;
 	void (*uc2s)(const uint8_t*,const int,float*);
 	void (*computeNetwork0)(const float*,const float*,uint8_t *d);
 	int (*processLine0)(const uint8_t*,int,uint8_t*,const uint8_t*,const int);
@@ -1149,7 +1299,8 @@ void evalFunc_1(void *ps)
 	else processLine0=processLine0_SSE2;
 	if (pscrn<2) // original prescreener
 	{
-		if (fapprox&1) // int16 dot products
+		//if (fapprox&1) // int16 dot products
+		if (int16_prescreener) // int16 dot products
 		{
 			if (opt==1) uc2s=uc2s48_C;
 			else uc2s=uc2s48_SSE2;
@@ -1172,7 +1323,7 @@ void evalFunc_1(void *ps)
 		if (opt==1) computeNetwork0=computeNetwork0new_C;
 		else computeNetwork0=computeNetwork0new_SSE2;
 	}
-	for (int b=0; b<PLANE_MAX; ++b)
+	for (int b=0; b<PLANE_MAX; b++)
 	{
 		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
 
@@ -1201,7 +1352,7 @@ void evalFunc_1(void *ps)
 		{
 			for (int y=ystart; y<ystop; y+=2)
 			{
-				for (int x=32; x<width_32; ++x)
+				for (int x=32; x<width_32; x++)
 				{
 					uc2s(src3p+x-5,src_pitch,input);
 					computeNetwork0(input,weights0,tempu+x);
@@ -1231,7 +1382,7 @@ void evalFunc_1(void *ps)
 			{
 				for (int y=ystart; y<ystop; y+=2)
 				{
-					memset(dstp+32,255,width_64);
+					A_memset(dstp+32,255,width_64);
 					lcount[y]+=width_64;
 					dstp+=dst_pitch2;
 				}
@@ -1241,66 +1392,345 @@ void evalFunc_1(void *ps)
 }
 
 
-void extract_m8_C(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input)
+int processLine0_C_16(const uint8_t *tempu,int width, uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t limit)
+{
+	int count = 0;
+	const uint16_t *src0 = (uint16_t *)src3p;
+	const uint16_t *src2 = (uint16_t *)(src3p+(src_pitch << 1));
+	const uint16_t *src4 = (uint16_t *)(src3p+(src_pitch << 2));
+	const uint16_t *src6 = (uint16_t *)(src3p+(src_pitch*6));
+	uint16_t *dst0 = (uint16_t *)dstp;
+
+	for (int x = 0; x<width; x++)
+	{
+		if (tempu[x])
+			dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,limit),0);
+		else
+		{
+			dst0[x]=0xFFFF;
+			count++;
+		}
+	}
+	return count;
+}
+
+
+void uc2s48_C_16(const uint8_t *t, const int pitch, float *pf)
+{
+	const int pitch2 = pitch << 1;
+	uint16_t *p = (uint16_t *)pf;
+
+	for (int y = 0; y<4; y++)
+	{
+		uint16_t *t0 = (uint16_t *)t;
+
+		for (int x = 0; x<12; x++)
+			p[x] = t0[x];
+
+		p += 12;
+		t += pitch2;
+	}
+}
+
+
+void uc2f48_C_16(const uint8_t *t, const int pitch, float *p)
+{
+	const int pitch2 = pitch << 1;
+
+	for (int y = 0; y<4; y++)
+	{
+		uint16_t *t0 = (uint16_t *)t;
+
+		for (int x = 0; x<12; x++)
+			p[x] = t0[x];
+
+		p += 12;
+		t += pitch2;
+	}
+}
+
+
+void uc2s64_C_16(const uint8_t *t, const int pitch, float *p)
+{
+	uint16_t *ps = (uint16_t *)p;
+	const int pitch2 = pitch << 1;
+
+	for (int y = 0; y<4; y++)
+	{
+		uint16_t *t0 = (uint16_t *)t;
+
+		for (int x = 0; x<16; x++)
+			ps[x] = t0[x];
+
+		ps += 16;
+		t += pitch2;
+	}
+}
+
+
+void dotProdS_C_16(const float *dataf,const float *weightsf,float *vals,const int n,const int len,const float *scale)
+{
+	const uint16_t *data = (uint16_t *)dataf;
+	const int16_t *weights = (int16_t *)weightsf;
+	const float *wf = (float *)&weights[n*len];
+	int i_len = 0;
+
+	for (int i = 0; i<n; i++)
+	{
+		__int64 sum = 0;
+		const int off = ((i>>2)<<3)+(i&3);
+
+		for (int j = 0; j<len; j++)
+			sum += (int)data[j]*(int)weights[i_len+j];
+
+		vals[i] = sum*wf[off]*(*scale)+wf[off+4];
+		i_len += len;
+	}
+}
+
+void computeNetwork0_i16_C_16(const float *inputf, const float *weightsf, uint8_t *d)
+{
+	const float *wf = weightsf+2*48;
+	float temp[12],scale=1.0f;
+
+	dotProdS_C_16(inputf,weightsf,temp,4,48,&scale);
+
+	const float t=temp[0];
+
+	elliott_C(temp,4);
+	temp[0] = t;
+	dotProd_C(temp,wf+8,temp+4,4,4,&scale);
+	elliott_C(temp+4,4);
+	dotProd_C(temp,wf+8+4*5,temp+8,4,8,&scale);
+
+	if (max(temp[10],temp[11]) <= max(temp[8],temp[9])) d[0]=1;
+	else d[0]=0;
+}
+
+
+void computeNetwork0new_C_16(const float *datai, const float *weights, uint8_t *d)
+{
+	uint16_t *data = (uint16_t *)datai;
+	int16_t *ws = (int16_t *)weights;
+	float *wf = (float *)&ws[4*64];
+	float vals[8];
+
+	for (int i = 0; i<4; i++)
+	{
+		__int64 sum = 0;
+		const int i_3 = i << 3;
+
+		for (int j = 0; j<64; j++)
+			sum += (int)data[j]*(int)ws[i_3+((j>>3)<<5)+(j&7)];
+
+		const float t=sum*wf[i]+wf[4+i];
+		vals[i] = t/(1.0f+fabsf(t));
+	}
+
+	for (int i = 0; i<4; i++)
+	{
+		float sum = 0.0f;
+		const int i_8 = i + 8;
+
+		for (int j = 0; j<4; j++)
+			sum += vals[j]*wf[i_8+(j<<2)];
+
+		vals[4+i] = sum+wf[8+16+i];
+	}
+
+	int mask = 0;
+
+	for (int i = 0; i<4; i++)
+	{
+		if (vals[4+i]>0.0f)
+			mask |= (0x1 << (i<<3));
+	}
+	*((int*)d) = mask;
+}
+
+
+void evalFunc_1_16(void *ps)
+{
+	PS_INFO *pss = (PS_INFO*)ps;
+	float *input = pss->input;
+	const float *weights0 = pss->weights0;
+	float *temp = pss->temp;
+	uint8_t *tempu = (uint8_t*)temp;
+	const int opt = pss->opt;
+	const int pscrn = pss->pscrn;
+	const int fapprox = pss->fapprox;
+	const bool int16_prescreener = pss->int16_prescreener;
+	void(*uc2s)(const uint8_t*, const int, float*);
+	void(*computeNetwork0)(const float*, const float*, uint8_t *d);
+	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int, const uint16_t);
+
+	processLine0 = processLine0_C_16;
+	/*	if (opt==1) processLine0=processLine0_C_16;
+	else processLine0=processLine0_SSE2_16;*/
+	if (pscrn<2) // original prescreener
+	{
+		if (int16_prescreener) // int16 dot products
+		{
+			uc2s = uc2s48_C_16;
+			/*			if (opt==1) uc2s=uc2s48_C_16;
+			else uc2s=uc2s48_SSE2_16;*/
+			computeNetwork0 = computeNetwork0_i16_C_16;
+			/*			if (opt==1) computeNetwork0=computeNetwork0_i16_C;
+			else computeNetwork0=computeNetwork0_i16_SSE2;*/
+		}
+		else
+		{
+			uc2s = uc2f48_C_16;
+			/*			if (opt==1) uc2s=uc2f48_C_16;
+			else uc2s=uc2f48_SSE2_16;*/
+			if (opt == 1) computeNetwork0 = computeNetwork0_C;
+			else computeNetwork0 = computeNetwork0_SSE2;
+		}
+	}
+	else // new prescreener
+	{
+		// only int16 dot products
+		uc2s = uc2s64_C_16;
+		/*		if (opt==1) uc2s=uc2s64_C_16;
+		else uc2s=uc2s64_SSE2_16;*/
+		computeNetwork0 = computeNetwork0new_C_16;
+		/*		if (opt==1) computeNetwork0=computeNetwork0new_C;
+		else computeNetwork0=computeNetwork0new_SSE2;*/
+	}
+
+	for (int b=0; b<PLANE_MAX; b++)
+	{
+		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
+
+		const uint8_t *srcp = pss->srcp[b];
+		const int src_pitch = pss->src_pitch[b];
+		const int width = pss->width[b];
+		const int width_32 = width - 32;
+		const int width_64 = width - 64;
+		uint8_t *dstp = pss->dstp[b];
+		const int dst_pitch = pss->dst_pitch[b];
+		pss->env->BitBlt(dstp+(pss->sheight[b]-5-pss->field[b])*dst_pitch,
+			dst_pitch << 1,srcp+((pss->sheight[b]+1-pss->field[b])*src_pitch+64),
+			src_pitch << 1,width_64 << 1,(pss->eheight[b]-pss->sheight[b]+pss->field[b]) >> 1);
+		const int ystart = pss->sheight[b]+pss->field[b];
+		const int ystop = pss->eheight[b];
+		const int src_pitch2 = src_pitch << 1;
+		const int dst_pitch2 = dst_pitch << 1;
+		const uint16_t limit16bitsm1 = pss->limit16bits-1;
+
+		srcp += ystart*src_pitch;
+		dstp += (ystart-6)*dst_pitch-64;
+
+		const uint8_t *src3p = srcp-src_pitch*3;
+		int *lcount = pss->lcount[b]-6;
+
+		if (pss->pscrn == 1) // original
+		{
+			for (int y = ystart; y<ystop; y += 2)
+			{
+				for (int x = 32; x<width_32; x++)
+				{
+					uc2s(src3p+((x-5)<<1),src_pitch,input);
+					computeNetwork0(input,weights0,tempu+x);
+				}
+				lcount[y] += processLine0(tempu+32,width_64,dstp+64,src3p+64,src_pitch,limit16bitsm1);
+
+				src3p += src_pitch2;
+				dstp += dst_pitch2;
+			}
+		}
+		else
+		{
+			if (pscrn >= 2) // new
+			{
+				for (int y = ystart; y<ystop; y += 2)
+				{
+					for (int x = 32; x<width_32; x += 4)
+					{
+						uc2s(src3p+((x-6)<<1),src_pitch,input);
+						computeNetwork0(input,weights0,tempu+x);
+					}
+					lcount[y] += processLine0(tempu+32,width_64,dstp+64,src3p+64,src_pitch,limit16bitsm1);
+					src3p += src_pitch2;
+					dstp += dst_pitch2;
+				}
+			}
+			else // no prescreening
+			{
+				for (int y = ystart; y<ystop; y += 2)
+				{
+					A_memset(dstp+64,255,width_64<<1);
+					lcount[y] += width_64;
+					dstp += dst_pitch2;
+				}
+			}
+		}
+	}
+}
+
+
+
+void extract_m8_C(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd, float *input)
 {
 	int sum = 0, sumsq = 0;
-	const int stride2=stride << 1;
-	int y_stride=0;
+	const int stride2 = stride << 1;
 
-	for (int y=0; y<ydia; ++y)
+	for (int y = 0; y<ydia; y++)
 	{
-		const uint8_t *srcpT = srcp+y_stride;
-
-		for (int x=0; x<xdia; ++x, ++input)
+		for (int x = 0; x<xdia; x++)
 		{
-			sum += srcpT[x];
-			sumsq += srcpT[x]*srcpT[x];
-			input[0] = srcpT[x];
+			sum += srcp[x];
+			sumsq += srcp[x]*srcp[x];
+			input[x] = srcp[x];
 		}
-		y_stride+=stride2;
+
+		srcp += stride2;
+		input += xdia;
 	}
-	const float scale = 1.0f/(float)(xdia*ydia);
+
+	const float scale = (float)(1.0/(double)(xdia*ydia));
 
 	mstd[0] = sum*scale;
 	mstd[1] = sumsq*scale-mstd[0]*mstd[0];
 	mstd[3] = 0.0f;
-	if (mstd[1]<=FLT_EPSILON) mstd[1]=mstd[2]=0.0f;
+	if (mstd[1] <= FLT_EPSILON) mstd[1] = mstd[2] = 0.0f;
 	else
 	{
-		mstd[1]=sqrtf(mstd[1]);
-		mstd[2]=1.0f/mstd[1];
+		mstd[1] = sqrtf(mstd[1]);
+		mstd[2] = 1.0f/mstd[1];
 	}
 }
 
 
 void extract_m8_i16_C(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *inputf)
 {
-	int16_t *input = (int16_t*)inputf;
+	int16_t *input = (int16_t *)inputf;
 	int sum = 0, sumsq = 0;
-	const int stride2=stride << 1;
-	int y_stride=0;
+	const int stride2 = stride << 1;
 
-	for (int y=0; y<ydia; ++y)
+	for (int y = 0; y<ydia; y++)
 	{
-		const uint8_t *srcpT = srcp+y_stride;
-
-		for (int x=0; x<xdia; ++x, ++input)
+		for (int x = 0; x<xdia; x++)
 		{
-			sum += srcpT[x];
-			sumsq += srcpT[x]*srcpT[x];
-			input[0] = srcpT[x];
+			sum += srcp[x];
+			sumsq += srcp[x]*srcp[x];
+			input[x] = srcp[x];
 		}
-		y_stride+=stride2;
+
+		srcp += stride2;
+		input += xdia;
 	}
-	const float scale = 1.0f/(float)(xdia*ydia);
+
+	const float scale = (float)(1.0/(double)(xdia*ydia));
+
 	mstd[0] = sum*scale;
 	mstd[1] = sumsq*scale-mstd[0]*mstd[0];
 	mstd[3] = 0.0f;
-	if (mstd[1]<=FLT_EPSILON) mstd[1]=mstd[2]=0.0f;
+	if (mstd[1] <= FLT_EPSILON) mstd[1] = mstd[2] = 0.0f;
 	else
 	{
-		mstd[1]=sqrtf(mstd[1]);
-		mstd[2]=1.0f/mstd[1];
+		mstd[1] = sqrtf(mstd[1]);
+		mstd[2] = 1.0f/mstd[1];
 	}
 }
 
@@ -1318,7 +1748,7 @@ __declspec(align(16)) const float e0_bias[4] = { // (2^23)*127.0-486411.0
 
 void e0_m16_C(float *s,const int n)
 {
-	for (int i=0; i<n; ++i)
+	for (int i=0; i<n; i++)
 	{
 		const int t = (int)(max(min(s[i],exp_hi[0]),exp_lo[0])*e0_mult[0]+e0_bias[0]);
 		s[i] = (*((float*)&t));
@@ -1337,7 +1767,7 @@ _declspec(align(16)) const float e1_c2[4] = { 0.237348593f, 0.237348593f, 0.2373
 
 void e1_m16_C(float *s,const int n)
 {
-	for (int q=0; q<n; ++q)
+	for (int q=0; q<n; q++)
 	{
 		float x = max(min(s[q],exp_hi[0]),exp_lo[0])*e1_scale[0];
 		int i = (int)(x + 128.5f) - 128;
@@ -1350,7 +1780,7 @@ void e1_m16_C(float *s,const int n)
 
 void e2_m16_C(float *s,const int n)
 {
-	for (int i=0; i<n; ++i)
+	for (int i=0; i<n; i++)
 		s[i] = expf(max(min(s[i],exp_hi[0]),exp_lo[0]));
 }
 
@@ -1361,7 +1791,7 @@ void weightedAvgElliottMul5_m16_C(const float *w,const int n,float *mstd)
 {
 	float vsum = 0.0f, wsum = 0.0f;
 
-	for (int i=0; i<n; ++i)
+	for (int i=0; i<n; i++)
 	{
 		vsum+=w[i]*(w[n+i]/(1.0f+fabsf(w[n+i])));
 		wsum+=w[i];
@@ -1369,7 +1799,6 @@ void weightedAvgElliottMul5_m16_C(const float *w,const int n,float *mstd)
 	if (wsum>min_weight_sum[0]) mstd[3]+=((5.0f*vsum)/wsum)*mstd[1]+mstd[0];
 	else mstd[3]+=mstd[0];
 }
-
 
 
 void evalFunc_2(void *ps)
@@ -1387,7 +1816,8 @@ void evalFunc_2(void *ps)
 	const int xdiad2m1 = (xdia>>1)-1;
 	const int ydia = pss->ydia;
 	const int fapprox = pss->fapprox;
-	const float scale = 1.0f/(float)qual;
+	const bool int16_predictor = pss->int16_predictor;
+	const float scale = (float)(1.0/(double)qual);
 	void (*extract)(const uint8_t*,const int,const int,const int,float*,float*);
 	void (*dotProd)(const float*,const float*,float*,const int,const int,const float*);
 	void (*expf)(float *,const int);
@@ -1395,7 +1825,8 @@ void evalFunc_2(void *ps)
 
 	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
 	else wae5=weightedAvgElliottMul5_m16_SSE2;
-	if (fapprox&2) // use int16 dot products
+	//if (fapprox&2) // use int16 dot products
+	if (int16_predictor) // use int16 dot products
 	{
 		if (opt==1) extract=extract_m8_i16_C;
 		else extract=extract_m8_i16_SSE2;
@@ -1424,7 +1855,7 @@ void evalFunc_2(void *ps)
 		if (opt==1) expf=e0_m16_C;
 		else expf=e0_m16_SSE2;
 	}
-	for (int b=0; b<PLANE_MAX; ++b)
+	for (int b=0; b<PLANE_MAX; b++)
 	{
 		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
 
@@ -1445,12 +1876,14 @@ void evalFunc_2(void *ps)
 
 		for (int y=ystart; y<ystop; y+=2)
 		{
-			for (int x=32; x<width_32; ++x)
+			for (int x=32; x<width_32; x++)
 			{
 				if (dstp[x]!=255) continue;
+
 				float mstd[4];
+
 				extract(srcpp+x,src_pitch,xdia,ydia,mstd,input);
-				for (int i=0; i<qual; ++i)
+				for (int i=0; i<qual; i++)
 				{
 					dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
 					expf(temp,nns);
@@ -1465,6 +1898,175 @@ void evalFunc_2(void *ps)
 	}
 }
 
+
+void extract_m8_i16_C_16(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *inputf)
+{
+	uint16_t *input = (uint16_t *)inputf;
+	__int64 sum = 0, sumsq = 0;
+	const int stride2 = stride << 1;
+
+	for (int y = 0; y<ydia; y++)
+	{
+		const uint16_t *srcpT = (uint16_t *)srcp;
+
+		for (int x = 0; x<xdia; x++)
+		{
+			sum += srcpT[x];
+			sumsq += (uint32_t)srcpT[x]*(uint32_t)srcpT[x];
+			input[x] = srcpT[x];
+		}
+		srcp += stride2;
+		input += xdia;
+	}
+	const float scale=(float)(1.0/(double)(xdia*ydia));
+	mstd[0] = sum*scale;
+	const double tmp =(double)sumsq*scale-(double)mstd[0]*mstd[0];
+	mstd[3] = 0.0f;
+	if (tmp <= FLT_EPSILON) mstd[1] = mstd[2] = 0.0f;
+	else
+	{
+		mstd[1] = (float)sqrt(tmp);
+		mstd[2] = 1.0f/mstd[1];
+	}
+}
+
+
+void extract_m8_C_16(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input)
+{
+	int64_t sum = 0, sumsq = 0;
+	const int stride2 = stride << 1;
+
+	for (int y = 0; y<ydia; y++)
+	{
+		const uint16_t *srcpT = (uint16_t *)srcp;
+
+		for (int x = 0; x<xdia; x++)
+		{
+			sum += srcpT[x];
+			sumsq += (uint32_t)srcpT[x]*(uint32_t)srcpT[x];
+			input[x] = srcpT[x];
+		}
+		input += xdia;
+		srcp += stride2;
+	}
+
+	const float scale = (float)(1.0/(double)(xdia*ydia));
+
+	mstd[0] = sum*scale;
+	const double tmp=(double)sumsq*scale-(double)mstd[0]*mstd[0];
+	mstd[3] = 0.0f;
+	if (tmp <= FLT_EPSILON) mstd[1] = mstd[2] = 0.0f;
+	else
+	{
+		mstd[1] = (float)sqrt(tmp);
+		mstd[2] = 1.0f/mstd[1];
+	}
+}
+
+
+void evalFunc_2_16(void *ps)
+{
+	PS_INFO *pss = (PS_INFO*)ps;
+	float *input = pss->input;
+	float *temp = pss->temp;
+	float **weights1 = pss->weights1;
+	const int opt = pss->opt;
+	const int qual = pss->qual;
+	const int asize = pss->asize;
+	const int nns = pss->nns;
+	const int nns2 = nns << 1;
+	const int xdia = pss->xdia;
+	const int xdiad2m1 = (xdia >> 1) - 1;
+	const int ydia = pss->ydia;
+	const int fapprox = pss->fapprox;
+	const bool int16_predictor = pss->int16_predictor;
+	const float scale = (float)(1.0/(double)qual);
+	void(*extract)(const uint8_t*, const int, const int, const int, float*, float*);
+	void(*dotProd)(const float*, const float*, float*, const int, const int, const float*);
+	void(*expf)(float *, const int);
+	void(*wae5)(const float*, const int, float*);
+
+	if (opt == 1) wae5 = weightedAvgElliottMul5_m16_C;
+	else wae5 = weightedAvgElliottMul5_m16_SSE2;
+	if (int16_predictor) // use int16 dot products
+	{
+		extract = extract_m8_i16_C_16;
+		/*		if (opt==1) extract=extract_m8_i16_C;
+		else extract=extract_m8_i16_SSE2;*/
+		dotProd = dotProdS_C_16;
+		/*		if (opt==1) dotProd=dotProdS_C;
+		else dotProd= (asize%48) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;*/
+	}
+	else // use float dot products
+	{
+		extract = extract_m8_C_16;
+		/*		if (opt==1) extract=extract_m8_C;
+		else extract=extract_m8_SSE2;*/
+		if (opt == 1) dotProd = dotProd_C;
+		else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+	}
+	if ((fapprox & 12) == 0) // use slow exp
+	{
+		if (opt == 1) expf = e2_m16_C;
+		else expf = e2_m16_SSE2;
+	}
+	else if ((fapprox & 12) == 4) // use faster exp
+	{
+		if (opt == 1) expf = e1_m16_C;
+		else expf = e1_m16_SSE2;
+	}
+	else // use fastest exp
+	{
+		if (opt == 1) expf = e0_m16_C;
+		else expf = e0_m16_SSE2;
+	}
+	for (int b = 0; b<PLANE_MAX; b++)
+	{
+		if (((b == 0) && !pss->Y) || ((b == 1) && !pss->U) || ((b == 2) && !pss->V) || ((b == 3) && !pss->A)) continue;
+
+		const uint8_t *srcp = pss->srcp[b];
+		const int src_pitch = pss->src_pitch[b];
+		const int width = pss->width[b];
+		uint8_t *dstp = pss->dstp[b];
+		const int dst_pitch = pss->dst_pitch[b];
+		const int ystart = pss->sheight2[b];
+		const int ystop = pss->eheight2[b];
+		const int src_pitch2 = src_pitch << 1;
+		const int dst_pitch2 = dst_pitch << 1;
+		const int width_32 = width - 32;
+		const uint16_t limit16bits = pss->limit16bits;
+
+		srcp += (ystart + 6)*src_pitch;
+		dstp += ystart*dst_pitch-64;
+		const uint8_t *srcpp = srcp-(ydia-1)*src_pitch-(xdiad2m1 << 1);
+
+		for (int y = ystart; y<ystop; y += 2)
+		{
+			uint16_t *dst0 = (uint16_t *)dstp;
+			//uint16_t *src0 = (uint16_t *)srcpp;
+
+			for (int x = 32; x<width_32; x++)
+			{
+				if (dst0[x] != 0xFFFF) continue;
+
+				float mstd[4];
+
+				extract(srcpp+(x << 1),src_pitch,xdia,ydia,mstd,input);
+				for (int i=0; i<qual; i++)
+				{
+					dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
+					expf(temp,nns);
+					wae5(temp,nns,mstd);
+				}
+				dst0[x]=min(max((int)(mstd[3]*scale+0.5f),0),limit16bits);
+			}
+			srcpp += src_pitch2;
+			dstp += dst_pitch2;
+		}
+	}
+}
+
+
 void nnedi3::StaticThreadpool(void *ptr)
 {
 	const Public_MT_Data_Thread *data=(const Public_MT_Data_Thread *)ptr;
@@ -1476,6 +2078,10 @@ void nnedi3::StaticThreadpool(void *ptr)
 		case 1 : evalFunc_1(ps);
 			break;
 		case 2 : evalFunc_2(ps);
+			break;
+		case 3 : evalFunc_1_16(ps);
+			break;
+		case 4 : evalFunc_2_16(ps);
 			break;
 		default : ;
 	}
@@ -1490,13 +2096,15 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	
   const bool avsp=env->FunctionExists("ConvertBits");
   const bool RGB32=vi.IsRGB32();
+  const bool RGB48=vi.IsRGB32();
+  const bool RGB64=vi.IsRGB64();
  
-  if (vi.ComponentSize()>1) env->ThrowError("nnedi3: Only 8 bits supported!");
+  if (vi.ComponentSize()>2) env->ThrowError("nnedi3: Only 8,16 bits supported!");
 	
 	if (avsp)
 	{
-		if (!vi.IsPlanar() && !vi.IsYUY2() && !vi.IsRGB24() && !RGB32)
-			env->ThrowError("nnedi3: only planar, YUY2, RGB32 and RGB24 input are supported!");				
+		if (!vi.IsPlanar() && !vi.IsYUY2() && !vi.IsRGB24() && !RGB32 && !RGB48 && !RGB64)
+			env->ThrowError("nnedi3: only planar, YUY2, RGB64, RGB48, RGB32 and RGB24 input are supported!");				
 	}
 	else
 	{
@@ -1504,10 +2112,10 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 			env->ThrowError("nnedi3: only planar, YUY2 and RGB24 input are supported!");				
 	}
 
-	int prefetch=args[18].AsInt(0);
-	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("ResizeMT: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
-
+	int prefetch = args[18].AsInt(0);
+	if (prefetch == 0) prefetch = 1;
+	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("ResizeMT: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
+			
 	const bool dh = args[2].AsBool(false);
 	if ((vi.height&1) && !dh)
 		env->ThrowError("nnedi3: height must be mod 2 when dh=false (%d)!", vi.height);
@@ -1516,7 +2124,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 
 	if (!vi.IsY8())
 	{
-		if (RGB32)
+		if (RGB32 || RGB48 || RGB64)
 		{
 			AVSValue v=args[0].AsClip();
 			
@@ -1525,22 +2133,29 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
 				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
 				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),
-				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),avsp,env);
-			return env->Invoke("ConvertToRGB32",v).AsClip();			
+				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
+				avsp,env);
+			if (RGB32) return env->Invoke("ConvertToRGB32",v).AsClip();
+			else
+			{
+				if (RGB48) return env->Invoke("ConvertToRGB48", v).AsClip();
+				else return env->Invoke("ConvertToRGB64", v).AsClip();
+			}
 		}
 		else return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
 				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
 				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),
-				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),avsp,env);
+				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
+				avsp,env);
 			
 	}
 	else
 		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),false,false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),
 				args[9].AsInt(0),args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),
-				args[13].AsInt(15),args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),
-				args[17].AsBool(false),avsp,env);
+				args[13].AsInt(15),args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
+				avsp,env);
 }
 
 
@@ -1551,22 +2166,24 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
   const bool avsp=env->FunctionExists("ConvertBits");  
   const bool RGB32=vi.IsRGB32();
+  const bool RGB48=vi.IsRGB48();
+  const bool RGB64=vi.IsRGB64();
   const bool RGB24=vi.IsRGB24();  
   const bool isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
   const bool grey = vi.IsY();  
   const bool isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	
-  if (vi.ComponentSize()>1) env->ThrowError("nnedi3_rpow2: Only 8 bits supported!");
+  if (vi.ComponentSize()>2) env->ThrowError("nnedi3: Only 8 and 16 bits supported!");
   
 	if (avsp)
 	{
-		if (!vi.IsPlanar() && !vi.IsYUY2() && !RGB24 && !RGB32)
-			env->ThrowError("nnedi3_rpow2: only planar, YUY2, RGB32 and RGB24 input are supported!");				
+		if (!vi.IsPlanar() && !vi.IsYUY2() && !RGB24 && !RGB32 && !RGB48 && !RGB64)
+			env->ThrowError("nnedi3: only planar, YUY2, RGB32, RGB64 and RGB24 input are supported!");				
 	}
 	else
 	{
 		if (!vi.IsPlanar() && !vi.IsYUY2() && !RGB24)
-			env->ThrowError("nnedi3_rpow2: only planar, YUY2 and RGB24 input are supported!");				
+			env->ThrowError("nnedi3: only planar, YUY2 and RGB24 input are supported!");				
 	}
   
 	if ((vi.IsYUY2() || vi.IsYV16()|| vi.IsYV12() || vi.IsYV411()) && (vi.width&3))
@@ -1595,7 +2212,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const bool MaxPhysCores_rs = args[22].AsBool(true);
 	const bool SetAffinity_rs = args[23].AsBool(false);
 	const bool sleep = args[24].AsBool(false);
-	int prefetch=args[25].AsInt(0);
+	int prefetch = args[25].AsInt(0);
 
 	if (rfactor < 2 || rfactor > 1024) env->ThrowError("nnedi3_rpow2:  2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	int rf = 1, ct = 0;
@@ -1622,8 +2239,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	if (fapprox < 0 || fapprox > 15)
 		env->ThrowError("nnedi3_rpow2:  fapprox must be [0,15]!\n");
 
-	if (prefetch==0) prefetch=1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3_rpow2: [prefetch] must be between 0 and %d.",MAX_THREAD_POOL);
+	if (prefetch == 0) prefetch = 1;
+	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3_rpow2: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
 
 	if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3_rpow2: Unable to create ThreadPool!");
 
@@ -1643,9 +2260,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 		AVSValue vv,vu,va;
 
-		if (RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily)
+		if (RGB24 || vi.Is444() || vi.IsY() || RGB32 || RGB48 || RGB64 || isRGBPfamily)
 		{
-			if (RGB24)
+			if (RGB24 || RGB48)
 			{
 				if (avsp) v=env->Invoke("ConvertToPlanarRGB",v).AsClip();
 				else
@@ -1660,7 +2277,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				}					
 			}
 			
-			if (RGB32) v=env->Invoke("ConvertToPlanarRGBA",v).AsClip();
+			if (RGB32 || RGB64) v=env->Invoke("ConvertToPlanarRGBA",v).AsClip();
 
 			const bool UV_process=!(vi.IsY() || (RGB24 && !avsp));
 
@@ -1809,7 +2426,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
-				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
+				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || RGB48 || RGB64 || isRGBPfamily))
 				{
 					if (isAlphaChannel)
 					{
@@ -1871,6 +2488,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 						}
 					}
 					if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
+					if (RGB48) v=env->Invoke("ConvertToRGB48", v).AsClip();
+					if (RGB64) v=env->Invoke("ConvertToRGB64", v).AsClip();
 				}
 			}
 			else if ((type!=3) || (min(ep0,ep1)==-FLT_MAX))
@@ -1885,7 +2504,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
-				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
+				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || RGB48 || RGB64 || isRGBPfamily))
 				{
 					if (isAlphaChannel)
 					{
@@ -1947,6 +2566,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 						}
 					}
 					if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
+					if (RGB48) v=env->Invoke("ConvertToRGB48", v).AsClip();
+					if (RGB64) v=env->Invoke("ConvertToRGB64", v).AsClip();
 				}
 			}
 			else
@@ -1955,12 +2576,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					vi.width*rfactor, vi.height*rfactor, ep0, ep1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,
 					SetAffinity_rs,sleep,prefetch };
 				const char *nargs[15] = { 0, 0, 0, "src_left", "src_top", 
-					"src_width", "src_height", "b", "c", "threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch" };
+					"src_width", "src_height", "b", "c", "threads","logicalCores","MaxPhysCore","SetAffinity",
+					"sleep","prefetch" };
 				const uint8_t nbarg=(use_rs_mt) ? 15:9;
 
 				v = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
-				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
+				if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || RGB48 || RGB64 || isRGBPfamily))
 				{
 					if (isAlphaChannel)
 					{
@@ -2022,20 +2644,22 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 						}
 					}
 					if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
+					if (RGB48) v=env->Invoke("ConvertToRGB48", v).AsClip();
+					if (RGB64) v=env->Invoke("ConvertToRGB64", v).AsClip();
 				}
 			}
 		}
 		else
 		{
-			if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || isRGBPfamily))
+			if (!(RGB24 || vi.Is444() || vi.IsY() || RGB32 || RGB48 || RGB64 || isRGBPfamily))
 			{
 				if (vi.Is420())
 				{
 					AVSValue sargs[13]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
 						(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,
-						SetAffinity_rs,sleep,prefetch};
+						SetAffinity_rs,sleep,prefetch };
 					const char *nargs[13]={0,0,0,"src_left","src_top","src_width","src_height","threads",
-					"logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch"};
+					"logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch" };
 					const uint8_t nbarg=(SplineMT) ? 13:7;
 
 					vu = env->Invoke(Spline36,AVSValue(sargs,nbarg),nargs).AsClip();
@@ -2070,12 +2694,14 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					}
 				}				
 				if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
+				if (RGB48) v=env->Invoke("ConvertToRGB48", v).AsClip();
+				if (RGB64) v=env->Invoke("ConvertToRGB64", v).AsClip();
 			}
 		}
 	}
 	catch (IScriptEnvironment::NotFound)
 	{
-		env->ThrowError("nnedi3_rpow2: error using env->invoke (function not found)!\n");
+		env->ThrowError("nnedi3_rpow2:  error using env->invoke (function not found)!\n");
 	}
 	return v;
 }
@@ -2103,50 +2729,58 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 
 // new prescreener functions
 
-void uc2s64_C(const uint8_t *t,const int pitch,float *p)
+void uc2s64_C(const uint8_t *t, const int pitch, float *p)
 {
-	int16_t *ps = (int16_t*)p;
-	int y_16=0,y_pitch=0;
-	const int pitch2=pitch << 1;
+	int16_t *ps = (int16_t *)p;
+	const int pitch2 = pitch << 1;
 
-	for (int y=0; y<4; ++y)
+	for (int y = 0; y<4; y++)
 	{
-		for (int x=0; x<16; ++x)
-			ps[y_16+x] = t[y_pitch+x];
-		y_16+=16;
-		y_pitch+=pitch2;
+		for (int x = 0; x<16; x++)
+			ps[x] = t[x];
+
+		ps += 16;
+		t += pitch2;
 	}
 }
 
 
-
-void computeNetwork0new_C(const float *datai,const float *weights,uint8_t *d)
+void computeNetwork0new_C(const float *datai, const float *weights, uint8_t *d)
 {
-	int16_t *data = (int16_t*)datai;
-	int16_t *ws = (int16_t*)weights;
-	float *wf = (float*)&ws[4*64];
+	int16_t *data = (int16_t *)datai;
+	int16_t *ws = (int16_t *)weights;
+	float *wf = (float *)&ws[4 * 64];
 	float vals[8];
-	for (int i=0; i<4; ++i)
+
+	for (int i = 0; i<4; i++)
 	{
 		int sum = 0;
-		for (int j=0; j<64; ++j)
-			sum += data[j]*ws[(i << 3)+((j >> 3) << 5)+(j&7)];
-		const float t = sum*wf[i]+wf[4+i];
-		vals[i] = t/(1.0f+fabsf(t));
+		const int i_3 = i << 3;
+
+		for (int j = 0; j<64; j++)
+			sum += data[j] * ws[i_3 + ((j >> 3) << 5) + (j & 7)];
+
+		const float t = sum*wf[i] + wf[4 + i];
+		vals[i] = t / (1.0f + fabsf(t));
 	}
-	for (int i=0; i<4; ++i)
+
+	for (int i = 0; i<4; i++)
 	{
 		float sum = 0.0f;
-		for (int j=0; j<4; ++j)
-			sum += vals[j]*wf[8+i+(j << 2)];
-		vals[4+i] = sum+wf[24+i];
+		int const i_8 = 8 + i;
+
+		for (int j = 0; j<4; j++)
+			sum += vals[j] * wf[i_8 + (j << 2)];
+
+		vals[4 + i] = sum + wf[8 + 16 + i];
 	}
+
 	int mask = 0;
-	for (int i=0; i<4; ++i)
+
+	for (int i = 0; i<4; i++)
 	{
-		if (vals[4+i]>0.0f)
+		if (vals[4 + i]>0.0f)
 			mask |= (0x1 << (i << 3));
 	}
-	((int*)d)[0] = mask;
+	*((int*)d) = mask;
 }
-
