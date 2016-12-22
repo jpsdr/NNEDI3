@@ -33,8 +33,10 @@ static size_t CPU_Cache_Size;
 extern "C" void computeNetwork0_SSE2(const float *input,const float *weights,uint8_t *d);
 extern "C" void computeNetwork0_i16_SSE2(const float *inputf,const float *weightsf,uint8_t *d);
 extern "C" void uc2f48_SSE2(const uint8_t *t,const int pitch,float *p);
+extern "C" void uc2f48_SSE2_16(const uint8_t *t, const int pitch, float *p);
 extern "C" void uc2s48_SSE2(const uint8_t *t,const int pitch,float *pf);
 extern "C" int processLine0_SSE2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch);
+extern "C" int processLine0_SSE2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t limit);
 extern "C" void extract_m8_SSE2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input);
 extern "C" void extract_m8_i16_SSE2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *inputf);
 extern "C" void dotProd_m32_m16_SSE2(const float *data,const float *weights,float *vals,const int n,const int len,const float *istd);
@@ -252,7 +254,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		if ((cpuf&CPU_SSE2)!=0) opt=2;
 		else opt=1;
 		char buf[512];
-		sprintf_s(buf,512,"nnedi3:  auto-detected opt setting = %d (%d)\n",opt,cpuf);
+		sprintf_s(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,cpuf);
 		OutputDebugString(buf);
 	}
 	const int dims0 = 49*4+5*4+9*4;
@@ -270,7 +272,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			dims1tsize+=(xdiaTable[i]*ydiaTable[i]+1) << j_a;
 		}
 	}
-	weights0 = (float*)_aligned_malloc(max(dims0,dims0new)*sizeof(float),16);
+	weights0 = (float *)_aligned_malloc(max(dims0,dims0new)*sizeof(float),16);
 	if (weights0==NULL)
 	{
 		FreeData();
@@ -278,7 +280,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	}
 	for (uint8_t i=0; i<2; i++)
 	{
-		weights1[i] = (float*)_aligned_malloc(dims1*sizeof(float),16);
+		weights1[i] = (float *)_aligned_malloc(dims1*sizeof(float),16);
 		if (weights1[i]==NULL)
 		{
 			FreeData();
@@ -287,7 +289,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	}
 	for (uint8_t i=0; i<PlaneMax; i++)
 	{
-		lcount[i] = (int*)_aligned_malloc(dstPF->GetHeight(i)*sizeof(int),16);
+		lcount[i] = (int *)_aligned_malloc(dstPF->GetHeight(i)*sizeof(int),16);
 		if (lcount[i]==NULL)
 		{
 			FreeData();
@@ -309,16 +311,16 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if ((hmod==NULL) || (hrsrc==NULL) || (hglob==NULL) || (lplock==NULL) || (dwSize!=(dims0+dims0new*3+dims1tsize*2)*sizeof(float)))
 	{
 		FreeData();
-		env->ThrowError("nnedi3:  error loading resource (%x,%x,%x,%x,%d,%d)!",hmod,hrsrc,hglob,lplock,dwSize,
+		env->ThrowError("nnedi3: error loading resource (%x,%x,%x,%x,%d,%d)!",hmod,hrsrc,hglob,lplock,dwSize,
 		(dims0+dims0new*3+dims1tsize*2)*sizeof(float));
 	}
 
-	float *bdata = (float*)lplock;
+	float *bdata = (float *)lplock;
 
 	// Adjust prescreener weights
 	if (pscrn>=2) // using new prescreener
 	{
-		int *offt = (int*)calloc(4*64,sizeof(int));
+		int *offt = (int *)calloc(4*64,sizeof(int));
 		if (offt==NULL)
 		{
 			FreeData();
@@ -327,27 +329,27 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		int j_a;
 
 		j_a=0;
-		for (int j=0; j<4; ++j)
+		for (int j=0; j<4; j++)
 		{
 			int j_3=(j&3) << 3;
 
-			for (int k=0; k<64; ++k)
+			for (int k=0; k<64; k++)
 				offt[j_a+k] = ((k>>3)<<5)+j_3+(k&7);
 			j_a+=64;
 		}
 
-		const float *bdw = bdata+dims0+dims0new*(pscrn-2);
-		int16_t *ws = (int16_t*)weights0;
-		float *wf = (float*)&ws[4*64];
+		const float *bdw = bdata+(dims0+dims0new*(pscrn-2));
+		int16_t *ws = (int16_t *)weights0;
+		float *wf = (float *)&ws[4*64];
 		double mean[4] = {0.0,0.0,0.0,0.0};
 
 		// Calculate mean weight of each first layer neuron
 		j_a=0;
-		for (int j=0; j<4; ++j)
+		for (int j=0; j<4; j++)
 		{
 			double cmean = 0.0;
 
-			for (int k=0; k<64; ++k)
+			for (int k=0; k<64; k++)
 				cmean += bdw[offt[j_a+k]];
 			mean[j] = cmean/64.0;
 			j_a+=64;
@@ -360,16 +362,16 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		// Factor mean removal and 1.0/half scaling
 		// into first layer weights. scale to int16 range
 		j_a=0;
-		for (int j=0; j<4; ++j)
+		for (int j=0; j<4; j++)
 		{
 			double mval = 0.0;
 
-			for (int k=0; k<64; ++k)
+			for (int k=0; k<64; k++)
 				mval = max(mval,fabs((bdw[offt[j_a+k]]-mean[j])/half));
 
 			const double scale = 32767.0/mval;
 
-			for (int k=0; k<64; ++k)
+			for (int k=0; k<64; k++)
 				ws[offt[j_a+k]] = roundds(((bdw[offt[j_a+k]]-mean[j])/half)*scale);
 
 			wf[j] = (float)(mval/32767.0);
@@ -385,19 +387,19 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 		// Calculate mean weight of each first layer neuron
 		j_a=0;
-		for (int j=0; j<4; ++j)
+		for (int j=0; j<4; j++)
 		{
 			double cmean = 0.0;
 
-			for (int k=0; k<48; ++k)
+			for (int k=0; k<48; k++)
 				cmean += bdata[j_a+k];
 			mean[j] = cmean/48.0;
 			j_a+=48;
 		}
 		if (int16_prescreener) // use int16 dot products in first layer
 		{
-			int16_t *ws = (int16_t*)weights0;
-			float *wf = (float*)&ws[4*48];
+			int16_t *ws = (int16_t *)weights0;
+			float *wf = (float *)&ws[4*48];
 
 			// 16 bit pixels will be shifted by 1 for the prescreener.
 			const int prescreener_bits = min(bits_per_pixel, 15);
@@ -406,16 +408,16 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			// Factor mean removal and 1.0/half scaling
 			// into first layer weights. scale to int16 range
 			j_a=0;
-			for (int j=0; j<4; ++j)
+			for (int j=0; j<4; j++)
 			{
 				double mval = 0.0;
 
-				for (int k=0; k<48; ++k)
+				for (int k=0; k<48; k++)
 					mval = max(mval,fabs((bdata[j_a+k]-mean[j])/half));
 
 				const double scale = 32767.0/mval;
 
-				for (int k=0; k<48; ++k)
+				for (int k=0; k<48; k++)
 					ws[j_a+k] = roundds(((bdata[j_a+k]-mean[j])/half)*scale);
 
 				wf[j] = (float)(mval/32767.0);
@@ -435,9 +437,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 				memcpy(rs,weights0,dims0*sizeof(float));
 				j_a=0;
-				for (int j=0; j<4; ++j)
+				for (int j=0; j<4; j++)
 				{
-					for (int k=0; k<48; ++k)
+					for (int k=0; k<48; k++)
 						ws[((k >> 3) << 5)+j_b+(k&7)] = rs[j_a+k];
 					j_a+=48;
 					j_b+=8;
@@ -456,9 +458,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			// Factor mean removal and 1.0/half scaling
 			// into first layer weights.
 			j_a=0;
-			for (int j=0; j<4; ++j)
+			for (int j=0; j<4; j++)
 			{
-				for (int k=0; k<48; ++k)
+				for (int k=0; k<48; k++)
 					weights0[j_a+k] = (float)((bdata[j_a+k]-mean[j])/half);
 				j_a+=48;
 			}
@@ -475,9 +477,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				int j_b=0;
 
 				memcpy(rf,weights0,dims0*sizeof(float));
-				for (int j=0; j<4; ++j)
+				for (int j=0; j<4; j++)
 				{
-					for (int k=0; k<48; ++k)
+					for (int k=0; k<48; k++)
 						wf[((k >> 2) << 4)+j_b+(k&3)] = rf[j_a+k];
 					j_a+=48;
 					j_b+=4;
@@ -489,14 +491,14 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	}
 
 	// Adjust prediction weights
-	for (int i=0; i<2; ++i)
+	for (int i=0; i<2; i++)
 	{
-		const float *bdataT = bdata+dims0+dims0new*3+dims1tsize*etype+dims1offset+i*dims1;
+		const float *bdataT = bdata+(dims0+dims0new*3+dims1tsize*etype+dims1offset+i*dims1);
 		const int nnst = nnsTable[nns];
 		const int nnst2 = nnst << 1;
 		const int asize = xdiaTable[nsize]*ydiaTable[nsize];
 		const int boff = nnst2*asize;
-		double *mean = (double*)calloc(asize+1+nnst2,sizeof(double));
+		double *mean = (double *)calloc(asize+1+nnst2,sizeof(double));
 		if (mean==NULL)
 		{
 			FreeData();
@@ -507,11 +509,11 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 		// Calculate mean weight of each neuron (ignore bias)
 		j_a=0;
-		for (int j=0; j<nnst2; ++j)
+		for (int j=0; j<nnst2; j++)
 		{
 			double cmean = 0.0;
 
-			for (int k=0; k<asize; ++k)
+			for (int k=0; k<asize; k++)
 				cmean += bdataT[j_a+k];
 			mean[asize+1+j] = cmean/(double)asize;
 			j_a+=asize;
@@ -520,37 +522,37 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		// Calculate mean softmax neuron
 		j_a=0;
 		j_d=asize+1;
-		for (int j=0; j<nnst; ++j)
+		for (int j=0; j<nnst; j++)
 		{
-			for (int k=0; k<asize; ++k)
+			for (int k=0; k<asize; k++)
 				mean[k] += bdataT[j_a+k]-mean[j_d];
 			mean[asize] += bdataT[boff+j];
 			j_a+=asize;
 			j_d++;
 		}
-		for (int j=0; j<asize+1; ++j)
+		for (int j=0; j<asize+1; j++)
 			mean[j] /= (double)(nnst);
 
 		if (int16_predictor) // use int16 dot products
 		{
-			int16_t *ws = (int16_t*)weights1[i];
-			float *wf = (float*)&ws[asize*nnst2];
+			int16_t *ws = (int16_t *)weights1[i];
+			float *wf = (float *)&ws[asize*nnst2];
 
 			// Factor mean removal into weights, remove global offset from
 			// softmax neurons, and scale weights to int16 range.
 			j_a=0;
 			j_d=asize+1;
 
-			for (int j=0; j<nnst; ++j) // softmax neurons
+			for (int j=0; j<nnst; j++) // softmax neurons
 			{
 				double mval = 0.0;
 
-				for (int k=0; k<asize; ++k)
+				for (int k=0; k<asize; k++)
 					mval = max(mval,fabs(bdataT[j_a+k]-mean[j_d]-mean[k]));
 
 				const double scale = 32767.0/mval;
 
-				for (int k=0; k<asize; ++k)
+				for (int k=0; k<asize; k++)
 					ws[j_a+k] = roundds((bdataT[j_a+k]-mean[j_d]-mean[k])*scale);
 
 				wf[((j >> 2) << 3)+(j&3)] = (float)(mval/32767.0);
@@ -559,16 +561,16 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				j_d++;
 			}
 
-			for (int j=nnst; j<nnst2; ++j) // elliott neurons
+			for (int j=nnst; j<nnst2; j++) // elliott neurons
 			{
 				double mval = 0.0;
 
-				for (int k=0; k<asize; ++k)
+				for (int k=0; k<asize; k++)
 					mval = max(mval,fabs(bdataT[j_a+k]-mean[j_d]));
 
 				const double scale = 32767.0/mval;
 
-				for (int k=0; k<asize; ++k)
+				for (int k=0; k<asize; k++)
 					ws[j_a+k] = roundds((bdataT[j_a+k]-mean[j_d])*scale);
 
 				wf[((j >> 2) << 3)+(j&3)] = (float)(mval/32767.0);
@@ -579,7 +581,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 			if (opt>1) // shuffle weight order for asm
 			{
-				int16_t *rs = (int16_t*)malloc(nnst2*asize*sizeof(int16_t));
+				int16_t *rs = (int16_t *)malloc(nnst2*asize*sizeof(int16_t));
 				if (rs==NULL)
 				{
 					free(mean);
@@ -589,12 +591,12 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 				memcpy(rs,ws,nnst2*asize*sizeof(int16_t));
 				j_a=0;
-				for (int j=0; j<nnst2; ++j)
+				for (int j=0; j<nnst2; j++)
 				{
 					int j_b=((j >> 2) << 2)*asize;
 					int j_c=(j&3) << 3;
 
-					for (int k=0; k<asize; ++k)
+					for (int k=0; k<asize; k++)
 						ws[j_b+((k >> 3) << 5)+j_c+(k&7)] = rs[j_a+k];
 					j_a+=asize;
 				}
@@ -610,9 +612,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 			if (opt>1) // shuffle weight order for asm
 			{
-				for (int j=0; j<nnst2; ++j)
+				for (int j=0; j<nnst2; j++)
 				{
-					for (int k=0; k<asize; ++k)
+					for (int k=0; k<asize; k++)
 					{
 						const double q = j < nnst ? mean[k] : 0.0;
 						int j_b=((j >> 2) << 2)*asize;
@@ -627,9 +629,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			}
 			else
 			{
-				for (int j=0; j<nnst2; ++j)
+				for (int j=0; j<nnst2; j++)
 				{
-					for (int k=0; k<asize; ++k)
+					for (int k=0; k<asize; k++)
 					{
 						const double q = j < nnst ? mean[k] : 0.0;
 
@@ -646,13 +648,13 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	
 	int hslice[PLANE_MAX],hremain[PLANE_MAX];
 	int srow[PLANE_MAX] = {6,6,6,6};
-	for (int i=0; i<PlaneMax; ++i)
+	for (int i=0; i<PlaneMax; i++)
 	{
 		const int height = srcPF->GetHeight(i)-12;
 		hslice[i] = height/(int)threads_number;
 		hremain[i] = height%(int)threads_number;
 	}
-	size_t temp_size = max((size_t)srcPF->GetWidth(0), 512 * sizeof(float));
+	size_t temp_size = max((size_t)srcPF->GetWidth(0),512*sizeof(float));
 
 	ghMutex=CreateMutex(NULL,FALSE,NULL);
 	if (ghMutex==NULL)
@@ -663,8 +665,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	for (uint8_t i=0; i<threads_number; i++)
 	{
-		pssInfo[i].input = (float*)_aligned_malloc(512*sizeof(float),16);
-		pssInfo[i].temp = (float*)_aligned_malloc(temp_size, 16);
+		pssInfo[i].input = (float *)_aligned_malloc(512*sizeof(float),16);
+		pssInfo[i].temp = (float *)_aligned_malloc(temp_size, 16);
 		if ((pssInfo[i].input==NULL) || (pssInfo[i].temp==NULL))
 		{
 			FreeData();
@@ -689,7 +691,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		pssInfo[i].int16_predictor = int16_predictor;
 		pssInfo[i].int16_prescreener = int16_prescreener;
 		pssInfo[i].limit16bits = (uint16_t)(((int)1 << bits_per_pixel) - 1);
-		for (int b=0; b<PlaneMax; ++b)
+		for (int b=0; b<PlaneMax; b++)
 		{
 			pssInfo[i].lcount[b] = lcount[b];
 			pssInfo[i].dstp[b] = dstPF->GetPtr(b);
@@ -895,7 +897,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 	
 	if (!dh)
 	{
-		if (vi.IsPlanar() || isRGBPfamily)
+		if (vi.IsPlanar())
 		{
 			for (int b=0; b<PlaneMax; b++)
 				env->BitBlt(srcPF->GetPtr(b)+(srcPF->GetPitch(b)*(6+off)+32*(int)pixelsize),
@@ -931,7 +933,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 	}
 	else
 	{
-		if (vi.IsPlanar() || isRGBPfamily)
+		if (vi.IsPlanar())
 		{
 			for (int b=0; b<PlaneMax; b++)
 				env->BitBlt(srcPF->GetPtr(b)+(srcPF->GetPitch(b)*(6+off)+32*(int)pixelsize),
@@ -1145,9 +1147,9 @@ void dotProd_C(const float *data, const float *weights, float *vals, const int n
 
 void dotProdS_C(const float *dataf, const float *weightsf, float *vals, const int n, const int len, const float *scale)
 {
-	const int16_t *data = (int16_t*)dataf;
-	const int16_t *weights = (int16_t*)weightsf;
-	const float *wf = (float*)&weights[n*len];
+	const int16_t *data = (int16_t *)dataf;
+	const int16_t *weights = (int16_t *)weightsf;
+	const float *wf = (float *)&weights[n*len];
 	int i_len = 0;
 
 	for (int i = 0; i<n; i++)
@@ -1219,7 +1221,7 @@ void uc2f48_C(const uint8_t *t, const int pitch, float *p)
 void uc2s48_C(const uint8_t *t, const int pitch, float *pf)
 {
 	const int pitch2 = pitch << 1;
-	int16_t *p = (int16_t*)pf;
+	int16_t *p = (int16_t *)pf;
 
 	for (int y = 0; y<4; y++)
 	{
@@ -1263,7 +1265,7 @@ int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 	const uint8_t *src6 = src3p+(src_pitch*6);
 
 	width -= remain;
-	if (width != 0) count = processLine0_SSE2_ASM(tempu, width, dstp, src3p, src_pitch);
+	if (width != 0) count = processLine0_SSE2_ASM(tempu,width,dstp,src3p,src_pitch);
 	else count = 0;
 
 	for (int x = width; x<width_m; x++)
@@ -1282,17 +1284,17 @@ int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 
 void evalFunc_1(void *ps)
 {
-	PS_INFO *pss = (PS_INFO*)ps;
+	PS_INFO *pss = (PS_INFO *)ps;
 	float *input = pss->input;
 	const float *weights0 = pss->weights0;
 	float *temp = pss->temp;
-	uint8_t *tempu = (uint8_t*)temp;
+	uint8_t *tempu = (uint8_t *)temp;
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
 	const int fapprox = pss->fapprox;
 	const bool int16_prescreener = pss->int16_prescreener;
 	void (*uc2s)(const uint8_t*,const int,float*);
-	void (*computeNetwork0)(const float*,const float*,uint8_t *d);
+	void (*computeNetwork0)(const float*,const float*,uint8_t*);
 	int (*processLine0)(const uint8_t*,int,uint8_t*,const uint8_t*,const int);
 
 	if (opt==1) processLine0=processLine0_C;
@@ -1335,8 +1337,8 @@ void evalFunc_1(void *ps)
 		uint8_t *dstp = pss->dstp[b];
 		const int dst_pitch = pss->dst_pitch[b];
 		pss->env->BitBlt(dstp+(pss->sheight[b]-5-pss->field[b])*dst_pitch,
-			dst_pitch*2,srcp+(pss->sheight[b]+1-pss->field[b])*src_pitch+32,
-			src_pitch*2,width_64,(pss->eheight[b]-pss->sheight[b]+pss->field[b])>>1);
+			dst_pitch << 1,srcp+((pss->sheight[b]+1-pss->field[b])*src_pitch+32),
+			src_pitch << 1,width_64,(pss->eheight[b]-pss->sheight[b]+pss->field[b])>>1);
 		const int ystart = pss->sheight[b]+pss->field[b];
 		const int ystop = pss->eheight[b];
 		const int src_pitch2=src_pitch << 1;
@@ -1422,10 +1424,7 @@ void uc2s48_C_16(const uint8_t *t, const int pitch, float *pf)
 
 	for (int y = 0; y<4; y++)
 	{
-		uint16_t *t0 = (uint16_t *)t;
-
-		for (int x = 0; x<12; x++)
-			p[x] = t0[x];
+		A_memcpy(p,t,24);
 
 		p += 12;
 		t += pitch2;
@@ -1457,10 +1456,7 @@ void uc2s64_C_16(const uint8_t *t, const int pitch, float *p)
 
 	for (int y = 0; y<4; y++)
 	{
-		uint16_t *t0 = (uint16_t *)t;
-
-		for (int x = 0; x<16; x++)
-			ps[x] = t0[x];
+		A_memcpy(ps,t,32);
 
 		ps += 16;
 		t += pitch2;
@@ -1549,40 +1545,64 @@ void computeNetwork0new_C_16(const float *datai, const float *weights, uint8_t *
 }
 
 
+int processLine0_SSE2_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t limit)
+{
+	int count;
+	const int width_m = width;
+	const int remain = width & 7;
+	const uint16_t *src0 = (uint16_t *)src3p;
+	const uint16_t *src2 = (uint16_t *)(src3p + (src_pitch << 1));
+	const uint16_t *src4 = (uint16_t *)(src3p + (src_pitch << 2));
+	const uint16_t *src6 = (uint16_t *)(src3p + (src_pitch * 6));
+	uint16_t *dst0 = (uint16_t *)dstp;
+
+	width -= remain;
+	if (width != 0) count = processLine0_SSE2_ASM_16(tempu,width,dstp,src3p,src_pitch,limit);
+	else count = 0;
+
+	for (int x = width; x<width_m; x++)
+	{
+		if (tempu[x])
+			dst0[x] = max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,limit),0);
+		else
+		{
+			dst0[x] = 0xFFFF;
+			count++;
+		}
+	}
+	return count;
+}
+
 void evalFunc_1_16(void *ps)
 {
-	PS_INFO *pss = (PS_INFO*)ps;
+	PS_INFO *pss = (PS_INFO *)ps;
 	float *input = pss->input;
 	const float *weights0 = pss->weights0;
 	float *temp = pss->temp;
-	uint8_t *tempu = (uint8_t*)temp;
+	uint8_t *tempu = (uint8_t *)temp;
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
 	const int fapprox = pss->fapprox;
 	const bool int16_prescreener = pss->int16_prescreener;
 	void(*uc2s)(const uint8_t*, const int, float*);
-	void(*computeNetwork0)(const float*, const float*, uint8_t *d);
+	void(*computeNetwork0)(const float*, const float*, uint8_t*);
 	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int, const uint16_t);
 
-	processLine0 = processLine0_C_16;
-	/*	if (opt==1) processLine0=processLine0_C_16;
-	else processLine0=processLine0_SSE2_16;*/
+	if (opt==1) processLine0=processLine0_C_16;
+	else processLine0=processLine0_SSE2_16;
 	if (pscrn<2) // original prescreener
 	{
 		if (int16_prescreener) // int16 dot products
 		{
 			uc2s = uc2s48_C_16;
-			/*			if (opt==1) uc2s=uc2s48_C_16;
-			else uc2s=uc2s48_SSE2_16;*/
 			computeNetwork0 = computeNetwork0_i16_C_16;
 			/*			if (opt==1) computeNetwork0=computeNetwork0_i16_C;
 			else computeNetwork0=computeNetwork0_i16_SSE2;*/
 		}
 		else
 		{
-			uc2s = uc2f48_C_16;
-			/*			if (opt==1) uc2s=uc2f48_C_16;
-			else uc2s=uc2f48_SSE2_16;*/
+			if (opt==1) uc2s=uc2f48_C_16;
+			else uc2s=uc2f48_SSE2_16;
 			if (opt == 1) computeNetwork0 = computeNetwork0_C;
 			else computeNetwork0 = computeNetwork0_SSE2;
 		}
@@ -1591,8 +1611,6 @@ void evalFunc_1_16(void *ps)
 	{
 		// only int16 dot products
 		uc2s = uc2s64_C_16;
-		/*		if (opt==1) uc2s=uc2s64_C_16;
-		else uc2s=uc2s64_SSE2_16;*/
 		computeNetwork0 = computeNetwork0new_C_16;
 		/*		if (opt==1) computeNetwork0=computeNetwork0new_C;
 		else computeNetwork0=computeNetwork0new_SSE2;*/
@@ -1803,7 +1821,7 @@ void weightedAvgElliottMul5_m16_C(const float *w,const int n,float *mstd)
 
 void evalFunc_2(void *ps)
 {
-	PS_INFO *pss = (PS_INFO*)ps;
+	PS_INFO *pss = (PS_INFO *)ps;
 	float *input = pss->input;
 	float *temp = pss->temp;
 	float **weights1 = pss->weights1;
@@ -1872,7 +1890,7 @@ void evalFunc_2(void *ps)
 
 		srcp += (ystart+6)*src_pitch;
 		dstp += ystart*dst_pitch-32;
-		const uint8_t *srcpp = srcp-(ydia-1)*src_pitch-xdiad2m1;
+		const uint8_t *srcpp = srcp-((ydia-1)*src_pitch+xdiad2m1);
 
 		for (int y=ystart; y<ystop; y+=2)
 		{
@@ -1966,7 +1984,7 @@ void extract_m8_C_16(const uint8_t *srcp,const int stride,const int xdia,const i
 
 void evalFunc_2_16(void *ps)
 {
-	PS_INFO *pss = (PS_INFO*)ps;
+	PS_INFO *pss = (PS_INFO *)ps;
 	float *input = pss->input;
 	float *temp = pss->temp;
 	float **weights1 = pss->weights1;
@@ -2038,7 +2056,7 @@ void evalFunc_2_16(void *ps)
 
 		srcp += (ystart + 6)*src_pitch;
 		dstp += ystart*dst_pitch-64;
-		const uint8_t *srcpp = srcp-(ydia-1)*src_pitch-(xdiad2m1 << 1);
+		const uint8_t *srcpp = srcp-((ydia-1)*src_pitch+(xdiad2m1 << 1));
 
 		for (int y = ystart; y<ystop; y += 2)
 		{
@@ -2096,7 +2114,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	
   const bool avsp=env->FunctionExists("ConvertBits");
   const bool RGB32=vi.IsRGB32();
-  const bool RGB48=vi.IsRGB32();
+  const bool RGB48=vi.IsRGB48();
   const bool RGB64=vi.IsRGB64();
  
   if (vi.ComponentSize()>2) env->ThrowError("nnedi3: Only 8,16 bits supported!");

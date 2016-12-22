@@ -42,7 +42,7 @@ const int nnsTablePow2[NUM_NNS] = {4,5,6,7,8};
 #define PLANE_MAX 4
 
 struct PS_INFO {
-	int field[PLANE_MAX], ident;
+	int field[PLANE_MAX],ident;
 	const uint8_t *srcp[PLANE_MAX];
 	uint8_t *dstp[PLANE_MAX];
 	int src_pitch[PLANE_MAX],dst_pitch[PLANE_MAX];
@@ -55,7 +55,8 @@ struct PS_INFO {
 	int asize,nns,xdia,ydia,fapprox;
 	bool Y,U,V,A;
 	int pscrn;
-	bool int16_prescreener, int16_predictor;
+	uint8_t current_plane;
+	bool int16_prescreener,int16_predictor;
 	uint16_t limit16bits;
 	IScriptEnvironment *env;
 };

@@ -433,7 +433,7 @@ bool PlanarFrame::copyInternalFrom(PVideoFrame &frame,VideoInfo &viInfo)
 	
 	if ((planar_1==NULL) || (!_grey && ((planar_2==NULL) || (planar_3==NULL))) || (_isAlphaChannel && (planar_4==NULL))) return(false);
 
-	if (!_grey && (viInfo.IsPlanar() || _isRGBPfamily))
+	if (!_grey && viInfo.IsPlanar())
 	{
 		if (!_isRGBPfamily)
 		{
@@ -503,7 +503,7 @@ bool PlanarFrame::copyInternalTo(PVideoFrame &frame,VideoInfo &viInfo)
 {
 	if ((planar_1==NULL) || (!grey && ((planar_2==NULL) || (planar_3==NULL))) || (isAlphaChannel && (planar_4==NULL))) return(false);
 
-	if (!grey && (viInfo.IsPlanar() || isRGBPfamily))
+	if (!grey && viInfo.IsPlanar())
 	{
 		if (!isRGBPfamily)
 		{

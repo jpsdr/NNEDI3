@@ -17,6 +17,12 @@ ub_1 byte 16 dup(1)
 uw_16 word 8 dup(16)
 w_254 sword 8 dup(254)
 
+d_19 sdword 4 dup(19)
+d_3 sdword 4 dup(3)
+d_254 sdword 4 dup(65534)
+ud_16 dword 8 dup(16)
+uw_1 word 8 dup(1)
+
 flt_epsilon_sse real4 4 dup(FLT_EPSILON)
 
 exp_hi real4 4 dup(80.0)
@@ -505,6 +511,73 @@ uc2f48_SSE2 proc ptr_t:dword,pitch:dword,ptr_p:dword
 uc2f48_SSE2 endp
 
 
+uc2f48_SSE2_16 proc ptr_t:dword,pitch:dword,ptr_p:dword
+
+    public uc2f48_SSE2
+
+		mov eax,ptr_t
+		mov ecx,pitch
+		mov edx,ptr_p
+		pxor xmm6,xmm6
+		
+		movq xmm0,qword ptr[eax]
+		movq xmm1,qword ptr[eax+8]
+		movq xmm2,qword ptr[eax+16]
+		movq xmm3,qword ptr[eax+ecx*2]
+		movq xmm4,qword ptr[eax+ecx*2+8]
+		movq xmm5,qword ptr[eax+ecx*2+16]
+		punpcklwd xmm0,xmm6
+		punpcklwd xmm1,xmm6
+		punpcklwd xmm2,xmm6
+		punpcklwd xmm3,xmm6
+		punpcklwd xmm4,xmm6
+		punpcklwd xmm5,xmm6
+		
+		lea eax,[eax+ecx*4]
+		cvtdq2ps xmm0,xmm0
+		cvtdq2ps xmm1,xmm1
+		cvtdq2ps xmm2,xmm2
+		cvtdq2ps xmm3,xmm3
+		cvtdq2ps xmm4,xmm4
+		cvtdq2ps xmm5,xmm5
+		movaps [edx],xmm0
+		movaps [edx+16],xmm1
+		movaps [edx+32],xmm2
+		movaps [edx+48],xmm3
+		movaps [edx+64],xmm4
+		movaps [edx+80],xmm5
+		
+		movq xmm0,qword ptr[eax]
+		movq xmm1,qword ptr[eax+8]
+		movq xmm2,qword ptr[eax+16]
+		movq xmm3,qword ptr[eax+ecx*2]
+		movq xmm4,qword ptr[eax+ecx*2+8]
+		movq xmm5,qword ptr[eax+ecx*2+16]
+		punpcklwd xmm0,xmm6
+		punpcklwd xmm1,xmm6
+		punpcklwd xmm2,xmm6
+		punpcklwd xmm3,xmm6
+		punpcklwd xmm4,xmm6
+		punpcklwd xmm5,xmm6
+		
+		cvtdq2ps xmm0,xmm0
+		cvtdq2ps xmm1,xmm1
+		cvtdq2ps xmm2,xmm2
+		cvtdq2ps xmm3,xmm3
+		cvtdq2ps xmm4,xmm4
+		cvtdq2ps xmm5,xmm5
+		movaps [edx+96],xmm0
+		movaps [edx+112],xmm1
+		movaps [edx+128],xmm4
+		movaps [edx+144],xmm2
+		movaps [edx+160],xmm3
+		movaps [edx+176],xmm5
+		
+		ret
+		
+uc2f48_SSE2_16 endp
+
+
 uc2s48_SSE2 proc ptr_t:dword,pitch:dword,ptr_pf:dword
 
     public uc2s48_SSE2
@@ -623,6 +696,100 @@ xloop:
 		ret
 		
 processLine0_SSE2_ASM endp
+
+
+processLine0_SSE2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,limit16bits:word
+
+    public processLine0_SSE2_ASM_16
+	
+		push ebx
+		push edi
+		push esi
+
+		movzx eax,limit16bits
+		pinsrw xmm0,eax,0
+		pinsrw xmm0,eax,1
+		pinsrw xmm0,eax,2
+		pinsrw xmm0,eax,3
+		pinsrw xmm0,eax,4
+		pinsrw xmm0,eax,5
+		pinsrw xmm0,eax,6
+		pinsrw xmm0,eax,7
+		movdqa oword ptr d_254,xmm0
+		
+		mov eax,tempu
+		mov ebx,src3p
+		mov ecx,width_
+		mov edx,src_pitch
+		mov esi,dstp
+		lea edi,[ebx+edx*4]
+		pxor xmm6,xmm6
+		pxor xmm7,xmm7		
+xloop_16:
+		movdqa xmm0,[ebx+edx*2]
+		movdqa xmm1,[edi]
+		movdqa xmm2,xmm0
+		movdqa xmm3,xmm1
+		punpcklwd xmm0,xmm7
+		punpckhwd xmm2,xmm7
+		punpcklwd xmm1,xmm7
+		punpckhwd xmm3,xmm7
+		paddd xmm0,xmm1
+		paddd xmm2,xmm3
+		pmulld xmm0,oword ptr d_19
+		pmulld xmm2,oword ptr d_19
+		movdqa xmm1,[ebx]
+		movdqa xmm3,[edi+edx*2]
+		movdqa xmm4,xmm1
+		movdqa xmm5,xmm3
+		punpcklwd xmm1,xmm7
+		punpckhwd xmm4,xmm7
+		punpcklwd xmm3,xmm7
+		punpckhwd xmm5,xmm7
+		paddd xmm1,xmm3
+		paddd xmm4,xmm5
+		pmulld xmm1,oword ptr d_3
+		pmulld xmm4,oword ptr d_3
+		movq xmm3,qword ptr [eax]
+		psubd xmm0,xmm1
+		punpcklbw xmm3,xmm7
+		psubd xmm2,xmm4
+		pcmpeqw xmm3,oword ptr uw_1
+		paddd xmm0,oword ptr ud_16
+		paddd xmm2,oword ptr ud_16
+		movdqa xmm1,xmm3
+		pcmpeqw xmm4,xmm4
+		psrld xmm0,5
+		psrld xmm2,5
+		pxor xmm1,xmm4
+		packusdw xmm0,xmm2
+		movdqa xmm5,xmm1
+		pminsw xmm0,oword ptr d_254
+		pand xmm5,oword ptr uw_1
+		pand xmm0,xmm3
+		psadbw xmm5,xmm7
+		por xmm0,xmm1
+		movdqa xmm2,xmm5
+		psrldq xmm5,8
+		movdqa [esi],xmm0
+		paddusw xmm5,xmm2
+		paddusw xmm6,xmm5
+		add ebx,16
+		add edi,16
+		add eax,16
+		add esi,16
+		sub ecx,8
+		jnz xloop_16
+		
+		pop esi
+		pop edi
+		pop ebx
+		
+		movd eax,xmm6
+		
+		ret
+		
+processLine0_SSE2_ASM_16 endp
 
 
 
@@ -1811,6 +1978,7 @@ uc2s64_SSE2 proc ptr_t:dword,pitch:dword,ptr_p:dword
 		ret
 		
 uc2s64_SSE2 endp
+
 
 
 computeNetwork0new_SSE2 proc datai:dword,weights:dword,ptr_d:dword
