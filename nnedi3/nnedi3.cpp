@@ -38,7 +38,10 @@ extern "C" void uc2s48_SSE2(const uint8_t *t,const int pitch,float *pf);
 extern "C" int processLine0_SSE2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch);
 extern "C" int processLine0_SSE2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t limit);
 extern "C" void extract_m8_SSE2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input);
+extern "C" void extract_m8_SSE2_16(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
+extern "C" void extract_m8_SSE2_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
 extern "C" void extract_m8_i16_SSE2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *inputf);
+extern "C" void extract_m8_i16_SSE2_16(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *inputf);
 extern "C" void dotProd_m32_m16_SSE2(const float *data,const float *weights,float *vals,const int n,const int len,const float *istd);
 extern "C" void dotProd_m48_m16_SSE2(const float *data,const float *weights,float *vals,const int n,const int len,const float *istd);
 extern "C" void dotProd_m32_m16_i16_SSE2(const float *dataf,const float *weightsf,float *vals,const int n,const int len,const float *istd);
@@ -48,6 +51,7 @@ extern "C" void e1_m16_SSE2(float *s,const int n);
 extern "C" void e2_m16_SSE2(float *s,const int n);
 extern "C" void weightedAvgElliottMul5_m16_SSE2(const float *w,const int n,float *mstd);
 extern "C" void castScale_SSE(const float *val,const float *scale,uint8_t *dstp);
+extern "C" void castScale_SSE_16(const float *val, const float *scale, uint16_t *dstp,uint32_t limit16);
 extern "C" void uc2s64_SSE2(const uint8_t *t,const int pitch,float *p);
 extern "C" void computeNetwork0new_SSE2(const float *datai,const float *weights,uint8_t *d);
 
@@ -120,8 +124,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	if ((pscrn>1) && (pixelsize>2)) pscrn = 1;
 
-	int16_predictor = (((fapprox & 2) != 0) && (bits_per_pixel <= 15));
-	int16_prescreener = (((fapprox & 1) != 0) && (pixelsize <= 2));
+	int16_predictor = ((fapprox & 2) != 0) && (bits_per_pixel <= 15);
+	int16_prescreener = ((fapprox & 1) != 0) && (pixelsize <= 2);
 	
 	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 
@@ -424,7 +428,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				j_a+=48;
 			}
 			memcpy(wf+4,bdata+4*48,(dims0-4*48)*sizeof(float));
-			if (opt>1) // shuffle weight order for asm
+
+			if ((opt>1) && (bits_per_pixel<=12))// shuffle weight order for asm
 			{
 				int16_t *rs = (int16_t*)malloc(dims0*sizeof(float));
 
@@ -465,6 +470,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				j_a+=48;
 			}
 			memcpy(weights0+4*48,bdata+4*48,(dims0-4*48)*sizeof(float));
+
 			if (opt>1) // shuffle weight order for asm
 			{
 				float *wf = weights0;
@@ -579,7 +585,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				j_d++;
 			}
 
-			if (opt>1) // shuffle weight order for asm
+			if ((opt>1) && (bits_per_pixel<=12)) // shuffle weight order for asm
 			{
 				int16_t *rs = (int16_t *)malloc(nnst2*asize*sizeof(int16_t));
 				if (rs==NULL)
@@ -690,7 +696,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		pssInfo[i].fapprox = fapprox;
 		pssInfo[i].int16_predictor = int16_predictor;
 		pssInfo[i].int16_prescreener = int16_prescreener;
-		pssInfo[i].limit16bits = (uint16_t)(((int)1 << bits_per_pixel) - 1);
+		pssInfo[i].bits_per_pixel = bits_per_pixel;
 		for (int b=0; b<PlaneMax; b++)
 		{
 			pssInfo[i].lcount[b] = lcount[b];
@@ -1130,18 +1136,19 @@ void elliott_C(float *data, const int n)
 
 void dotProd_C(const float *data, const float *weights, float *vals, const int n, const int len, const float *scale)
 {
-	int i_len = 0;
-	const int n_len = n*len;
+	const float *weights0 = weights;
+
+	weights+= n*len;
 
 	for (int i = 0; i<n; i++)
 	{
 		float sum = 0.0f;
 
 		for (int j = 0; j<len; j++)
-			sum += data[j]*weights[i_len+j];
+			sum += data[j]*weights0[j];
 
-		vals[i] = sum*(*scale)+weights[n_len+i];
-		i_len += len;
+		vals[i] = sum*(*scale)+weights[i];
+		weights0 += len;
 	}
 }
 
@@ -1150,17 +1157,16 @@ void dotProdS_C(const float *dataf, const float *weightsf, float *vals, const in
 	const int16_t *data = (int16_t *)dataf;
 	const int16_t *weights = (int16_t *)weightsf;
 	const float *wf = (float *)&weights[n*len];
-	int i_len = 0;
 
 	for (int i = 0; i<n; i++)
 	{
 		int sum = 0, off = ((i>>2)<< 3)+(i&3);
 
 		for (int j = 0; j<len; j++)
-			sum += data[j]*weights[i_len+j];
+			sum += data[j]*weights[j];
 
 		vals[i] = sum*wf[off]*(*scale)+wf[off+4];
-		i_len += len;
+		weights += len;
 	}
 }
 
@@ -1469,7 +1475,6 @@ void dotProdS_C_16(const float *dataf,const float *weightsf,float *vals,const in
 	const uint16_t *data = (uint16_t *)dataf;
 	const int16_t *weights = (int16_t *)weightsf;
 	const float *wf = (float *)&weights[n*len];
-	int i_len = 0;
 
 	for (int i = 0; i<n; i++)
 	{
@@ -1477,10 +1482,10 @@ void dotProdS_C_16(const float *dataf,const float *weightsf,float *vals,const in
 		const int off = ((i>>2)<<3)+(i&3);
 
 		for (int j = 0; j<len; j++)
-			sum += (int)data[j]*(int)weights[i_len+j];
+			sum += (int)data[j]*(int)weights[j];
 
 		vals[i] = sum*wf[off]*(*scale)+wf[off+4];
-		i_len += len;
+		weights += len;
 	}
 }
 
@@ -1584,6 +1589,8 @@ void evalFunc_1_16(void *ps)
 	const int pscrn = pss->pscrn;
 	const int fapprox = pss->fapprox;
 	const bool int16_prescreener = pss->int16_prescreener;
+	const uint8_t bits_per_pixel = pss->bits_per_pixel;
+	const uint16_t limit16bitsm1 = (uint16_t)(((int)1 << bits_per_pixel) - 2);
 	void(*uc2s)(const uint8_t*, const int, float*);
 	void(*computeNetwork0)(const float*, const float*, uint8_t*);
 	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int, const uint16_t);
@@ -1595,15 +1602,14 @@ void evalFunc_1_16(void *ps)
 		if (int16_prescreener) // int16 dot products
 		{
 			uc2s = uc2s48_C_16;
-			computeNetwork0 = computeNetwork0_i16_C_16;
-			/*			if (opt==1) computeNetwork0=computeNetwork0_i16_C;
-			else computeNetwork0=computeNetwork0_i16_SSE2;*/
+			if ((opt==1) || (bits_per_pixel>12)) computeNetwork0=computeNetwork0_i16_C;
+			else computeNetwork0=computeNetwork0_i16_SSE2;
 		}
 		else
 		{
 			if (opt==1) uc2s=uc2f48_C_16;
 			else uc2s=uc2f48_SSE2_16;
-			if (opt == 1) computeNetwork0 = computeNetwork0_C;
+			if (opt==1) computeNetwork0 = computeNetwork0_C;
 			else computeNetwork0 = computeNetwork0_SSE2;
 		}
 	}
@@ -1612,8 +1618,9 @@ void evalFunc_1_16(void *ps)
 		// only int16 dot products
 		uc2s = uc2s64_C_16;
 		computeNetwork0 = computeNetwork0new_C_16;
-		/*		if (opt==1) computeNetwork0=computeNetwork0new_C;
-		else computeNetwork0=computeNetwork0new_SSE2;*/
+		if ((opt==1) || (bits_per_pixel>12)) computeNetwork0=computeNetwork0new_C;
+		else computeNetwork0=computeNetwork0new_SSE2;
+		computeNetwork0 = computeNetwork0new_C_16;
 	}
 
 	for (int b=0; b<PLANE_MAX; b++)
@@ -1634,7 +1641,6 @@ void evalFunc_1_16(void *ps)
 		const int ystop = pss->eheight[b];
 		const int src_pitch2 = src_pitch << 1;
 		const int dst_pitch2 = dst_pitch << 1;
-		const uint16_t limit16bitsm1 = pss->limit16bits-1;
 
 		srcp += ystart*src_pitch;
 		dstp += (ystart-6)*dst_pitch-64;
@@ -1999,28 +2005,30 @@ void evalFunc_2_16(void *ps)
 	const int fapprox = pss->fapprox;
 	const bool int16_predictor = pss->int16_predictor;
 	const float scale = (float)(1.0/(double)qual);
+	const uint8_t bits_per_pixel = pss->bits_per_pixel;
+	const uint16_t limit16bits = (uint16_t)(((int)1 << bits_per_pixel)-1);
 	void(*extract)(const uint8_t*, const int, const int, const int, float*, float*);
 	void(*dotProd)(const float*, const float*, float*, const int, const int, const float*);
 	void(*expf)(float *, const int);
 	void(*wae5)(const float*, const int, float*);
 
-	if (opt == 1) wae5 = weightedAvgElliottMul5_m16_C;
+	if (opt==1) wae5 = weightedAvgElliottMul5_m16_C;
 	else wae5 = weightedAvgElliottMul5_m16_SSE2;
 	if (int16_predictor) // use int16 dot products
 	{
-		extract = extract_m8_i16_C_16;
-		/*		if (opt==1) extract=extract_m8_i16_C;
-		else extract=extract_m8_i16_SSE2;*/
-		dotProd = dotProdS_C_16;
-		/*		if (opt==1) dotProd=dotProdS_C;
-		else dotProd= (asize%48) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;*/
+		//extract = extract_m8_i16_C_16;
+		if ((opt == 1) || (bits_per_pixel>12)) extract=extract_m8_i16_C_16;
+		else extract=extract_m8_i16_SSE2_16;
+		//dotProd = dotProdS_C_16;
+		if ((opt==1) || (bits_per_pixel>12)) dotProd=dotProdS_C_16;
+		else dotProd= (asize%48) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
 	}
 	else // use float dot products
 	{
-		extract = extract_m8_C_16;
-		/*		if (opt==1) extract=extract_m8_C;
-		else extract=extract_m8_SSE2;*/
-		if (opt == 1) dotProd = dotProd_C;
+		//extract = extract_m8_C_16;
+		if (opt==1) extract=extract_m8_C_16;
+		else extract=extract_m8_SSE2_16;
+		if (opt==1) dotProd = dotProd_C;
 		else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
 	}
 	if ((fapprox & 12) == 0) // use slow exp
@@ -2052,7 +2060,6 @@ void evalFunc_2_16(void *ps)
 		const int src_pitch2 = src_pitch << 1;
 		const int dst_pitch2 = dst_pitch << 1;
 		const int width_32 = width - 32;
-		const uint16_t limit16bits = pss->limit16bits;
 
 		srcp += (ystart + 6)*src_pitch;
 		dstp += ystart*dst_pitch-64;
@@ -2076,7 +2083,8 @@ void evalFunc_2_16(void *ps)
 					expf(temp,nns);
 					wae5(temp,nns,mstd);
 				}
-				dst0[x]=min(max((int)(mstd[3]*scale+0.5f),0),limit16bits);
+				if (opt>1) castScale_SSE_16(mstd,&scale,dst0+x,limit16bits);
+				else dst0[x]=min(max((int)(mstd[3]*scale+0.5f),0),limit16bits);
 			}
 			srcpp += src_pitch2;
 			dstp += dst_pitch2;

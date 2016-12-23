@@ -57,7 +57,7 @@ struct PS_INFO {
 	int pscrn;
 	uint8_t current_plane;
 	bool int16_prescreener,int16_predictor;
-	uint16_t limit16bits;
+	uint8_t bits_per_pixel;
 	IScriptEnvironment *env;
 };
 
