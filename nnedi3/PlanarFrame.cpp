@@ -615,6 +615,8 @@ PlanarFrame& PlanarFrame::operator=(PlanarFrame &ob2)
 	grey=ob2.grey;
 	isAlphaChannel=ob2.isAlphaChannel;
 	isRGBPfamily=ob2.isRGBPfamily;
+	bits_per_pixel = ob2.bits_per_pixel;
+	pixelsize = ob2.pixelsize;
 	this->copyFrom(ob2);
 	return *this;
 }

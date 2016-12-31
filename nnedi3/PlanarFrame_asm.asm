@@ -147,13 +147,13 @@ xloop:
 		movd dword ptr[esi+eax],mm4     ;store v
 		add eax,4
 		cmp eax,ecx
-		jl xloop
+		jl short xloop
 		add edi,pitch1
 		add ebx,pitch2Y
 		add edx,pitch2UV
 		add esi,pitch2UV
 		dec height
-		jnz yloop
+		jnz short yloop
 		emms
 		
 		pop esi
@@ -200,13 +200,13 @@ xloop_2:
 		movd dword ptr[esi+eax],xmm2     ;store v
 		add eax,4
 		cmp eax,ecx
-		jl xloop_2
+		jl short xloop_2
 		add edi,pitch1
 		add ebx,pitch2Y
 		add edx,pitch2UV
 		add esi,pitch2UV
 		dec height
-		jnz yloop_2
+		jnz short yloop_2
 		
 		pop esi
 		pop edi
@@ -246,13 +246,13 @@ xloop_3:
 		movq [edi+eax*4+8],mm3 ;store
 		add eax,4
 		cmp eax,ecx
-		jl xloop_3
+		jl short xloop_3
 		add ebx,pitch1Y
 		add edx,pitch1UV
 		add esi,pitch1UV
 		add edi,pitch2
 		dec height
-		jnz yloop_3
+		jnz short yloop_3
 		emms
 
 		pop esi
@@ -290,13 +290,13 @@ xloop_4:
 		movdqa [edi+eax*4],xmm0 ;store
 		add eax,4
 		cmp eax,ecx
-		jl xloop_4
+		jl short xloop_4
 		add ebx,pitch1Y
 		add edx,pitch1UV
 		add esi,pitch1UV
 		add edi,pitch2
 		dec height
-		jnz yloop_4
+		jnz short yloop_4
 		
 		pop esi
 		pop edi

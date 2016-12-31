@@ -171,13 +171,13 @@ xloop:
 		movd dword ptr[rsi+rax],mm4     ;store v
 		add rax,r12
 		cmp rax,rcx
-		jl xloop
+		jl short xloop
 		add rdi,r9
 		add rbx,r10
 		add rdx,r11
 		add rsi,r11
 		dec r8
-		jnz yloop
+		jnz short yloop
 		emms
 		
 	pop r12
@@ -225,7 +225,7 @@ height equ dword ptr[rbp+80]
 		xor rcx,rcx
 		mov ecx,width_
 		shr ecx,1
-		movq mm5,qword ptr Ymask
+		movdqa xmm3,oword ptr Ymask
 		
 		xor r8,r8
 		mov r8d,height
@@ -254,13 +254,13 @@ xloop_2:
 		movd dword ptr[rsi+rax],xmm2     ;store v
 		add rax,r12
 		cmp rax,rcx
-		jl xloop_2
+		jl short xloop_2
 		add rdi,r9
 		add rbx,r10
 		add rdx,r11
 		add rsi,r11
 		dec r8
-		jnz yloop_2
+		jnz short yloop_2
 		
 	pop r12
 	pop rdi
@@ -329,13 +329,13 @@ xloop_3:
 		movq [rdi+rax*4+8],mm3 ;store
 		add rax,r12
 		cmp rax,rcx
-		jl xloop_3
+		jl short xloop_3
 		add rbx,r9
 		add rdx,r10
 		add rsi,r10
 		add rdi,r11
 		dec r8
-		jnz yloop_3
+		jnz short yloop_3
 		emms
 
 	pop r12
@@ -402,13 +402,13 @@ xloop_4:
 		movdqa [rdi+rax*4],xmm0 ;store
 		add rax,r12
 		cmp rax,rcx
-		jl xloop_4
+		jl short xloop_4
 		add rbx,r9
 		add rdx,r10
 		add rsi,r10
 		add rdi,r11
 		dec r8
-		jnz yloop_4
+		jnz short yloop_4
 		
 	pop r12
 	pop rdi

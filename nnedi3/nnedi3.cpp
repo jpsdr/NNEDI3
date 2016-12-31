@@ -37,11 +37,13 @@ extern "C" void uc2f48_SSE2_16(const uint8_t *t, const int pitch, float *p);
 extern "C" void uc2s48_SSE2(const uint8_t *t,const int pitch,float *pf);
 extern "C" int processLine0_SSE2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch);
 extern "C" int processLine0_SSE2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t limit);
+extern "C" int processLine0_SSE2_ASM_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch);
 extern "C" void extract_m8_SSE2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input);
 extern "C" void extract_m8_SSE2_16(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
 extern "C" void extract_m8_SSE2_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
 extern "C" void extract_m8_i16_SSE2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *inputf);
 extern "C" void extract_m8_i16_SSE2_16(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *inputf);
+extern "C" void extract_m8_i16_SSE2_16_2(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *inputf,int32_t *sum,int64_t *sumsq);
 extern "C" void dotProd_m32_m16_SSE2(const float *data,const float *weights,float *vals,const int n,const int len,const float *istd);
 extern "C" void dotProd_m48_m16_SSE2(const float *data,const float *weights,float *vals,const int n,const int len,const float *istd);
 extern "C" void dotProd_m32_m16_i16_SSE2(const float *dataf,const float *weightsf,float *vals,const int n,const int len,const float *istd);
@@ -103,16 +105,16 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	nsize(_nsize),nns(_nns),qual(_qual),etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox),
 	LogicalCores(_LogicalCores),MaxPhysCores(_MaxPhysCores),SetAffinity(_SetAffinity),Sleep(_Sleep),avsp(_avsp)
 {
-	if ((field<-2) || (field>3)) env->ThrowError("nnedi3:  field must be set to -2, -1, 0, 1, 2, or 3!");
-	if ((threads<0) || (threads>MAX_MT_THREADS)) env->ThrowError("nnedi3:  threads must be between 0 and %d inclusive!",MAX_MT_THREADS);
-	if (dh && ((field<-1) || (field>1))) env->ThrowError("nnedi3:  field must be set to -1, 0, or 1 when dh=true!");
-	if ((nsize<0) || (nsize>=NUM_NSIZE)) env->ThrowError("nnedi3:  nsize must be in [0,%d]!\n",NUM_NSIZE-1);
-	if ((nns<0) || (nns>=NUM_NNS)) env->ThrowError("nnedi3:  nns must be in [0,%d]!\n",NUM_NNS-1);
-	if ((qual<1) || (qual>2)) env->ThrowError("nnedi3:  qual must be set to 1 or 2!\n");
-	if ((opt<0) || (opt>2)) env->ThrowError("nnedi3:  opt must be set to 0, 1, or 2!");
-	if ((fapprox<0) || (fapprox>15)) env->ThrowError("nnedi3:  fapprox must be [0,15]!\n");
-	if ((pscrn<0) || (pscrn>4)) env->ThrowError("nnedi3:  pscrn must be [0,4]!\n");
-	if ((etype<0) || (etype>1)) env->ThrowError("nnedi3:  etype must be [0,1]!\n");
+	if ((field<-2) || (field>3)) env->ThrowError("nnedi3: field must be set to -2, -1, 0, 1, 2, or 3!");
+	if ((threads<0) || (threads>MAX_MT_THREADS)) env->ThrowError("nnedi3: threads must be between 0 and %d inclusive!",MAX_MT_THREADS);
+	if (dh && ((field<-1) || (field>1))) env->ThrowError("nnedi3: field must be set to -1, 0, or 1 when dh=true!");
+	if ((nsize<0) || (nsize>=NUM_NSIZE)) env->ThrowError("nnedi3: nsize must be in [0,%d]!\n",NUM_NSIZE-1);
+	if ((nns<0) || (nns>=NUM_NNS)) env->ThrowError("nnedi3: nns must be in [0,%d]!\n",NUM_NNS-1);
+	if ((qual<1) || (qual>2)) env->ThrowError("nnedi3: qual must be set to 1 or 2!\n");
+	if ((opt<0) || (opt>2)) env->ThrowError("nnedi3: opt must be set to 0, 1, or 2!");
+	if ((fapprox<0) || (fapprox>15)) env->ThrowError("nnedi3: fapprox must be [0,15]!\n");
+	if ((pscrn<0) || (pscrn>4)) env->ThrowError("nnedi3: pscrn must be [0,4]!\n");
+	if ((etype<0) || (etype>1)) env->ThrowError("nnedi3: etype must be [0,1]!\n");
 	
 	grey = vi.IsY();
 	isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
@@ -124,8 +126,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	if ((pscrn>1) && (pixelsize>2)) pscrn = 1;
 
-	int16_predictor = ((fapprox & 2) != 0) && (bits_per_pixel <= 15);
-	int16_prescreener = ((fapprox & 1) != 0) && (pixelsize <= 2);
+	int16_predictor = ((fapprox & 2)!=0) && (bits_per_pixel<=15);
+	int16_prescreener = ((fapprox & 1)!=0) && (pixelsize<=2);
 	
 	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 
@@ -253,14 +255,24 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	if (opt==0)
 	{
-		const int cpuf = srcPF->cpu;
+		const int CPUF=env->GetCPUFlags();
 
-		if ((cpuf&CPU_SSE2)!=0) opt=2;
-		else opt=1;
+		if ((CPUF&CPUF_FMA3)!=0) opt=4;
+		else
+		{
+			if ((CPUF&CPUF_SSE4_1)!=0) opt=3;
+			else
+			{
+				if ((CPUF&CPUF_SSE2)!=0) opt=2;
+				else opt=1;
+			}
+		}
+
 		char buf[512];
-		sprintf_s(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,cpuf);
+		sprintf_s(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,CPUF);
 		OutputDebugString(buf);
 	}
+
 	const int dims0 = 49*4+5*4+9*4;
 	const int dims0new = 4*65+4*5;
 	const int dims1 = (xdiaTable[nsize]*ydiaTable[nsize]+1) << (nnsTablePow2[nns]+1);
@@ -276,7 +288,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			dims1tsize+=(xdiaTable[i]*ydiaTable[i]+1) << j_a;
 		}
 	}
-	weights0 = (float *)_aligned_malloc(max(dims0,dims0new)*sizeof(float),16);
+	weights0 = (float *)_aligned_malloc(max(dims0,dims0new)*sizeof(float),64);
 	if (weights0==NULL)
 	{
 		FreeData();
@@ -284,7 +296,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	}
 	for (uint8_t i=0; i<2; i++)
 	{
-		weights1[i] = (float *)_aligned_malloc(dims1*sizeof(float),16);
+		weights1[i] = (float *)_aligned_malloc(dims1*sizeof(float),64);
 		if (weights1[i]==NULL)
 		{
 			FreeData();
@@ -293,7 +305,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	}
 	for (uint8_t i=0; i<PlaneMax; i++)
 	{
-		lcount[i] = (int *)_aligned_malloc(dstPF->GetHeight(i)*sizeof(int),16);
+		lcount[i] = (int *)_aligned_malloc(dstPF->GetHeight(i)*sizeof(int),64);
 		if (lcount[i]==NULL)
 		{
 			FreeData();
@@ -325,20 +337,21 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if (pscrn>=2) // using new prescreener
 	{
 		int *offt = (int *)calloc(4*64,sizeof(int));
+
 		if (offt==NULL)
 		{
 			FreeData();
 			env->ThrowError("nnedi3: Error while allocating offt!");
 		}
-		int j_a;
+		int j_a=0;
 
-		j_a=0;
 		for (int j=0; j<4; j++)
 		{
 			int j_3=(j&3) << 3;
 
 			for (int k=0; k<64; k++)
 				offt[j_a+k] = ((k>>3)<<5)+j_3+(k&7);
+
 			j_a+=64;
 		}
 
@@ -360,8 +373,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		}
 
 		// 16 bit pixels will be shifted by 1 for the prescreener.
-		const int prescreener_bits = min(bits_per_pixel, 15);
-		const double half = (((int)1 << prescreener_bits) - 1) / 2.0;
+		const int prescreener_bits = min(bits_per_pixel,15);
+		const double half = (((int)1 << prescreener_bits)-1)/2.0;
 
 		// Factor mean removal and 1.0/half scaling
 		// into first layer weights. scale to int16 range
@@ -381,16 +394,15 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			wf[j] = (float)(mval/32767.0);
 			j_a+=64;
 		}
-		memcpy(wf+4,bdw+4*64,(dims0new-4*64)*sizeof(float));
+		A_memcpy(wf+4,bdw+4*64,(dims0new-4*64)*sizeof(float));
 		free(offt);
 	}
 	else // using old prescreener
 	{
 		double mean[4] = {0.0,0.0,0.0,0.0};
-		int j_a;
+		int j_a=0;
 
 		// Calculate mean weight of each first layer neuron
-		j_a=0;
 		for (int j=0; j<4; j++)
 		{
 			double cmean = 0.0;
@@ -406,8 +418,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			float *wf = (float *)&ws[4*48];
 
 			// 16 bit pixels will be shifted by 1 for the prescreener.
-			const int prescreener_bits = min(bits_per_pixel, 15);
-			const double half = (((int)1 << prescreener_bits) - 1) / 2.0;
+			const int prescreener_bits = min(bits_per_pixel,15);
+			const double half = (((int)1 << prescreener_bits)-1)/2.0;
 
 			// Factor mean removal and 1.0/half scaling
 			// into first layer weights. scale to int16 range
@@ -427,9 +439,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				wf[j] = (float)(mval/32767.0);
 				j_a+=48;
 			}
-			memcpy(wf+4,bdata+4*48,(dims0-4*48)*sizeof(float));
+			A_memcpy(wf+4,bdata+4*48,(dims0-4*48)*sizeof(float));
 
-			if ((opt>1) && (bits_per_pixel<=12))// shuffle weight order for asm
+			if ((opt>1) && (bits_per_pixel<=14))// shuffle weight order for asm
 			{
 				int16_t *rs = (int16_t*)malloc(dims0*sizeof(float));
 
@@ -440,7 +452,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				}
 				int j_b=0;
 
-				memcpy(rs,weights0,dims0*sizeof(float));
+				A_memcpy(rs,weights0,dims0*sizeof(float));
 				j_a=0;
 				for (int j=0; j<4; j++)
 				{
@@ -455,9 +467,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		}
 		else // use float dot products in first layer
 		{
-			double half = ((int)1 << bits_per_pixel) - 1;
+			double half = ((int)1 << bits_per_pixel)-1;
 
-			if (pixelsize == 4) half = 1.0;
+			if (pixelsize==4) half = 1.0;
 			half /= 2.0;
 
 			// Factor mean removal and 1.0/half scaling
@@ -469,7 +481,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 					weights0[j_a+k] = (float)((bdata[j_a+k]-mean[j])/half);
 				j_a+=48;
 			}
-			memcpy(weights0+4*48,bdata+4*48,(dims0-4*48)*sizeof(float));
+			A_memcpy(weights0+4*48,bdata+4*48,(dims0-4*48)*sizeof(float));
 
 			if (opt>1) // shuffle weight order for asm
 			{
@@ -482,7 +494,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				}
 				int j_b=0;
 
-				memcpy(rf,weights0,dims0*sizeof(float));
+				A_memcpy(rf,weights0,dims0*sizeof(float));
 				for (int j=0; j<4; j++)
 				{
 					for (int k=0; k<48; k++)
@@ -511,10 +523,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			env->ThrowError("nnedi3: Error while allocating mean!");
 		}
 
-		int j_a,j_d;
+		int j_a=0,j_d;
 
 		// Calculate mean weight of each neuron (ignore bias)
-		j_a=0;
 		for (int j=0; j<nnst2; j++)
 		{
 			double cmean = 0.0;
@@ -585,7 +596,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				j_d++;
 			}
 
-			if ((opt>1) && (bits_per_pixel<=12)) // shuffle weight order for asm
+			if ((opt>1) && (bits_per_pixel<=14)) // shuffle weight order for asm
 			{
 				int16_t *rs = (int16_t *)malloc(nnst2*asize*sizeof(int16_t));
 				if (rs==NULL)
@@ -595,7 +606,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 					env->ThrowError("nnedi3: Error while allocating rs!");
 				}
 
-				memcpy(rs,ws,nnst2*asize*sizeof(int16_t));
+				A_memcpy(rs,ws,nnst2*asize*sizeof(int16_t));
 				j_a=0;
 				for (int j=0; j<nnst2; j++)
 				{
@@ -671,8 +682,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	for (uint8_t i=0; i<threads_number; i++)
 	{
-		pssInfo[i].input = (float *)_aligned_malloc(512*sizeof(float),16);
-		pssInfo[i].temp = (float *)_aligned_malloc(temp_size, 16);
+		pssInfo[i].input = (float *)_aligned_malloc(512*sizeof(float),64);
+		pssInfo[i].temp = (float *)_aligned_malloc(temp_size,64);
 		if ((pssInfo[i].input==NULL) || (pssInfo[i].temp==NULL))
 		{
 			FreeData();
@@ -763,6 +774,8 @@ void evalFunc_1(void *ps);
 void evalFunc_2(void *ps);
 void evalFunc_1_16(void *ps);
 void evalFunc_2_16(void *ps);
+void evalFunc_1_32(void *ps);
+void evalFunc_2_32(void *ps);
 
 
 PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
@@ -820,7 +833,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 			const int srow = pssInfo[i].sheight[b];
 
 			pssInfo[i].field[b] = (srow&1) ? 1-field_n : field_n;
-			if (vi.IsPlanar() || isRGBPfamily)
+			if (vi.IsPlanar())
 			{
 				pssInfo[i].dstp[b] = dst->GetWritePtr(plane[b]);
 				pssInfo[i].dst_pitch[b] = dst->GetPitch(plane[b]);
@@ -844,11 +857,12 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		{
 			case 1 : evalFunc_1(pssInfo); break;
 			case 3 : evalFunc_1_16(pssInfo); break;
+			case 5 : evalFunc_1_32(pssInfo); break;
 			default : ;
 		}
 	}
 	
-	calcStartEnd2((vi.IsPlanar() || isRGBPfamily) ? dst:NULL);
+	calcStartEnd2(vi.IsPlanar() ? dst:NULL);
 	
 	if (threads_number>1)
 	{
@@ -864,12 +878,13 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		{
 			case 2 : evalFunc_2(pssInfo); break;
 			case 4 : evalFunc_2_16(pssInfo); break;
+			case 6 : evalFunc_2_32(pssInfo); break;
 			default :;
 		}
 	}
 
 	
-	if (!(vi.IsPlanar() || isRGBPfamily)) dstPF->copyTo(dst, vi);
+	if (!vi.IsPlanar()) dstPF->copyTo(dst, vi);
 
 	ReleaseMutex(ghMutex);
 
@@ -981,64 +996,56 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 		const int height = srcPF->GetHeight(b);
 		const int height_6 = height-6;
 		const int width = srcPF->GetWidth(b);
+		const int width_ = width*(int)pixelsize;
 
 		dstp += (6+off)*dst_pitch;
-		if (pixelsize == 1)
+		if (pixelsize==1)
 		{
-			for (int y = 6 + off; y<height_6; y += 2)
+			for (int y=6+off; y<height_6; y+=2)
 			{
-				for (int x = 0; x<32; x++)
-					dstp[x] = dstp[64 - x];
+				for (int x=0; x<32; x++)
+					dstp[x] = dstp[64-x];
 
-				int x_c = width - 34;
+				int x_c = width-34;
 
-				for (int x = width - 32; x<width; x++)
-				{
-					dstp[x] = dstp[x_c];
-					x_c--;
-				}
+				for (int x=width-32; x<width; x++)
+					dstp[x] = dstp[x_c--];
 
 				dstp += dst_pitch2;
 			}
 		}
 		else
 		{
-			if (pixelsize == 2)
+			if (pixelsize==2)
 			{
-				for (int y = 6 + off; y<height_6; y += 2)
+				for (int y=6+off; y<height_6; y+=2)
 				{
 					uint16_t *dst0 = (uint16_t *)dstp;
 
-					for (int x = 0; x<32; x++)
-						dst0[x] = dst0[64 - x];
+					for (int x=0; x<32; x++)
+						dst0[x] = dst0[64-x];
 
-					int x_c = width - 34;
+					int x_c = width-34;
 
-					for (int x = width - 32; x<width; x++)
-					{
-						dst0[x] = dst0[x_c];
-						x_c--;
-					}
+					for (int x=width-32; x<width; x++)
+						dst0[x] = dst0[x_c--];
 
 					dstp += dst_pitch2;
 				}
 			}
 			else
 			{
-				for (int y = 6 + off; y<height_6; y += 2)
+				for (int y=6+off; y<height_6; y+=2)
 				{
 					float *dst0 = (float *)dstp;
 
-					for (int x = 0; x<32; x++)
-						dst0[x] = dst0[64 - x];
+					for (int x=0; x<32; x++)
+						dst0[x] = dst0[64-x];
 
-					int x_c = width - 34;
+					int x_c = width-34;
 
-					for (int x = width - 32; x<width; x++)
-					{
-						dst0[x] = dst0[x_c];
-						x_c--;
-					}
+					for (int x=width-32; x<width; x++)
+						dst0[x] = dst0[x_c--];
 
 					dstp += dst_pitch2;
 				}
@@ -1051,7 +1058,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 
 		for (int y=off; y<6; y+=2)
 		{
-			env->BitBlt(dstp+off1,dst_pitch,dstp+off2,dst_pitch,width*(int)pixelsize,1);
+			A_memcpy(dstp+off1,dstp+off2,width_);
 			off1+=dst_pitch2;
 			off2-=dst_pitch2;
 		}
@@ -1060,7 +1067,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 		off2=(height-10+off)*dst_pitch;
 		for (int y=height-6+off; y<height; y+=2)
 		{
-			env->BitBlt(dstp+off1,dst_pitch,dstp+off2,dst_pitch,width*(int)pixelsize,1);
+			A_memcpy(dstp+off1,dstp+off2,width_);
 			off1+=dst_pitch2;
 			off2-=dst_pitch2;
 		}
@@ -1072,79 +1079,79 @@ void nnedi3::calcStartEnd2(PVideoFrame dst)
 {
 	const int PlaneMax = (grey) ? 1 : (isAlphaChannel) ? 4 : 3;
 
-	for (int b = 0; b<PlaneMax; b++)
+	for (int b=0; b<PlaneMax; b++)
 	{
-		if (((b == 0) && !Y) || ((b == 1) && !U) || ((b == 2) && !V) || ((b == 3) && !A)) continue;
+		if (((b==0) && !Y) || ((b==1) && !U) || ((b==2) && !V) || ((b==3) && !A)) continue;
 
-		const int height = dstPF->GetHeight(b);
-		int total = 0, fl = -1, ll = 0;
+		const int height=dstPF->GetHeight(b);
+		int total=0,fl=-1,ll=0;
 
-		for (int j = 0; j<height; j++)
+		for (int j=0; j<height; j++)
 		{
-			total += lcount[b][j];
-			if ((fl<0) && (lcount[b][j]>0)) fl = j;
+			total+=lcount[b][j];
+			if ((fl<0) && (lcount[b][j]>0)) fl=j;
 		}
-		if (total == 0) fl = height;
+		if (total==0) fl=height;
 		else
 		{
-			for (int j = height - 1; j >= 0; j--)
+			for (int j=height-1; j>=0; j--)
 			{
-				if (lcount[b][j] != 0) break;
+				if (lcount[b][j]!=0) break;
 				ll++;
 			}
 		}
-		int tslice = int(total / double(threads_number) + 0.95);
-		int count = 0, countt = 0, y = fl, yl = fl, th = 0;
+		int tslice=int((double)total/double(threads_number)+0.95);
+		int count=0,countt=0,y=fl,yl=fl,th=0;
 
-		const int height_ll = height - ll;
+		const int height_ll=height-ll;
 
 		while (y<height_ll)
 		{
-			count += lcount[b][y++];
-			if (count >= tslice)
+			count+=lcount[b][y++];
+			if (count>=tslice)
 			{
-				pssInfo[th].sheight2[b] = yl;
-				countt += count;
-				if (countt == total) y = height_ll;
-				pssInfo[th].eheight2[b] = y;
-				while ((y<height_ll) && (lcount[b][y] == 0))
+				pssInfo[th].sheight2[b]=yl;
+				countt+=count;
+				if (countt==total) y=height_ll;
+				pssInfo[th].eheight2[b]=y;
+				while ((y<height_ll) && (lcount[b][y]==0))
 					y++;
-				yl = y;
-				count = 0;
+				yl=y;
+				count=0;
 				th++;
 			}
 		}
-		if (yl != y)
+		if (yl!=y)
 		{
-			pssInfo[th].sheight2[b] = yl;
-			countt += count;
-			if (countt == total) y = height_ll;
-			pssInfo[th].eheight2[b] = y;
+			pssInfo[th].sheight2[b]=yl;
+			countt+=count;
+			if (countt==total) y=height_ll;
+			pssInfo[th].eheight2[b]=y;
 			th++;
 		}
 		for (; th<(int)threads_number; th++)
-			pssInfo[th].sheight2[b] = pssInfo[th].eheight2[b] = height;
+			pssInfo[th].sheight2[b]=pssInfo[th].eheight2[b]=height;
 	}
 }
 
 
 void elliott_C(float *data, const int n)
 {
-	for (int i = 0; i<n; i++)
-		data[i] /= 1.0f+fabsf(data[i]);
+	for (int i=0; i<n; i++)
+		data[i]/=1.0f+fabsf(data[i]);
 }
 
 void dotProd_C(const float *data, const float *weights, float *vals, const int n, const int len, const float *scale)
 {
 	const float *weights0 = weights;
 
-	weights+= n*len;
+	weights+=n*len;
 
-	for (int i = 0; i<n; i++)
+	for (int i=0; i<n; i++)
 	{
 		float sum = 0.0f;
 
-		for (int j = 0; j<len; j++)
+		for (int j=0; j<len; j++)
 			sum += data[j]*weights0[j];
 
 		vals[i] = sum*(*scale)+weights[i];
@@ -1152,23 +1159,25 @@ void dotProd_C(const float *data, const float *weights, float *vals, const int n
 	}
 }
 
+
 void dotProdS_C(const float *dataf, const float *weightsf, float *vals, const int n, const int len, const float *scale)
 {
 	const int16_t *data = (int16_t *)dataf;
 	const int16_t *weights = (int16_t *)weightsf;
 	const float *wf = (float *)&weights[n*len];
 
-	for (int i = 0; i<n; i++)
+	for (int i=0; i<n; i++)
 	{
 		int sum = 0, off = ((i>>2)<< 3)+(i&3);
 
-		for (int j = 0; j<len; j++)
+		for (int j=0; j<len; j++)
 			sum += data[j]*weights[j];
 
 		vals[i] = sum*wf[off]*(*scale)+wf[off+4];
 		weights += len;
 	}
 }
+
 
 void computeNetwork0_C(const float *input, const float *weights, uint8_t *d)
 {
@@ -1239,6 +1248,7 @@ void uc2s48_C(const uint8_t *t, const int pitch, float *pf)
 	}
 }
 
+
 int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch)
 {
 	int count = 0;
@@ -1246,7 +1256,7 @@ int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t
 	const uint8_t *src4 = src3p+(src_pitch << 2);
 	const uint8_t *src6 = src3p+(src_pitch*6);
 
-	for (int x = 0; x<width; x++)
+	for (int x=0; x<width; x++)
 	{
 		if (tempu[x])
 			dstp[x] = CB2((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5);
@@ -1270,14 +1280,14 @@ int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 	const uint8_t *src4 = src3p+(src_pitch << 2);
 	const uint8_t *src6 = src3p+(src_pitch*6);
 
-	width -= remain;
-	if (width != 0) count = processLine0_SSE2_ASM(tempu,width,dstp,src3p,src_pitch);
-	else count = 0;
+	width-=remain;
+	if (width!=0) count=processLine0_SSE2_ASM(tempu,width,dstp,src3p,src_pitch);
+	else count=0;
 
-	for (int x = width; x<width_m; x++)
+	for (int x=width; x<width_m; x++)
 	{
 		if (tempu[x])
-			dstp[x] = CB2((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5);
+			dstp[x]=CB2((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5);
 		else
 		{
 			dstp[x]=255;
@@ -1307,7 +1317,6 @@ void evalFunc_1(void *ps)
 	else processLine0=processLine0_SSE2;
 	if (pscrn<2) // original prescreener
 	{
-		//if (fapprox&1) // int16 dot products
 		if (int16_prescreener) // int16 dot products
 		{
 			if (opt==1) uc2s=uc2s48_C;
@@ -1356,13 +1365,15 @@ void evalFunc_1(void *ps)
 		const uint8_t *src3p = srcp-src_pitch*3;
 		int *lcount = pss->lcount[b]-6;
 
-		if (pss->pscrn==1) // original
+		if (pscrn==1) // original
 		{
 			for (int y=ystart; y<ystop; y+=2)
 			{
+				const uint8_t *src0 =src3p-5;
+
 				for (int x=32; x<width_32; x++)
 				{
-					uc2s(src3p+x-5,src_pitch,input);
+					uc2s(src0+x,src_pitch,input);
 					computeNetwork0(input,weights0,tempu+x);
 				}
 				lcount[y]+=processLine0(tempu+32,width_64,dstp+32,src3p+32,src_pitch);
@@ -1372,13 +1383,15 @@ void evalFunc_1(void *ps)
 		}
 		else
 		{
-			if (pss->pscrn>=2) // new
+			if (pscrn>=2) // new
 			{
 				for (int y=ystart; y<ystop; y+=2)
 				{
+					const uint8_t *src0=src3p-6;
+
 					for (int x=32; x<width_32; x+=4)
 					{
-						uc2s(src3p+x-6,src_pitch,input);
+						uc2s(src0+x,src_pitch,input);
 						computeNetwork0(input,weights0,tempu+x);
 					}
 					lcount[y]+=processLine0(tempu+32,width_64,dstp+32,src3p+32,src_pitch);
@@ -1409,7 +1422,7 @@ int processLine0_C_16(const uint8_t *tempu,int width, uint8_t *dstp,const uint8_
 	const uint16_t *src6 = (uint16_t *)(src3p+(src_pitch*6));
 	uint16_t *dst0 = (uint16_t *)dstp;
 
-	for (int x = 0; x<width; x++)
+	for (int x=0; x<width; x++)
 	{
 		if (tempu[x])
 			dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,limit),0);
@@ -1428,7 +1441,7 @@ void uc2s48_C_16(const uint8_t *t, const int pitch, float *pf)
 	const int pitch2 = pitch << 1;
 	uint16_t *p = (uint16_t *)pf;
 
-	for (int y = 0; y<4; y++)
+	for (int y=0; y<4; y++)
 	{
 		A_memcpy(p,t,24);
 
@@ -1442,11 +1455,11 @@ void uc2f48_C_16(const uint8_t *t, const int pitch, float *p)
 {
 	const int pitch2 = pitch << 1;
 
-	for (int y = 0; y<4; y++)
+	for (int y=0; y<4; y++)
 	{
 		uint16_t *t0 = (uint16_t *)t;
 
-		for (int x = 0; x<12; x++)
+		for (int x=0; x<12; x++)
 			p[x] = t0[x];
 
 		p += 12;
@@ -1460,7 +1473,7 @@ void uc2s64_C_16(const uint8_t *t, const int pitch, float *p)
 	uint16_t *ps = (uint16_t *)p;
 	const int pitch2 = pitch << 1;
 
-	for (int y = 0; y<4; y++)
+	for (int y=0; y<4; y++)
 	{
 		A_memcpy(ps,t,32);
 
@@ -1476,18 +1489,19 @@ void dotProdS_C_16(const float *dataf,const float *weightsf,float *vals,const in
 	const int16_t *weights = (int16_t *)weightsf;
 	const float *wf = (float *)&weights[n*len];
 
-	for (int i = 0; i<n; i++)
+	for (int i=0; i<n; i++)
 	{
 		__int64 sum = 0;
 		const int off = ((i>>2)<<3)+(i&3);
 
-		for (int j = 0; j<len; j++)
+		for (int j=0; j<len; j++)
 			sum += (int)data[j]*(int)weights[j];
 
 		vals[i] = sum*wf[off]*(*scale)+wf[off+4];
 		weights += len;
 	}
 }
+
 
 void computeNetwork0_i16_C_16(const float *inputf, const float *weightsf, uint8_t *d)
 {
@@ -1516,32 +1530,32 @@ void computeNetwork0new_C_16(const float *datai, const float *weights, uint8_t *
 	float *wf = (float *)&ws[4*64];
 	float vals[8];
 
-	for (int i = 0; i<4; i++)
+	for (int i=0; i<4; i++)
 	{
 		__int64 sum = 0;
 		const int i_3 = i << 3;
 
-		for (int j = 0; j<64; j++)
+		for (int j=0; j<64; j++)
 			sum += (int)data[j]*(int)ws[i_3+((j>>3)<<5)+(j&7)];
 
 		const float t=sum*wf[i]+wf[4+i];
 		vals[i] = t/(1.0f+fabsf(t));
 	}
 
-	for (int i = 0; i<4; i++)
+	for (int i=0; i<4; i++)
 	{
 		float sum = 0.0f;
 		const int i_8 = i + 8;
 
-		for (int j = 0; j<4; j++)
+		for (int j=0; j<4; j++)
 			sum += vals[j]*wf[i_8+(j<<2)];
 
 		vals[4+i] = sum+wf[8+16+i];
 	}
 
-	int mask = 0;
+	int mask=0;
 
-	for (int i = 0; i<4; i++)
+	for (int i=0; i<4; i++)
 	{
 		if (vals[4+i]>0.0f)
 			mask |= (0x1 << (i<<3));
@@ -1561,17 +1575,17 @@ int processLine0_SSE2_16(const uint8_t *tempu, int width, uint8_t *dstp, const u
 	const uint16_t *src6 = (uint16_t *)(src3p + (src_pitch * 6));
 	uint16_t *dst0 = (uint16_t *)dstp;
 
-	width -= remain;
-	if (width != 0) count = processLine0_SSE2_ASM_16(tempu,width,dstp,src3p,src_pitch,limit);
-	else count = 0;
+	width-=remain;
+	if (width!=0) count=processLine0_SSE2_ASM_16(tempu,width,dstp,src3p,src_pitch,limit);
+	else count=0;
 
-	for (int x = width; x<width_m; x++)
+	for (int x=width; x<width_m; x++)
 	{
 		if (tempu[x])
-			dst0[x] = max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,limit),0);
+			dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,limit),0);
 		else
 		{
-			dst0[x] = 0xFFFF;
+			dst0[x]=0xFFFF;
 			count++;
 		}
 	}
@@ -1595,14 +1609,15 @@ void evalFunc_1_16(void *ps)
 	void(*computeNetwork0)(const float*, const float*, uint8_t*);
 	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int, const uint16_t);
 
-	if (opt==1) processLine0=processLine0_C_16;
-	else processLine0=processLine0_SSE2_16;
+	if (opt>=3) processLine0 = processLine0_SSE2_16;
+	else processLine0 = processLine0_C_16;
+
 	if (pscrn<2) // original prescreener
 	{
 		if (int16_prescreener) // int16 dot products
 		{
-			uc2s = uc2s48_C_16;
-			if ((opt==1) || (bits_per_pixel>12)) computeNetwork0=computeNetwork0_i16_C;
+			uc2s=uc2s48_C_16;
+			if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0_i16_C;
 			else computeNetwork0=computeNetwork0_i16_SSE2;
 		}
 		else
@@ -1617,10 +1632,8 @@ void evalFunc_1_16(void *ps)
 	{
 		// only int16 dot products
 		uc2s = uc2s64_C_16;
-		computeNetwork0 = computeNetwork0new_C_16;
-		if ((opt==1) || (bits_per_pixel>12)) computeNetwork0=computeNetwork0new_C;
+		if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0new_C_16;
 		else computeNetwork0=computeNetwork0new_SSE2;
-		computeNetwork0 = computeNetwork0new_C_16;
 	}
 
 	for (int b=0; b<PLANE_MAX; b++)
@@ -1632,11 +1645,12 @@ void evalFunc_1_16(void *ps)
 		const int width = pss->width[b];
 		const int width_32 = width - 32;
 		const int width_64 = width - 64;
+		const int width_64_2 = width_64 << 1;
 		uint8_t *dstp = pss->dstp[b];
 		const int dst_pitch = pss->dst_pitch[b];
 		pss->env->BitBlt(dstp+(pss->sheight[b]-5-pss->field[b])*dst_pitch,
 			dst_pitch << 1,srcp+((pss->sheight[b]+1-pss->field[b])*src_pitch+64),
-			src_pitch << 1,width_64 << 1,(pss->eheight[b]-pss->sheight[b]+pss->field[b]) >> 1);
+			src_pitch << 1,width_64_2,(pss->eheight[b]-pss->sheight[b]+pss->field[b]) >> 1);
 		const int ystart = pss->sheight[b]+pss->field[b];
 		const int ystop = pss->eheight[b];
 		const int src_pitch2 = src_pitch << 1;
@@ -1648,16 +1662,18 @@ void evalFunc_1_16(void *ps)
 		const uint8_t *src3p = srcp-src_pitch*3;
 		int *lcount = pss->lcount[b]-6;
 
-		if (pss->pscrn == 1) // original
+		if (pscrn==1) // original
 		{
-			for (int y = ystart; y<ystop; y += 2)
+			for (int y=ystart; y<ystop; y+=2)
 			{
-				for (int x = 32; x<width_32; x++)
+				const uint8_t *src0=src3p-10;
+
+				for (int x=32; x<width_32; x++)
 				{
-					uc2s(src3p+((x-5)<<1),src_pitch,input);
+					uc2s(src0+(x<<1),src_pitch,input);
 					computeNetwork0(input,weights0,tempu+x);
 				}
-				lcount[y] += processLine0(tempu+32,width_64,dstp+64,src3p+64,src_pitch,limit16bitsm1);
+				lcount[y]+=processLine0(tempu+32,width_64,dstp+64,src3p+64,src_pitch,limit16bitsm1);
 
 				src3p += src_pitch2;
 				dstp += dst_pitch2;
@@ -1665,13 +1681,15 @@ void evalFunc_1_16(void *ps)
 		}
 		else
 		{
-			if (pscrn >= 2) // new
+			if (pscrn>=2) // new
 			{
-				for (int y = ystart; y<ystop; y += 2)
+				for (int y=ystart; y<ystop; y+=2)
 				{
-					for (int x = 32; x<width_32; x += 4)
+					const uint8_t *src0=src3p-12;
+
+					for (int x=32; x<width_32; x+=4)
 					{
-						uc2s(src3p+((x-6)<<1),src_pitch,input);
+						uc2s(src0+(x<<1),src_pitch,input);
 						computeNetwork0(input,weights0,tempu+x);
 					}
 					lcount[y] += processLine0(tempu+32,width_64,dstp+64,src3p+64,src_pitch,limit16bitsm1);
@@ -1681,9 +1699,9 @@ void evalFunc_1_16(void *ps)
 			}
 			else // no prescreening
 			{
-				for (int y = ystart; y<ystop; y += 2)
+				for (int y=ystart; y<ystop; y+=2)
 				{
-					A_memset(dstp+64,255,width_64<<1);
+					A_memset(dstp+64,255,width_64_2);
 					lcount[y] += width_64;
 					dstp += dst_pitch2;
 				}
@@ -1692,6 +1710,151 @@ void evalFunc_1_16(void *ps)
 	}
 }
 
+
+
+int processLine0_C_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch)
+{
+	int count = 0;
+	const float *src0 = (float *)src3p;
+	const float *src2 = (float *)(src3p + (src_pitch << 1));
+	const float *src4 = (float *)(src3p + (src_pitch << 2));
+	const float *src6 = (float *)(src3p + (src_pitch * 6));
+	float *dst0 = (float *)dstp;
+	uint32_t *dst = (uint32_t *)dstp;
+
+	for (int x=0; x<width; x++)
+	{
+		if (tempu[x])
+			dst0[x] = 0.59375f*(src2[x]+src4[x])-0.09375f*(src0[x]+src6[x]);
+		else
+		{
+			dst[x] = 0xFFFFFFFF;
+			count++;
+		}
+	}
+	return count;
+}
+
+
+void uc2f48_C_32(const uint8_t *t, const int pitch, float *p)
+{
+	const int pitch2 = pitch << 1;
+
+	for (int y=0; y<4; y++)
+	{
+		A_memcpy(p,t,48);
+
+		p += 12;
+		t += pitch2;
+	}
+}
+
+
+
+int processLine0_SSE2_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch)
+{
+	int count;
+	const int width_m = width;
+	const int remain = width & 7;
+	const float *src0 = (float *)src3p;
+	const float *src2 = (float *)(src3p + (src_pitch << 1));
+	const float *src4 = (float *)(src3p + (src_pitch << 2));
+	const float *src6 = (float *)(src3p + (src_pitch * 6));
+	float *dst0 = (float *)dstp;
+	uint32_t *dst = (uint32_t *)dstp;
+
+	width-=remain;
+	if (width!=0) count=processLine0_SSE2_ASM_32(tempu,width,dstp,src3p,src_pitch);
+	else count=0;
+
+	for (int x=width; x<width_m; x++)
+	{
+		if (tempu[x])
+			dst0[x]=0.59375f*(src2[x] + src4[x]) - 0.09375f*(src0[x] + src6[x]);
+		else
+		{
+			dst[x]=0xFFFFFFFF;
+			count++;
+		}
+	}
+	return count;
+}
+
+void evalFunc_1_32(void *ps)
+{
+	PS_INFO *pss = (PS_INFO *)ps;
+	float *input = pss->input;
+	const float *weights0 = pss->weights0;
+	float *temp = pss->temp;
+	uint8_t *tempu = (uint8_t *)temp;
+	const int opt = pss->opt;
+	const int pscrn = pss->pscrn;
+	const int fapprox = pss->fapprox;
+	void(*uc2s)(const uint8_t*, const int, float*);
+	void(*computeNetwork0)(const float*, const float*, uint8_t*);
+	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int);
+
+	if (opt==1) processLine0 = processLine0_C_32;
+	else processLine0 = processLine0_SSE2_32;
+
+	uc2s=uc2f48_C_32;
+	if (opt==1) computeNetwork0 = computeNetwork0_C;
+	else computeNetwork0 = computeNetwork0_SSE2;
+
+	for (int b = 0; b<PLANE_MAX; b++)
+	{
+		if (((b == 0) && !pss->Y) || ((b == 1) && !pss->U) || ((b == 2) && !pss->V) || ((b == 3) && !pss->A)) continue;
+
+		const uint8_t *srcp = pss->srcp[b];
+		const int src_pitch = pss->src_pitch[b];
+		const int width = pss->width[b];
+		const int width_32 = width - 32;
+		const int width_64 = width - 64;
+		const int width_64_4 = width_64 << 2;
+		uint8_t *dstp = pss->dstp[b];
+		const int dst_pitch = pss->dst_pitch[b];
+		pss->env->BitBlt(dstp+(pss->sheight[b]-5-pss->field[b])*dst_pitch,
+			dst_pitch<<1,srcp+((pss->sheight[b]+1-pss->field[b])*src_pitch+128),
+			src_pitch<<1,width_64_4,(pss->eheight[b]-pss->sheight[b]+pss->field[b])>>1);
+		const int ystart = pss->sheight[b]+pss->field[b];
+		const int ystop = pss->eheight[b];
+		const int src_pitch2 = src_pitch << 1;
+		const int dst_pitch2 = dst_pitch << 1;
+
+		srcp += ystart*src_pitch;
+		dstp += (ystart-6)*dst_pitch-128;
+
+		const uint8_t *src3p = srcp-src_pitch*3;
+		int *lcount = pss->lcount[b]-6;
+
+		if (pscrn==1) // original
+		{
+			for (int y=ystart; y<ystop; y+=2)
+			{
+				const uint8_t *src0=src3p-20;
+
+				for (int x=32; x<width_32; x++)
+				{
+					uc2s(src0+(x<<2),src_pitch,input);
+					computeNetwork0(input,weights0,tempu+x);
+				}
+				lcount[y] += processLine0(tempu+32,width_64,dstp+128,src3p+128,src_pitch);
+
+				src3p += src_pitch2;
+				dstp += dst_pitch2;
+			}
+		}
+		else // no prescreening
+		{
+			for (int y=ystart; y<ystop; y+=2)
+			{
+				A_memset(dstp+128,255,width_64_4);
+				lcount[y]+=width_64;
+				dstp+=dst_pitch2;
+			}
+		}
+	}
+}
 
 
 void extract_m8_C(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd, float *input)
@@ -1898,26 +2061,51 @@ void evalFunc_2(void *ps)
 		dstp += ystart*dst_pitch-32;
 		const uint8_t *srcpp = srcp-((ydia-1)*src_pitch+xdiad2m1);
 
-		for (int y=ystart; y<ystop; y+=2)
+		if (opt>1)
 		{
-			for (int x=32; x<width_32; x++)
+			for (int y=ystart; y<ystop; y+=2)
 			{
-				if (dstp[x]!=255) continue;
-
-				float mstd[4];
-
-				extract(srcpp+x,src_pitch,xdia,ydia,mstd,input);
-				for (int i=0; i<qual; i++)
+				for (int x=32; x<width_32; x++)
 				{
-					dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
-					expf(temp,nns);
-					wae5(temp,nns,mstd);
+					if (dstp[x]!=255) continue;
+
+					float mstd[4];
+
+					extract(srcpp+x,src_pitch,xdia,ydia,mstd,input);
+					for (int i=0; i<qual; i++)
+					{
+						dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
+						expf(temp,nns);
+						wae5(temp,nns,mstd);
+					}
+					castScale_SSE(mstd,&scale,dstp+x);
 				}
-				if (opt>1) castScale_SSE(mstd,&scale,dstp+x);
-				else dstp[x]=min(max((int)(mstd[3]*scale+0.5f),0),255);
+				srcpp += src_pitch2;
+				dstp += dst_pitch2;
 			}
-			srcpp+=src_pitch2;
-			dstp+=dst_pitch2;
+		}
+		else
+		{
+			for (int y=ystart; y<ystop; y+=2)
+			{
+				for (int x=32; x<width_32; x++)
+				{
+					if (dstp[x]!=255) continue;
+
+					float mstd[4];
+
+					extract(srcpp+x,src_pitch,xdia,ydia,mstd,input);
+					for (int i=0; i<qual; i++)
+					{
+						dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
+						expf(temp,nns);
+						wae5(temp,nns,mstd);
+					}
+					dstp[x]=min(max((int)(mstd[3]*scale+0.5f),0),255);
+				}
+				srcpp += src_pitch2;
+				dstp += dst_pitch2;
+			}
 		}
 	}
 }
@@ -1926,23 +2114,27 @@ void evalFunc_2(void *ps)
 void extract_m8_i16_C_16(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *inputf)
 {
 	uint16_t *input = (uint16_t *)inputf;
-	__int64 sum = 0, sumsq = 0;
+	int64_t sum = 0, sumsq = 0;
 	const int stride2 = stride << 1;
+	const int xdia2 = xdia << 1;
 
-	for (int y = 0; y<ydia; y++)
+	for (int y=0; y<ydia; y++)
 	{
 		const uint16_t *srcpT = (uint16_t *)srcp;
 
-		for (int x = 0; x<xdia; x++)
+		A_memcpy(input,srcpT,xdia2);
+
+		for (int x=0; x<xdia; x++)
 		{
 			sum += srcpT[x];
 			sumsq += (uint32_t)srcpT[x]*(uint32_t)srcpT[x];
-			input[x] = srcpT[x];
 		}
 		srcp += stride2;
 		input += xdia;
 	}
+
 	const float scale=(float)(1.0/(double)(xdia*ydia));
+
 	mstd[0] = sum*scale;
 	const double tmp =(double)sumsq*scale-(double)mstd[0]*mstd[0];
 	mstd[3] = 0.0f;
@@ -1954,17 +2146,36 @@ void extract_m8_i16_C_16(const uint8_t *srcp,const int stride,const int xdia,con
 	}
 }
 
+void extract_m8_i16_C_16_2(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *inputf)
+{
+	int64_t sumsq;
+	int32_t sum;
+
+	extract_m8_i16_SSE2_16_2(srcp,stride,xdia,ydia,inputf,&sum,&sumsq);
+
+	const float scale = (float)(1.0/(double)(xdia*ydia));
+
+	mstd[0] = sum*scale;
+	const double tmp = (double)sumsq*scale-(double)mstd[0]*mstd[0];
+	mstd[3] = 0.0f;
+	if (tmp<=FLT_EPSILON) mstd[1] = mstd[2] = 0.0f;
+	else
+	{
+		mstd[1] = (float)sqrt(tmp);
+		mstd[2] = 1.0f/mstd[1];
+	}
+}
 
 void extract_m8_C_16(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input)
 {
 	int64_t sum = 0, sumsq = 0;
 	const int stride2 = stride << 1;
 
-	for (int y = 0; y<ydia; y++)
+	for (int y=0; y<ydia; y++)
 	{
 		const uint16_t *srcpT = (uint16_t *)srcp;
 
-		for (int x = 0; x<xdia; x++)
+		for (int x=0; x<xdia; x++)
 		{
 			sum += srcpT[x];
 			sumsq += (uint32_t)srcpT[x]*(uint32_t)srcpT[x];
@@ -2006,7 +2217,7 @@ void evalFunc_2_16(void *ps)
 	const bool int16_predictor = pss->int16_predictor;
 	const float scale = (float)(1.0/(double)qual);
 	const uint8_t bits_per_pixel = pss->bits_per_pixel;
-	const uint16_t limit16bits = (uint16_t)(((int)1 << bits_per_pixel)-1);
+	const uint32_t limit16bits = ((uint32_t)1 << bits_per_pixel)-1;
 	void(*extract)(const uint8_t*, const int, const int, const int, float*, float*);
 	void(*dotProd)(const float*, const float*, float*, const int, const int, const float*);
 	void(*expf)(float *, const int);
@@ -2016,39 +2227,45 @@ void evalFunc_2_16(void *ps)
 	else wae5 = weightedAvgElliottMul5_m16_SSE2;
 	if (int16_predictor) // use int16 dot products
 	{
-		//extract = extract_m8_i16_C_16;
-		if ((opt == 1) || (bits_per_pixel>12)) extract=extract_m8_i16_C_16;
-		else extract=extract_m8_i16_SSE2_16;
-		//dotProd = dotProdS_C_16;
-		if ((opt==1) || (bits_per_pixel>12)) dotProd=dotProdS_C_16;
+		if (opt>=3)
+		{
+			if (bits_per_pixel<=10) extract=extract_m8_i16_SSE2_16;
+			else extract=extract_m8_i16_C_16_2;
+		}
+		else
+		{
+			if ((opt>=2) && (bits_per_pixel<=10)) extract=extract_m8_i16_SSE2_16;
+			else extract=extract_m8_i16_C_16;
+		}
+
+		if ((opt==1) || (bits_per_pixel>14)) dotProd=dotProdS_C_16;
 		else dotProd= (asize%48) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
 	}
 	else // use float dot products
 	{
-		//extract = extract_m8_C_16;
 		if (opt==1) extract=extract_m8_C_16;
 		else extract=extract_m8_SSE2_16;
 		if (opt==1) dotProd = dotProd_C;
 		else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
 	}
-	if ((fapprox & 12) == 0) // use slow exp
+	if ((fapprox & 12)==0) // use slow exp
 	{
-		if (opt == 1) expf = e2_m16_C;
+		if (opt==1) expf = e2_m16_C;
 		else expf = e2_m16_SSE2;
 	}
-	else if ((fapprox & 12) == 4) // use faster exp
+	else if ((fapprox & 12)==4) // use faster exp
 	{
-		if (opt == 1) expf = e1_m16_C;
+		if (opt==1) expf = e1_m16_C;
 		else expf = e1_m16_SSE2;
 	}
 	else // use fastest exp
 	{
-		if (opt == 1) expf = e0_m16_C;
+		if (opt==1) expf = e0_m16_C;
 		else expf = e0_m16_SSE2;
 	}
-	for (int b = 0; b<PLANE_MAX; b++)
+	for (int b=0; b<PLANE_MAX; b++)
 	{
-		if (((b == 0) && !pss->Y) || ((b == 1) && !pss->U) || ((b == 2) && !pss->V) || ((b == 3) && !pss->A)) continue;
+		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
 
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
@@ -2065,26 +2282,177 @@ void evalFunc_2_16(void *ps)
 		dstp += ystart*dst_pitch-64;
 		const uint8_t *srcpp = srcp-((ydia-1)*src_pitch+(xdiad2m1 << 1));
 
-		for (int y = ystart; y<ystop; y += 2)
+		if (opt>1)
 		{
-			uint16_t *dst0 = (uint16_t *)dstp;
-			//uint16_t *src0 = (uint16_t *)srcpp;
-
-			for (int x = 32; x<width_32; x++)
+			for (int y=ystart; y<ystop; y+=2)
 			{
-				if (dst0[x] != 0xFFFF) continue;
+				uint16_t *dst0 = (uint16_t *)dstp;
+
+				for (int x=32; x<width_32; x++)
+				{
+					if (dst0[x]!=0xFFFF) continue;
+
+					float mstd[4];
+
+					extract(srcpp+(x<<1),src_pitch,xdia,ydia,mstd,input);
+					for (int i=0; i<qual; i++)
+					{
+						dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
+						expf(temp,nns);
+						wae5(temp,nns,mstd);
+					}
+					castScale_SSE_16(mstd,&scale,dst0+x,limit16bits);
+				}
+				srcpp += src_pitch2;
+				dstp += dst_pitch2;
+			}
+		}
+		else
+		{
+			for (int y=ystart; y<ystop; y+=2)
+			{
+				uint16_t *dst0 = (uint16_t *)dstp;
+
+				for (int x=32; x<width_32; x++)
+				{
+					if (dst0[x]!=0xFFFF) continue;
+
+					float mstd[4];
+
+					extract(srcpp+(x<<1),src_pitch,xdia,ydia,mstd,input);
+					for (int i=0; i<qual; i++)
+					{
+						dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
+						expf(temp,nns);
+						wae5(temp,nns,mstd);
+					}
+					dst0[x] = min(max((int)(mstd[3]*scale+0.5f),0),(int32_t)limit16bits);
+				}
+				srcpp += src_pitch2;
+				dstp += dst_pitch2;
+			}
+		}
+	}
+}
+
+
+void extract_m8_C_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input)
+{
+	float sum = 0, sumsq = 0;
+	const int stride2 = stride << 1;
+	const uint32_t xdia4 = xdia << 2;
+
+	for (int y=0; y<ydia; y++)
+	{
+		const float *srcpT = (float *)srcp;
+
+		A_memcpy(input,srcpT,xdia4);
+
+		for (int x=0; x<xdia; x++)
+		{
+			sum += srcpT[x];
+			sumsq += srcpT[x]*srcpT[x];
+		}
+		input += xdia;
+		srcp += stride2;
+	}
+
+	const float scale = (float)(1.0/(double)(xdia*ydia));
+
+	mstd[0] = sum*scale;
+	mstd[1] = sumsq*scale-mstd[0]*mstd[0];
+	mstd[3] = 0.0f;
+	if (mstd[1] <= FLT_EPSILON) mstd[1] = mstd[2] = 0.0f;
+	else
+	{
+		mstd[1] = (float)sqrtf(mstd[1]);
+		mstd[2] = 1.0f/mstd[1];
+	}
+}
+
+
+void evalFunc_2_32(void *ps)
+{
+	PS_INFO *pss = (PS_INFO *)ps;
+	float *input = pss->input;
+	float *temp = pss->temp;
+	float **weights1 = pss->weights1;
+	const int opt = pss->opt;
+	const int qual = pss->qual;
+	const int asize = pss->asize;
+	const int nns = pss->nns;
+	const int nns2 = nns << 1;
+	const int xdia = pss->xdia;
+	const int xdiad2m1 = (xdia >> 1) - 1;
+	const int ydia = pss->ydia;
+	const int fapprox = pss->fapprox;
+	const float scale = (float)(1.0/(double)qual);
+	void(*extract)(const uint8_t*, const int, const int, const int, float*, float*);
+	void(*dotProd)(const float*, const float*, float*, const int, const int, const float*);
+	void(*expf)(float *, const int);
+	void(*wae5)(const float*, const int, float*);
+
+	if (opt==1) wae5 = weightedAvgElliottMul5_m16_C;
+	else wae5 = weightedAvgElliottMul5_m16_SSE2;
+
+	if (opt==1) extract=extract_m8_C_32;
+	else extract=extract_m8_SSE2_32;
+	if (opt==1) dotProd=dotProd_C;
+	else dotProd = (asize%48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+
+	if ((fapprox & 12)==0) // use slow exp
+	{
+		if (opt==1) expf = e2_m16_C;
+		else expf = e2_m16_SSE2;
+	}
+	else if ((fapprox & 12)==4) // use faster exp
+	{
+		if (opt==1) expf = e1_m16_C;
+		else expf = e1_m16_SSE2;
+	}
+	else // use fastest exp
+	{
+		if (opt==1) expf = e0_m16_C;
+		else expf = e0_m16_SSE2;
+	}
+	for (int b=0; b<PLANE_MAX; b++)
+	{
+		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
+
+		const uint8_t *srcp = pss->srcp[b];
+		const int src_pitch = pss->src_pitch[b];
+		const int width = pss->width[b];
+		uint8_t *dstp = pss->dstp[b];
+		const int dst_pitch = pss->dst_pitch[b];
+		const int ystart = pss->sheight2[b];
+		const int ystop = pss->eheight2[b];
+		const int src_pitch2 = src_pitch << 1;
+		const int dst_pitch2 = dst_pitch << 1;
+		const int width_32 = width-32;
+
+		srcp += (ystart+6)*src_pitch;
+		dstp += ystart*dst_pitch-128;
+		const uint8_t *srcpp = srcp-((ydia-1)*src_pitch+(xdiad2m1<<2));
+
+		for (int y=ystart; y<ystop; y+=2)
+		{
+			float *dst0 = (float *)dstp;
+			uint32_t *dst = (uint32_t *)dstp;
+
+			for (int x=32; x<width_32; x++)
+			{
+				if (dst[x]!=0xFFFFFFFF) continue;
 
 				float mstd[4];
 
-				extract(srcpp+(x << 1),src_pitch,xdia,ydia,mstd,input);
+				extract(srcpp+(x<<2),src_pitch,xdia,ydia,mstd,input);
 				for (int i=0; i<qual; i++)
 				{
 					dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
 					expf(temp,nns);
 					wae5(temp,nns,mstd);
 				}
-				if (opt>1) castScale_SSE_16(mstd,&scale,dst0+x,limit16bits);
-				else dst0[x]=min(max((int)(mstd[3]*scale+0.5f),0),limit16bits);
+				dst0[x] = mstd[3]*scale;
 			}
 			srcpp += src_pitch2;
 			dstp += dst_pitch2;
@@ -2109,6 +2477,10 @@ void nnedi3::StaticThreadpool(void *ptr)
 			break;
 		case 4 : evalFunc_2_16(ps);
 			break;
+		case 5 : evalFunc_1_32(ps);
+			break;
+		case 6 : evalFunc_2_32(ps);
+			break;
 		default : ;
 	}
 }
@@ -2125,7 +2497,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
   const bool RGB48=vi.IsRGB48();
   const bool RGB64=vi.IsRGB64();
  
-  if (vi.ComponentSize()>2) env->ThrowError("nnedi3: Only 8,16 bits supported!");
+  //if (vi.ComponentSize()>2) env->ThrowError("nnedi3: Only 8,16 bits supported!");
 	
 	if (avsp)
 	{
@@ -2154,7 +2526,8 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 		{
 			AVSValue v=args[0].AsClip();
 			
-			v=env->Invoke("ConvertToPlanarRGBA",v).AsClip();
+			if (RGB32 || RGB64) v=env->Invoke("ConvertToPlanarRGBA",v).AsClip();
+			else v=env->Invoke("ConvertToPlanarRGB",v).AsClip();
 			v= new nnedi3(v.AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
 				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
@@ -2164,8 +2537,8 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 			if (RGB32) return env->Invoke("ConvertToRGB32",v).AsClip();
 			else
 			{
-				if (RGB48) return env->Invoke("ConvertToRGB48", v).AsClip();
-				else return env->Invoke("ConvertToRGB64", v).AsClip();
+				if (RGB48) return env->Invoke("ConvertToRGB48",v).AsClip();
+				else return env->Invoke("ConvertToRGB64",v).AsClip();
 			}
 		}
 		else return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
@@ -2199,7 +2572,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
   const bool grey = vi.IsY();  
   const bool isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	
-  if (vi.ComponentSize()>2) env->ThrowError("nnedi3: Only 8 and 16 bits supported!");
+  //if (vi.ComponentSize()>2) env->ThrowError("nnedi3: Only 8 and 16 bits supported!");
   
 	if (avsp)
 	{

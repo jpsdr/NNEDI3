@@ -23,6 +23,10 @@ d_254 sdword 4 dup(65534)
 ud_16 dword 8 dup(16)
 uw_1 word 8 dup(1)
 
+f_19 real4 4 dup(0.59375)
+f_3 real4 4 dup(0.09375)
+dw_1 dword 4 dup(1)
+
 flt_epsilon_sse real4 4 dup(FLT_EPSILON)
 
 exp_hi real4 4 dup(80.0)
@@ -776,7 +780,7 @@ xloop_16:
 		paddusw xmm6,xmm5
 		add ebx,16
 		add edi,16
-		add eax,16
+		add eax,8
 		add esi,16
 		sub ecx,8
 		jnz xloop_16
@@ -790,6 +794,80 @@ xloop_16:
 		ret
 		
 processLine0_SSE2_ASM_16 endp
+
+
+
+processLine0_SSE2_ASM_32 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword
+
+    public processLine0_SSE2_ASM_32
+	
+		push ebx
+		push edi
+		push esi
+
+		mov eax,tempu
+		mov ebx,src3p
+		mov ecx,width_
+		mov edx,src_pitch
+		mov esi,dstp
+		lea edi,[ebx+edx*4]
+		pxor xmm6,xmm6
+		pxor xmm7,xmm7		
+		
+xloop_32:
+		movaps xmm0,[ebx+edx*2]
+		movaps xmm1,[edi]
+		movaps xmm2,xmm0
+		movaps xmm3,xmm1
+		addps xmm0,xmm1
+		addps xmm2,xmm3
+		mulps xmm0,oword ptr f_19
+		mulps xmm2,oword ptr f_19
+		movaps xmm1,[ebx]
+		movaps xmm3,[edi+edx*2]
+		movaps xmm4,xmm1
+		movaps xmm5,xmm3
+		addps xmm1,xmm3
+		addps xmm4,xmm5
+		
+		movd xmm3,dword ptr [eax]		
+		mulps xmm1,oword ptr f_3
+		mulps xmm4,oword ptr f_3		
+		punpcklbw xmm3,xmm7	
+		subps xmm0,xmm1		
+		punpcklwd xmm3,xmm7		
+		subps xmm2,xmm4
+		
+		pcmpeqd xmm3,oword ptr dw_1		
+		pcmpeqd xmm4,xmm4
+		movdqa xmm1,xmm3	
+		pxor xmm1,xmm4		
+		movdqa xmm5,xmm1
+		pand xmm5,oword ptr dw_1
+		pand xmm0,xmm3
+		psadbw xmm5,xmm7
+		por xmm0,xmm1
+		movdqa xmm2,xmm5
+		psrldq xmm5,8
+		movdqa [esi],xmm0
+		paddusw xmm5,xmm2
+		paddusw xmm6,xmm5
+		add ebx,16
+		add edi,16
+		add eax,4
+		add esi,16
+		sub ecx,4
+		jnz xloop_32
+		
+		pop esi
+		pop edi
+		pop ebx
+		
+		movd eax,xmm6
+		
+		ret
+		
+processLine0_SSE2_ASM_32 endp
 
 
 
@@ -925,15 +1003,11 @@ extract_m8_SSE2_16 proc srcp:dword,stride:dword,xdia:dword,ydia:dword,mstd:dword
 yloop2_16:
 		xor ecx,ecx
 xloop2_16:
-		movq xmm0,QWORD PTR[eax+2*ecx]
-		movq xmm1,QWORD PTR[eax+2*ecx+8]
-		movq xmm2,QWORD PTR[edx+2*ecx]
-		movq xmm4,QWORD PTR[edx+2*ecx+8]
-		pslldq xmm1,8
-		pslldq xmm4,8
-		por xmm0,xmm1
-		por xmm2,xmm4
-		
+		movlps xmm0,QWORD PTR[eax+2*ecx]
+		movhps xmm0,QWORD PTR[eax+2*ecx+8]
+		movlps xmm2,QWORD PTR[edx+2*ecx]
+		movhps xmm2,QWORD PTR[edx+2*ecx+8]
+
 		movdqa xmm1,xmm0
 		movdqa xmm4,xmm2
 		punpcklwd xmm0,xmm3
@@ -1037,14 +1111,10 @@ extract_m8_SSE2_32 proc srcp:dword,stride:dword,xdia:dword,ydia:dword,mstd:dword
 yloop2_32:
 		xor ecx,ecx
 xloop2_32:
-		movq xmm0,QWORD PTR[eax+4*ecx]
-		movq xmm1,QWORD PTR[eax+4*ecx+8]		
-		movq xmm2,QWORD PTR[edx+4*ecx]
-		movq xmm4,QWORD PTR[edx+4*ecx+8]
-		pslldq xmm1,8
-		pslldq xmm4,8
-		por xmm0,xmm1
-		por xmm2,xmm4
+		movlps xmm0,QWORD PTR[eax+4*ecx]
+		movhps xmm0,QWORD PTR[eax+4*ecx+8]
+		movlps xmm2,QWORD PTR[edx+4*ecx]
+		movhps xmm2,QWORD PTR[edx+4*ecx+8]
 		
 		movaps [esi],xmm0
 		movaps [esi+edi*4],xmm2
@@ -1218,15 +1288,11 @@ extract_m8_i16_SSE2_16 proc srcp:dword,stride:dword,xdia:dword,ydia:dword,mstd:d
 yloop_16:
 		xor ecx,ecx
 xloop_2_16:
-		movq xmm0,QWORD PTR[eax+2*ecx]
-		movq xmm2,QWORD PTR[eax+2*ecx+8]
-		movq xmm1,QWORD PTR[esi+2*ecx]
-		movq xmm3,QWORD PTR[esi+2*ecx+8]
-		pslldq xmm2,8
-		pslldq xmm3,8
-		por xmm0,xmm2
-		por xmm1,xmm3
-		
+		movlps xmm0,QWORD PTR[eax+2*ecx]
+		movhps xmm0,QWORD PTR[eax+2*ecx+8]
+		movlps xmm1,QWORD PTR[esi+2*ecx]
+		movhps xmm1,QWORD PTR[esi+2*ecx+8]
+
 		movdqa oword ptr [edx],xmm0
 		movdqa oword ptr [edx+edi*2],xmm1
 		
@@ -1259,11 +1325,14 @@ xloop_2_16:
 		paddd xmm5,xmm1
 		paddd xmm4,xmm2
 		mul edi
-		pshuflw xmm1,xmm5,14
-		pshuflw xmm2,xmm4,14
+		
+		pshufd xmm1,xmm5,1
+		pshufd xmm2,xmm4,1
+		
 		cvtsi2ss xmm7,eax
+		
 		paddd xmm5,xmm1
-		paddd xmm2,xmm4
+		paddd xmm4,xmm2
 		
 		rcpss xmm7,xmm7
 		cvtdq2ps xmm4,xmm4
@@ -1294,6 +1363,96 @@ finish_4_16:
 		ret
 		
 extract_m8_i16_SSE2_16 endp
+
+
+extract_m8_i16_SSE2_16_2 proc srcp:dword,stride:dword,xdia:dword,ydia:dword,inputf:dword,sum:dword,sumsq:dword
+
+	public extract_m8_i16_SSE2_16_2
+	
+	local ydia_:dword
+	
+		push ebx
+		push edi
+		push esi
+		
+		mov eax,ydia
+		mov ydia_,eax		
+		
+		mov eax,srcp
+		mov ebx,stride
+		mov edi,xdia
+		mov edx,inputf
+		lea esi,[eax+ebx*2]
+		pxor xmm4,xmm4
+		pxor xmm5,xmm5
+		pxor xmm6,xmm6
+		
+yloop_16_2:
+		xor ecx,ecx
+xloop_2_16_2:
+		movq xmm0,QWORD PTR[eax+2*ecx]
+		movq xmm1,QWORD PTR[esi+2*ecx]
+		
+		movq qword ptr [edx],xmm0
+		movq qword ptr [edx+edi*2],xmm1
+		
+		movdqa xmm2,xmm0
+		movdqa xmm3,xmm1
+
+		pmaddwd xmm2,oword ptr uw_1
+		pmaddwd xmm3,oword ptr uw_1
+		
+		paddd xmm4,xmm2
+	
+		punpcklwd xmm0,xmm6
+		punpcklwd xmm1,xmm6
+		
+		paddd xmm4,xmm3
+					
+		pmulld xmm0,xmm0
+		pmulld xmm1,xmm1
+		movhlps xmm2,xmm0
+		movhlps xmm3,xmm1
+		punpckldq xmm0,xmm6
+		punpckldq xmm1,xmm6
+		punpckldq xmm2,xmm6
+		punpckldq xmm3,xmm6
+		paddq xmm0,xmm2
+		paddq xmm1,xmm3
+		
+		paddq xmm5,xmm0
+		movhlps xmm2,xmm0
+		paddq xmm5,xmm1
+		movhlps xmm3,xmm1
+		paddq xmm5,xmm2
+		paddq xmm5,xmm3		
+		
+		add ecx,4
+		add edx,8
+		cmp ecx,edi
+		jl xloop_2_16_2
+		lea eax,[eax+ebx*4]
+		lea esi,[esi+ebx*4]
+		lea edx,[edx+edi*2]
+		sub ydia_,2
+		jnz yloop_16_2
+		
+		movhlps xmm2,xmm4
+		mov eax,sum
+		paddd xmm4,xmm2
+		mov ebx,sumsq
+		pshufd xmm2,xmm4,1
+		movq qword ptr [ebx],xmm5		
+		paddd xmm4,xmm2
+		movd dword ptr [eax],xmm4
+	
+		pop esi
+		pop edi
+		pop ebx
+		
+		ret
+		
+extract_m8_i16_SSE2_16_2 endp
 
 
 dotProd_m32_m16_SSE2 proc data_:dword,weights:dword,vals:dword,n:dword,len:dword,istd:dword
@@ -2418,6 +2577,7 @@ computeNetwork0new_SSE2 proc datai:dword,weights:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,xmm0
 		movdqa xmm5,xmm2
 		punpcklqdq xmm0,xmm1
