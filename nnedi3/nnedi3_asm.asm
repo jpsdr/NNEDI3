@@ -668,8 +668,8 @@ xloop:
 		paddusw xmm2,oword ptr uw_16
 		movdqa xmm1,xmm3
 		pcmpeqb xmm4,xmm4
-		psrlw xmm0,5
-		psrlw xmm2,5
+		psraw xmm0,5
+		psraw xmm2,5
 		pxor xmm1,xmm4
 		pminsw xmm0,oword ptr w_254
 		pminsw xmm2,oword ptr w_254
@@ -763,12 +763,12 @@ xloop_16:
 		paddd xmm2,oword ptr ud_16
 		movdqa xmm1,xmm3
 		pcmpeqw xmm4,xmm4
-		psrld xmm0,5
-		psrld xmm2,5
+		psrad xmm0,5
+		psrad xmm2,5
 		pxor xmm1,xmm4
 		packusdw xmm0,xmm2
 		movdqa xmm5,xmm1
-		pminsw xmm0,oword ptr d_254
+		pminuw xmm0,oword ptr d_254
 		pand xmm5,oword ptr uw_1
 		pand xmm0,xmm3
 		psadbw xmm5,xmm7

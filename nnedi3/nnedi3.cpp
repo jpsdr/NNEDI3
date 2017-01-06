@@ -111,7 +111,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if ((nsize<0) || (nsize>=NUM_NSIZE)) env->ThrowError("nnedi3: nsize must be in [0,%d]!\n",NUM_NSIZE-1);
 	if ((nns<0) || (nns>=NUM_NNS)) env->ThrowError("nnedi3: nns must be in [0,%d]!\n",NUM_NNS-1);
 	if ((qual<1) || (qual>2)) env->ThrowError("nnedi3: qual must be set to 1 or 2!\n");
-	if ((opt<0) || (opt>2)) env->ThrowError("nnedi3: opt must be set to 0, 1, or 2!");
+	if ((opt<0) || (opt>5)) env->ThrowError("nnedi3: opt must be in [0,5]!");
 	if ((fapprox<0) || (fapprox>15)) env->ThrowError("nnedi3: fapprox must be [0,15]!\n");
 	if ((pscrn<0) || (pscrn>4)) env->ThrowError("nnedi3: pscrn must be [0,4]!\n");
 	if ((etype<0) || (etype>1)) env->ThrowError("nnedi3: etype must be [0,1]!\n");
@@ -122,9 +122,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	pixelsize = (uint8_t)vi.ComponentSize(); // AVS16
 	bits_per_pixel = (uint8_t)vi.BitsPerComponent();
 
-	bool int16_predictor, int16_prescreener;
+	bool int16_predictor,int16_prescreener;
 
-	if ((pscrn>1) && (pixelsize>2)) pscrn = 1;
+	if ((pscrn>1) && (pixelsize>2)) pscrn=1;
 
 	int16_predictor = ((fapprox & 2)!=0) && (bits_per_pixel<=15);
 	int16_prescreener = ((fapprox & 1)!=0) && (pixelsize<=2);
@@ -184,13 +184,13 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	srcPF = new PlanarFrame();
 	if (srcPF==NULL)
-		env->ThrowError("nnedi3: Error while creating srcPF !");
+		env->ThrowError("nnedi3: Error while creating srcPF!");
 	if (vi.Is420())
 	{
 		if (!srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 		{
 			FreeData();
-			env->ThrowError("nnedi3: Error while creating planar for srcPF !");
+			env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 		}
 	}
 	else
@@ -200,7 +200,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>2)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 			{
 				FreeData();
-				env->ThrowError("nnedi3: Error while creating planar for srcPF !");
+				env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 			}
 		}
 		else
@@ -210,7 +210,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 				{
 					FreeData();
-					env->ThrowError("nnedi3: Error while creating planar for srcPF !");
+					env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 				}
 			}
 			else
@@ -220,7 +220,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 					if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,vi.width+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 					{
 						FreeData();
-						env->ThrowError("nnedi3: Error while creating planar for srcPF !");
+						env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 					}
 				}
 				else
@@ -230,7 +230,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 						if (!srcPF->createPlanar(vi.height+12,0,vi.width+64,0,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 						{
 							FreeData();
-							env->ThrowError("nnedi3: Error while creating planar for srcPF !");
+							env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 						}
 						U = false;
 						V = false;
@@ -245,26 +245,30 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if (dstPF==NULL)
 	{
 		FreeData();
-		env->ThrowError("nnedi3: Error while creating dstPF !");
+		env->ThrowError("nnedi3: Error while creating dstPF!");
 	}
 	if (!dstPF->GetAllocStatus())
 	{
 		FreeData();
-		env->ThrowError("nnedi3: Error while allocating planar dstPF !");
+		env->ThrowError("nnedi3: Error while allocating planar dstPF!");
 	}
 
 	if (opt==0)
 	{
 		const int CPUF=env->GetCPUFlags();
 
-		if ((CPUF&CPUF_FMA3)!=0) opt=4;
+		if ((CPUF&CPUF_FMA4)!=0) opt=5;
 		else
 		{
-			if ((CPUF&CPUF_SSE4_1)!=0) opt=3;
+			if ((CPUF&CPUF_FMA3)!=0) opt=4;
 			else
 			{
-				if ((CPUF&CPUF_SSE2)!=0) opt=2;
-				else opt=1;
+				if ((CPUF&CPUF_SSE4_1)!=0) opt=3;
+				else
+				{
+					if ((CPUF&CPUF_SSE2)!=0) opt=2;
+					else opt=1;
+				}
 			}
 		}
 
@@ -292,7 +296,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if (weights0==NULL)
 	{
 		FreeData();
-		env->ThrowError("nnedi3: Error while allocating weights0 !");
+		env->ThrowError("nnedi3: Error while allocating weights0!");
 	}
 	for (uint8_t i=0; i<2; i++)
 	{
@@ -300,7 +304,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		if (weights1[i]==NULL)
 		{
 			FreeData();
-			env->ThrowError("nnedi3: Error while allocating weights1[%d] !",i);
+			env->ThrowError("nnedi3: Error while allocating weights1[%d]!",i);
 		}
 	}
 	for (uint8_t i=0; i<PlaneMax; i++)
@@ -309,7 +313,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		if (lcount[i]==NULL)
 		{
 			FreeData();
-			env->ThrowError("nnedi3: Error while allocating lcount[%d] !",i);
+			env->ThrowError("nnedi3: Error while allocating lcount[%d]!",i);
 		}
 	}
 	char nbuf[512];
@@ -1141,6 +1145,7 @@ void elliott_C(float *data, const int n)
 		data[i]/=1.0f+fabsf(data[i]);
 }
 
+
 void dotProd_C(const float *data, const float *weights, float *vals, const int n, const int len, const float *scale)
 {
 	const float *weights0 = weights;
@@ -1770,7 +1775,7 @@ int processLine0_SSE2_32(const uint8_t *tempu, int width, uint8_t *dstp, const u
 	for (int x=width; x<width_m; x++)
 	{
 		if (tempu[x])
-			dst0[x]=0.59375f*(src2[x] + src4[x]) - 0.09375f*(src0[x] + src6[x]);
+			dst0[x]=0.59375f*(src2[x]+src4[x])-0.09375f*(src0[x]+src6[x]);
 		else
 		{
 			dst[x]=0xFFFFFFFF;
@@ -2146,6 +2151,7 @@ void extract_m8_i16_C_16(const uint8_t *srcp,const int stride,const int xdia,con
 	}
 }
 
+
 void extract_m8_i16_C_16_2(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *inputf)
 {
 	int64_t sumsq;
@@ -2165,6 +2171,7 @@ void extract_m8_i16_C_16_2(const uint8_t *srcp, const int stride, const int xdia
 		mstd[2] = 1.0f/mstd[1];
 	}
 }
+
 
 void extract_m8_C_16(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input)
 {
@@ -2489,16 +2496,14 @@ void nnedi3::StaticThreadpool(void *ptr)
 AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
 	if (!args[0].IsClip())
-		env->ThrowError("nnedi3:  arg 0 must be a clip!");
+		env->ThrowError("nnedi3: arg 0 must be a clip!");
 	VideoInfo vi = args[0].AsClip()->GetVideoInfo();
 	
   const bool avsp=env->FunctionExists("ConvertBits");
   const bool RGB32=vi.IsRGB32();
   const bool RGB48=vi.IsRGB48();
   const bool RGB64=vi.IsRGB64();
- 
-  //if (vi.ComponentSize()>2) env->ThrowError("nnedi3: Only 8,16 bits supported!");
-	
+
 	if (avsp)
 	{
 		if (!vi.IsPlanar() && !vi.IsYUY2() && !vi.IsRGB24() && !RGB32 && !RGB48 && !RGB64)
@@ -2572,12 +2577,10 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
   const bool grey = vi.IsY();  
   const bool isAlphaChannel = vi.IsYUVA() || vi.IsPlanarRGBA();
 	
-  //if (vi.ComponentSize()>2) env->ThrowError("nnedi3: Only 8 and 16 bits supported!");
-  
 	if (avsp)
 	{
 		if (!vi.IsPlanar() && !vi.IsYUY2() && !RGB24 && !RGB32 && !RGB48 && !RGB64)
-			env->ThrowError("nnedi3: only planar, YUY2, RGB32, RGB64 and RGB24 input are supported!");				
+			env->ThrowError("nnedi3: only planar, YUY2, RGB32, RGB48, RGB64 and RGB24 input are supported!");				
 	}
 	else
 	{
@@ -2613,7 +2616,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const bool sleep = args[24].AsBool(false);
 	int prefetch = args[25].AsInt(0);
 
-	if (rfactor < 2 || rfactor > 1024) env->ThrowError("nnedi3_rpow2:  2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
+	if (rfactor < 2 || rfactor > 1024) env->ThrowError("nnedi3_rpow2: 2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	int rf = 1, ct = 0;
 
 	while (rf < rfactor)
@@ -2622,21 +2625,21 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		++ct;
 	}
 	if (rf != rfactor)
-		env->ThrowError("nnedi3_rpow2:  2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
+		env->ThrowError("nnedi3_rpow2: 2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	if (nsize < 0 || nsize >= NUM_NSIZE)
-		env->ThrowError("nnedi3_rpow2:  nsize must be in [0,%d]!\n", NUM_NSIZE-1);
+		env->ThrowError("nnedi3_rpow2: nsize must be in [0,%d]!\n", NUM_NSIZE-1);
 	if (nns < 0 || nns >= NUM_NNS)
-		env->ThrowError("nnedi3_rpow2:  nns must be in [0,%d]!\n", NUM_NNS-1);
+		env->ThrowError("nnedi3_rpow2: nns must be in [0,%d]!\n", NUM_NNS-1);
 	if (qual < 1 || qual > 2)
-		env->ThrowError("nnedi3_rpow2:  qual must be set to 1 or 2!\n");
+		env->ThrowError("nnedi3_rpow2: qual must be set to 1 or 2!\n");
 	if (threads < 0 || threads > MAX_MT_THREADS)
-		env->ThrowError("nnedi3_rpow2:  0 <= threads <= %d!\n",MAX_MT_THREADS);
+		env->ThrowError("nnedi3_rpow2: 0 <= threads <= %d!\n",MAX_MT_THREADS);
 	if (threads_rs < 0 || threads_rs > MAX_MT_THREADS)
-		env->ThrowError("nnedi3_rpow2:  0 <= threads_rs <= %d!\n",MAX_MT_THREADS);
-	if (opt < 0 || opt > 2)
-		env->ThrowError("nnedi3_rpow2:  opt must be set to 0, 1, or 2!\n");
+		env->ThrowError("nnedi3_rpow2: 0 <= threads_rs <= %d!\n",MAX_MT_THREADS);
+	if (opt < 0 || opt > 5)
+		env->ThrowError("nnedi3_rpow2: opt must be in [0,5]!\n");
 	if (fapprox < 0 || fapprox > 15)
-		env->ThrowError("nnedi3_rpow2:  fapprox must be [0,15]!\n");
+		env->ThrowError("nnedi3_rpow2: fapprox must be [0,15]!\n");
 
 	if (prefetch == 0) prefetch = 1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3_rpow2: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
@@ -2887,8 +2890,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 						}
 					}
 					if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
-					if (RGB48) v=env->Invoke("ConvertToRGB48", v).AsClip();
-					if (RGB64) v=env->Invoke("ConvertToRGB64", v).AsClip();
+					if (RGB48) v=env->Invoke("ConvertToRGB48",v).AsClip();
+					if (RGB64) v=env->Invoke("ConvertToRGB64",v).AsClip();
 				}
 			}
 			else if ((type!=3) || (min(ep0,ep1)==-FLT_MAX))
@@ -2965,8 +2968,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 						}
 					}
 					if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
-					if (RGB48) v=env->Invoke("ConvertToRGB48", v).AsClip();
-					if (RGB64) v=env->Invoke("ConvertToRGB64", v).AsClip();
+					if (RGB48) v=env->Invoke("ConvertToRGB48",v).AsClip();
+					if (RGB64) v=env->Invoke("ConvertToRGB64",v).AsClip();
 				}
 			}
 			else
@@ -3043,8 +3046,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 						}
 					}
 					if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
-					if (RGB48) v=env->Invoke("ConvertToRGB48", v).AsClip();
-					if (RGB64) v=env->Invoke("ConvertToRGB64", v).AsClip();
+					if (RGB48) v=env->Invoke("ConvertToRGB48",v).AsClip();
+					if (RGB64) v=env->Invoke("ConvertToRGB64",v).AsClip();
 				}
 			}
 		}
@@ -3093,8 +3096,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					}
 				}				
 				if (RGB32) v=env->Invoke("ConvertToRGB32",v).AsClip();
-				if (RGB48) v=env->Invoke("ConvertToRGB48", v).AsClip();
-				if (RGB64) v=env->Invoke("ConvertToRGB64", v).AsClip();
+				if (RGB48) v=env->Invoke("ConvertToRGB48",v).AsClip();
+				if (RGB64) v=env->Invoke("ConvertToRGB64",v).AsClip();
 			}
 		}
 	}
