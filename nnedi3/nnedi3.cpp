@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.32 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.33 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -24,11 +24,26 @@
 #include "asmlib\asmlib.h"
 #include <stdint.h>
 
+#if _MSC_VER >= 1900
+#define FMA_BUILD_POSSIBLE
+#endif
+
 extern "C" int IInstrSet;
 // Cache size for asmlib function, a little more the size of a 720p YV12 frame
 #define MAX_CACHE_SIZE 1400000
 
 static size_t CPU_Cache_Size;
+
+#ifdef FMA_BUILD_POSSIBLE
+extern "C" void computeNetwork0_FMA3(const float *input, const float *weights, uint8_t *d);
+extern "C" void computeNetwork0_FMA4(const float *input, const float *weights, uint8_t *d);
+extern "C" void dotProd_m32_m16_FMA3(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
+extern "C" void dotProd_m32_m16_FMA4(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
+extern "C" void dotProd_m48_m16_FMA3(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
+extern "C" void dotProd_m48_m16_FMA4(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
+extern "C" void e0_m16_FMA3(float *s, const int n);
+extern "C" void e0_m16_FMA4(float *s, const int n);
+#endif
 
 extern "C" void computeNetwork0_SSE2(const float *input,const float *weights,uint8_t *d);
 extern "C" void computeNetwork0_i16_SSE2(const float *inputf,const float *weightsf,uint8_t *d);
@@ -797,7 +812,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	else field_n = field;
 	copyPad(field>1?(n>>1):n,field_n,env);
 	
-	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
+	const uint8_t PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
 
 	if (isRGBPfamily)
@@ -815,7 +830,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		plane[3]=PLANAR_A;				
 	}
 
-	for (int i=0; i<PlaneMax; i++)
+	for (uint8_t i=0; i<PlaneMax; i++)
 		A_memset(lcount[i],0,dstPF->GetHeight(i)*sizeof(int));
 
 	PVideoFrame dst = env->NewVideoFrame(vi);
@@ -832,7 +847,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	
 	for (uint8_t i=0; i<threads_number; i++)
 	{
-		for (int b=0; b<PlaneMax; b++)
+		for (uint8_t b=0; b<PlaneMax; b++)
 		{
 			const int srow = pssInfo[i].sheight[b];
 
@@ -853,15 +868,39 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 			ReleaseMutex(ghMutex);
 			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
 		}
-		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+		for (uint8_t b=0; b<PlaneMax; b++)
+		{
+			for (uint8_t i=0; i<threads_number; i++)
+				pssInfo[i].current_plane=b;
+
+			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+		}
 	}
 	else
 	{
 		switch (f_proc_1)
 		{
-			case 1 : evalFunc_1(pssInfo); break;
-			case 3 : evalFunc_1_16(pssInfo); break;
-			case 5 : evalFunc_1_32(pssInfo); break;
+			case 1 :
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_1(pssInfo);
+				}
+				break;
+			case 3 :
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_1_16(pssInfo);
+				}
+				break;
+			case 5 :
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_1_32(pssInfo);
+				}
+				break;
 			default : ;
 		}
 	}
@@ -873,16 +912,40 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		for (uint8_t i=0; i<threads_number; i++)
 			MT_Thread[i].f_process= f_proc_2;
 
-		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+		for (uint8_t b=0; b<PlaneMax; b++)
+		{
+			for (uint8_t i=0; i<threads_number; i++)
+				pssInfo[i].current_plane=b;
+
+			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+		}
 		poolInterface->ReleaseThreadPool(UserId,Sleep);
 	}
 	else
 	{
 		switch (f_proc_2)
 		{
-			case 2 : evalFunc_2(pssInfo); break;
-			case 4 : evalFunc_2_16(pssInfo); break;
-			case 6 : evalFunc_2_32(pssInfo); break;
+			case 2 :
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_2(pssInfo);
+				}
+				break;
+			case 4 :
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_2_16(pssInfo);
+				}
+				break;
+			case 6 :
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_2_32(pssInfo);
+				}
+				break;
 			default :;
 		}
 	}
@@ -903,7 +966,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 	
 	WaitForSingleObject(ghMutex,INFINITE);
 	
-	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
+	const uint8_t PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
 	if (isRGBPfamily)
 	{
@@ -924,7 +987,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 	{
 		if (vi.IsPlanar())
 		{
-			for (int b=0; b<PlaneMax; b++)
+			for (uint8_t b=0; b<PlaneMax; b++)
 				env->BitBlt(srcPF->GetPtr(b)+(srcPF->GetPitch(b)*(6+off)+32*(int)pixelsize),
 					srcPF->GetPitch(b) << 1,
 					src->GetReadPtr(plane[b])+src->GetPitch(plane[b])*off,
@@ -960,7 +1023,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 	{
 		if (vi.IsPlanar())
 		{
-			for (int b=0; b<PlaneMax; b++)
+			for (uint8_t b=0; b<PlaneMax; b++)
 				env->BitBlt(srcPF->GetPtr(b)+(srcPF->GetPitch(b)*(6+off)+32*(int)pixelsize),
 					srcPF->GetPitch(b) << 1,src->GetReadPtr(plane[b]),
 					src->GetPitch(plane[b]),src->GetRowSize(plane[b]),
@@ -992,7 +1055,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 		}
 	}
 
-	for (int b=0; b<PlaneMax; b++)
+	for (uint8_t b=0; b<PlaneMax; b++)
 	{
 		uint8_t *dstp = srcPF->GetPtr(b);
 		const int dst_pitch = srcPF->GetPitch(b);
@@ -1081,9 +1144,9 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 
 void nnedi3::calcStartEnd2(PVideoFrame dst)
 {
-	const int PlaneMax = (grey) ? 1 : (isAlphaChannel) ? 4 : 3;
+	const uint8_t PlaneMax = (grey) ? 1 : (isAlphaChannel) ? 4 : 3;
 
-	for (int b=0; b<PlaneMax; b++)
+	for (uint8_t b=0; b<PlaneMax; b++)
 	{
 		if (((b==0) && !Y) || ((b==1) && !U) || ((b==2) && !V) || ((b==3) && !A)) continue;
 
@@ -1333,8 +1396,21 @@ void evalFunc_1(void *ps)
 		{
 			if (opt==1) uc2s=uc2f48_C;
 			else uc2s=uc2f48_SSE2;
+#ifdef FMA_BUILD_POSSIBLE
+			if (opt==1) computeNetwork0=computeNetwork0_C;
+			else
+			{
+				if (opt>=5) computeNetwork0=computeNetwork0_FMA4;
+				else
+				{
+					if (opt>=4) computeNetwork0=computeNetwork0_FMA3;
+					else computeNetwork0=computeNetwork0_SSE2;
+				}
+			}
+#else
 			if (opt==1) computeNetwork0=computeNetwork0_C;
 			else computeNetwork0=computeNetwork0_SSE2;
+#endif
 		}
 	}
 	else // new prescreener
@@ -1345,10 +1421,11 @@ void evalFunc_1(void *ps)
 		if (opt==1) computeNetwork0=computeNetwork0new_C;
 		else computeNetwork0=computeNetwork0new_SSE2;
 	}
-	for (int b=0; b<PLANE_MAX; b++)
-	{
-		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
 
+	uint8_t b = pss->current_plane;
+
+	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
+	{
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -1629,8 +1706,21 @@ void evalFunc_1_16(void *ps)
 		{
 			if (opt==1) uc2s=uc2f48_C_16;
 			else uc2s=uc2f48_SSE2_16;
-			if (opt==1) computeNetwork0 = computeNetwork0_C;
-			else computeNetwork0 = computeNetwork0_SSE2;
+#ifdef FMA_BUILD_POSSIBLE
+			if (opt==1) computeNetwork0=computeNetwork0_C;
+			else
+			{
+				if (opt>=5) computeNetwork0=computeNetwork0_FMA4;
+				else
+				{
+					if (opt>=4) computeNetwork0=computeNetwork0_FMA3;
+					else computeNetwork0=computeNetwork0_SSE2;
+				}
+			}
+#else
+			if (opt==1) computeNetwork0=computeNetwork0_C;
+			else computeNetwork0=computeNetwork0_SSE2;
+#endif
 		}
 	}
 	else // new prescreener
@@ -1641,10 +1731,10 @@ void evalFunc_1_16(void *ps)
 		else computeNetwork0=computeNetwork0new_SSE2;
 	}
 
-	for (int b=0; b<PLANE_MAX; b++)
-	{
-		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
+	uint8_t b = pss->current_plane;
 
+	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
+	{
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -1803,13 +1893,26 @@ void evalFunc_1_32(void *ps)
 	else processLine0 = processLine0_SSE2_32;
 
 	uc2s=uc2f48_C_32;
-	if (opt==1) computeNetwork0 = computeNetwork0_C;
-	else computeNetwork0 = computeNetwork0_SSE2;
-
-	for (int b = 0; b<PLANE_MAX; b++)
+#ifdef FMA_BUILD_POSSIBLE
+	if (opt==1) computeNetwork0=computeNetwork0_C;
+	else
 	{
-		if (((b == 0) && !pss->Y) || ((b == 1) && !pss->U) || ((b == 2) && !pss->V) || ((b == 3) && !pss->A)) continue;
+		if (opt>=5) computeNetwork0=computeNetwork0_FMA4;
+		else
+		{
+			if (opt>=4) computeNetwork0=computeNetwork0_FMA3;
+			else computeNetwork0=computeNetwork0_SSE2;
+		}
+	}
+#else
+	if (opt==1) computeNetwork0=computeNetwork0_C;
+	else computeNetwork0=computeNetwork0_SSE2;
+#endif
 
+	uint8_t b = pss->current_plane;
+
+	if (((b == 0) && pss->Y) || ((b == 1) && pss->U) || ((b == 2) && pss->V) || ((b == 3) && pss->A))
+	{
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -2029,8 +2132,23 @@ void evalFunc_2(void *ps)
 	{
 		if (opt==1) extract=extract_m8_C;
 		else extract=extract_m8_SSE2;
+#ifdef FMA_BUILD_POSSIBLE
+		if (opt==1) dotProd=dotProd_C;
+		else
+		{
+			if (opt>=5)
+				dotProd = (asize % 48) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
+			else
+			{
+				if (opt>=4)
+					dotProd = (asize % 48) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
+				else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+			}
+		}
+#else
 		if (opt==1) dotProd=dotProd_C;
 		else dotProd= (asize%48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+#endif
 	}
 	if ((fapprox&12)==0) // use slow exp
 	{
@@ -2044,13 +2162,27 @@ void evalFunc_2(void *ps)
 	}
 	else // use fastest exp
 	{
+#ifdef FMA_BUILD_POSSIBLE
+		if (opt==1) expf=e0_m16_C;
+		else
+		{
+			if (opt>=5) expf=e0_m16_FMA4;
+			else
+			{
+				if (opt>=4) expf=e0_m16_FMA3;
+				else expf=e0_m16_SSE2;
+			}
+		}
+#else
 		if (opt==1) expf=e0_m16_C;
 		else expf=e0_m16_SSE2;
+#endif
 	}
-	for (int b=0; b<PLANE_MAX; b++)
-	{
-		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
 
+	uint8_t b = pss->current_plane;
+
+	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
+	{
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -2252,8 +2384,23 @@ void evalFunc_2_16(void *ps)
 	{
 		if (opt==1) extract=extract_m8_C_16;
 		else extract=extract_m8_SSE2_16;
+#ifdef FMA_BUILD_POSSIBLE
+		if (opt==1) dotProd = dotProd_C;
+		else
+		{
+			if (opt>=5)
+				dotProd = (asize % 48) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
+			else
+			{
+				if (opt>=4)
+					dotProd = (asize % 48) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
+				else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+			}
+		}
+#else
 		if (opt==1) dotProd = dotProd_C;
 		else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+#endif
 	}
 	if ((fapprox & 12)==0) // use slow exp
 	{
@@ -2267,13 +2414,27 @@ void evalFunc_2_16(void *ps)
 	}
 	else // use fastest exp
 	{
-		if (opt==1) expf = e0_m16_C;
-		else expf = e0_m16_SSE2;
+#ifdef FMA_BUILD_POSSIBLE
+		if (opt==1) expf=e0_m16_C;
+		else
+		{
+			if (opt>=5) expf=e0_m16_FMA4;
+			else
+			{
+				if (opt>=4) expf=e0_m16_FMA3;
+				else expf=e0_m16_SSE2;
+			}
+		}
+#else
+		if (opt==1) expf=e0_m16_C;
+		else expf=e0_m16_SSE2;
+#endif
 	}
-	for (int b=0; b<PLANE_MAX; b++)
-	{
-		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
 
+	uint8_t b = pss->current_plane;
+
+	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
+	{
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -2404,8 +2565,24 @@ void evalFunc_2_32(void *ps)
 
 	if (opt==1) extract=extract_m8_C_32;
 	else extract=extract_m8_SSE2_32;
-	if (opt==1) dotProd=dotProd_C;
-	else dotProd = (asize%48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+
+#ifdef FMA_BUILD_POSSIBLE
+	if (opt==1) dotProd = dotProd_C;
+	else
+	{
+		if (opt>=5)
+			dotProd = (asize % 48) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
+		else
+		{
+			if (opt>=4)
+				dotProd = (asize % 48) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
+			else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+		}
+	}
+#else
+	if (opt==1) dotProd = dotProd_C;
+	else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+#endif
 
 	if ((fapprox & 12)==0) // use slow exp
 	{
@@ -2419,13 +2596,27 @@ void evalFunc_2_32(void *ps)
 	}
 	else // use fastest exp
 	{
-		if (opt==1) expf = e0_m16_C;
-		else expf = e0_m16_SSE2;
+#ifdef FMA_BUILD_POSSIBLE
+		if (opt==1) expf=e0_m16_C;
+		else
+		{
+			if (opt>=5) expf=e0_m16_FMA4;
+			else
+			{
+				if (opt>=4) expf=e0_m16_FMA3;
+				else expf=e0_m16_SSE2;
+			}
+		}
+#else
+		if (opt==1) expf=e0_m16_C;
+		else expf=e0_m16_SSE2;
+#endif
 	}
-	for (int b=0; b<PLANE_MAX; b++)
-	{
-		if (((b==0) && !pss->Y) || ((b==1) && !pss->U) || ((b==2) && !pss->V) || ((b==3) && !pss->A)) continue;
 
+	uint8_t b = pss->current_plane;
+
+	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
+	{
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];

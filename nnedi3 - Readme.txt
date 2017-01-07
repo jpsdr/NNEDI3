@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.32 (05/12/2016)                                         |
+                                     v0.9.4.33 (07/01/2017)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -21,12 +21,13 @@ INFO:
 
     nnedi3(int field, bool dh, bool Y, bool U, bool V, int nsize, int nns, int qual, int etype,
            int pscrn, int threads, int opt, int fapprox, bool logicalCores, bool MaxPhysCore, bool SetAffinity,
-           bool A)
+           bool A, bool sleep, int prefetch)
 
     nnedi3_rpow2(int rfactor, int nsize, int nns, int qual, int etype, int pscrn, string cshift,
                  int fwidth, int fheight, float ep0, float ep1, int threads, int opt, int fapprox,
                  bool csresize, bool mpeg2,bool logicalCores, bool MaxPhysCore, bool SetAffinity,
-                 int threads_rs,bool logicalCores_rs, bool MaxPhysCore_rs, bool SetAffinity_rs)
+                 int threads_rs,bool logicalCores_rs, bool MaxPhysCore_rs, bool SetAffinity_rs,
+                 bool sleep, int prefetch)
 
 
 
@@ -158,9 +159,9 @@ PARAMETERS (nnedi3):
 
          0 - no prescreening (same as false in prior versions)
          1 - original prescreener (same as true in prior versions)
-         2 - new prescreener level 0
-         3 - new prescreener level 1
-         4 - new prescreener level 2
+         2 - new prescreener level 0 (<=16 bits only, otherwise go back to 1)
+         3 - new prescreener level 1 (<=16 bits only, otherwise go back to 1)
+         4 - new prescreener level 2 (<=16 bits only, otherwise go back to 1)
 
           ** Higher levels for the new prescreener result in cubic interpolation being
              used on fewer pixels (so are slower, but incur less error). However, the
@@ -185,6 +186,9 @@ PARAMETERS (nnedi3):
          0 = auto detect
          1 = use c
          2 = use sse2
+         3 = use sse4.1
+         4 = use FMA3
+         5 = use FMA4
 
         ** for an older version supporting sse use v0.9.1 available at:
         **    http://bengal.missouri.edu/~kes25c/old_stuff/
@@ -198,8 +202,8 @@ PARAMETERS (nnedi3):
       Mainly for debugging.
 
            0 = nothing
-          &1 = use int16 dot products in first layer of prescreener nn
-          &2 = use int16 dot products in predictor nn
+          &1 = use int16 dot products in first layer of prescreener nn (<=16 bits only)
+          &2 = use int16 dot products in predictor nn (<=15 bits only)
   &12 =    4 = use exp function approximation in predictor nn
   &12 = 8|12 = use faster (and more inaccurate) exp function approximation in predictor nn
 
@@ -229,9 +233,24 @@ PARAMETERS (nnedi3):
 
       Default: false (bool)
 
+  sleep -
+      If this parameter is set to true, once the filter has finished one frame, the threads of the
+      threadpool will be suspended (instead of still running but waiting an event), and resume when
+      the next frame will be processed. If set to false, the threads of the threadpool are always
+      running and waiting for a start event even between frames.
 
-The logicalCores, MaxPhysCore and SetAffinity are parameters to specify how the pool of thread will be created,
-allowing if necessary each people to tune according his configuration.
+      Default: false (bool)
+
+  prefetch -
+      This parameter will allow to create more than one threadpool, to avoid mutual resources acces
+      if "prefetch" is used in the avs script.
+      0 : Will set automaticaly to the prefetch value use in the script. Well... that's what i wanted
+          to do, but for now it's not possible for me to get this information when i need it, so, for
+          now, 0 will result in 1. For now, if you're using "prefetch" in your script, put the same
+          value on this parameter.
+
+The logicalCores, MaxPhysCore, SetAffinity and sleep are parameters to specify how the pool of thread
+will be created and handled, allowing if necessary each people to tune according his configuration.
 
 
 PARAMETERS (nnedi3_rpow2):
@@ -285,7 +304,7 @@ PARAMETERS (nnedi3_rpow2):
                 not set  (float)
 
 
-   nsize/nns/qual/etype/pscrn/threads/opt/fapprox/logicalCores/MaxPhysCore/SetAffinity -
+   nsize/nns/qual/etype/pscrn/threads/opt/fapprox/logicalCores/MaxPhysCore/SetAffinity/sleep/prefetch -
 
       Same as corresponding parameters in nnedi3. However, nnedi3_rpow2 uses nsize=0 and
       nns=3 by default (versus nsize=6 and nns=1 in nnedi3()).
@@ -354,6 +373,13 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   07/01/2017  v0.9.4.33
+
+       + Add support for 16 bits and float data formats (thanks to vapoursynth port).
+       + Add FMA3 and FMA4 functions on some parts (thanks to vapoursynth port).
+       + Add sleep and prefetch paremeters.
+       + Fix bug in YUY2 x64 ASM code.
+
    05/12/2016  v0.9.4.32
 
        + Update to new avisynth header and add support for RGB32, RGBPlanar and alpha channel on avs+.
