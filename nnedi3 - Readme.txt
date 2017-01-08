@@ -375,7 +375,7 @@ nnedi3_rpow2 EXAMPLES:
 CHANGE LIST:
    07/01/2017  v0.9.4.33
 
-       + Add support for 16 bits and float data formats (thanks to vapoursynth port).
+       + Add support for 9..16 bits and float data formats (thanks to vapoursynth port).
        + Add FMA3 and FMA4 functions on some parts (thanks to vapoursynth port).
        + Add sleep and prefetch paremeters.
        + Fix bug in YUY2 x64 ASM code.
