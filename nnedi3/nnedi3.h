@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.33 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.34 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -56,6 +56,7 @@ struct PS_INFO {
 	bool Y,U,V,A;
 	int pscrn;
 	uint8_t current_plane;
+	uint8_t plane_range[PLANE_MAX];
 	bool int16_prescreener,int16_predictor;
 	uint8_t bits_per_pixel;
 	IScriptEnvironment *env;
@@ -94,7 +95,7 @@ protected:
 public:
 	nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,
 		int _pscrn,int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,
-		bool _Sleep,bool _asvp,IScriptEnvironment *env);
+		bool _Sleep,int range_mode,bool _asvp,IScriptEnvironment *env);
 	~nnedi3();
 	PVideoFrame __stdcall nnedi3::GetFrame(int n,IScriptEnvironment *env);
 

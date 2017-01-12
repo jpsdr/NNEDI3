@@ -16,10 +16,10 @@ w_3 sword 8 dup(3)
 ub_1 byte 16 dup(1)
 uw_16 word 8 dup(16)
 w_254 sword 8 dup(254)
+w_16 sword 8 dup(16)
 
 d_19 sdword 4 dup(19)
 d_3 sdword 4 dup(3)
-d_254 sdword 4 dup(65534)
 ud_16 dword 8 dup(16)
 uw_1 word 8 dup(1)
 
@@ -619,7 +619,7 @@ uc2s48_SSE2 proc ptr_t:dword,pitch:dword,ptr_pf:dword
 uc2s48_SSE2 endp
 
 
-processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword
+processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:byte,val_max:byte
 
     public processLine0_SSE2_ASM
 	
@@ -627,6 +627,28 @@ processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_p
 		push edi
 		push esi
 
+		movzx eax,val_min
+		pinsrw xmm0,eax,0
+		pinsrw xmm0,eax,1
+		pinsrw xmm0,eax,2
+		pinsrw xmm0,eax,3
+		pinsrw xmm0,eax,4
+		pinsrw xmm0,eax,5
+		pinsrw xmm0,eax,6
+		pinsrw xmm0,eax,7
+		movdqa oword ptr w_16,xmm0		
+		
+		movzx eax,val_max
+		pinsrw xmm0,eax,0
+		pinsrw xmm0,eax,1
+		pinsrw xmm0,eax,2
+		pinsrw xmm0,eax,3
+		pinsrw xmm0,eax,4
+		pinsrw xmm0,eax,5
+		pinsrw xmm0,eax,6
+		pinsrw xmm0,eax,7
+		movdqa oword ptr w_254,xmm0		
+				
 		mov eax,tempu
 		mov ebx,src3p
 		mov ecx,width_
@@ -673,6 +695,8 @@ xloop:
 		pxor xmm1,xmm4
 		pminsw xmm0,oword ptr w_254
 		pminsw xmm2,oword ptr w_254
+		pmaxsw xmm0,oword ptr w_16
+		pmaxsw xmm2,oword ptr w_16
 		movdqa xmm5,xmm1
 		packuswb xmm0,xmm2
 		pand xmm5,oword ptr ub_1
@@ -702,7 +726,7 @@ xloop:
 processLine0_SSE2_ASM endp
 
 
-processLine0_SSE2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,limit16bits:word
+processLine0_SSE2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
 
     public processLine0_SSE2_ASM_16
 	
@@ -710,7 +734,7 @@ processLine0_SSE2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,sr
 		push edi
 		push esi
 
-		movzx eax,limit16bits
+		movzx eax,val_min
 		pinsrw xmm0,eax,0
 		pinsrw xmm0,eax,1
 		pinsrw xmm0,eax,2
@@ -719,8 +743,19 @@ processLine0_SSE2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,sr
 		pinsrw xmm0,eax,5
 		pinsrw xmm0,eax,6
 		pinsrw xmm0,eax,7
-		movdqa oword ptr d_254,xmm0
+		movdqa oword ptr w_16,xmm0		
 		
+		movzx eax,val_max
+		pinsrw xmm0,eax,0
+		pinsrw xmm0,eax,1
+		pinsrw xmm0,eax,2
+		pinsrw xmm0,eax,3
+		pinsrw xmm0,eax,4
+		pinsrw xmm0,eax,5
+		pinsrw xmm0,eax,6
+		pinsrw xmm0,eax,7
+		movdqa oword ptr w_254,xmm0		
+				
 		mov eax,tempu
 		mov ebx,src3p
 		mov ecx,width_
@@ -768,7 +803,8 @@ xloop_16:
 		pxor xmm1,xmm4
 		packusdw xmm0,xmm2
 		movdqa xmm5,xmm1
-		pminuw xmm0,oword ptr d_254
+		pminuw xmm0,oword ptr w_254
+		pmaxuw xmm0,oword ptr w_16
 		pand xmm5,oword ptr uw_1
 		pand xmm0,xmm3
 		psadbw xmm5,xmm7
@@ -2383,7 +2419,7 @@ finish_5:
 weightedAvgElliottMul5_m16_SSE2 endp
 
 
-castScale_SSE proc val:dword,scale:dword,dstp:dword
+castScale_SSE proc val:dword,scale:dword,dstp:dword,val_min:dword,val_max:dword
 
 	public castScale_SSE
 	
@@ -2395,14 +2431,14 @@ castScale_SSE proc val:dword,scale:dword,dstp:dword
 		addss xmm0,dword ptr sse_half
 		cvttss2si eax,xmm0
 		mov ecx,dstp
-		cmp eax,255
+		cmp eax,val_max
 		jl b255
-		mov eax,255
+		mov eax,val_max
 		jmp finish_6
 b255:
-		cmp eax,0
+		cmp eax,val_min
 		jge finish_6
-		xor eax,eax
+		mov eax,val_min
 finish_6:
 		mov byte ptr[ecx],al
 		
@@ -2411,7 +2447,7 @@ finish_6:
 castScale_SSE endp
 
 
-castScale_SSE_16 proc val:dword,scale:dword,dstp:dword,limit16:dword
+castScale_SSE_16 proc val:dword,scale:dword,dstp:dword,val_min:dword,val_max:dword
 
 	public castScale_SSE_16
 	
@@ -2423,14 +2459,14 @@ castScale_SSE_16 proc val:dword,scale:dword,dstp:dword,limit16:dword
 		addss xmm0,dword ptr sse_half
 		cvttss2si eax,xmm0
 		mov ecx,dstp
-		cmp eax,limit16
+		cmp eax,val_max
 		jl b255_16
-		mov eax,limit16
+		mov eax,val_max
 		jmp finish_6_16
 b255_16:
-		cmp eax,0
+		cmp eax,val_min
 		jge finish_6_16
-		xor eax,eax
+		mov eax,val_min
 finish_6_16:
 		mov word ptr[ecx],ax
 		

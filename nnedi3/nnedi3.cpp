@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.33 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.34 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -50,8 +50,8 @@ extern "C" void computeNetwork0_i16_SSE2(const float *inputf,const float *weight
 extern "C" void uc2f48_SSE2(const uint8_t *t,const int pitch,float *p);
 extern "C" void uc2f48_SSE2_16(const uint8_t *t, const int pitch, float *p);
 extern "C" void uc2s48_SSE2(const uint8_t *t,const int pitch,float *pf);
-extern "C" int processLine0_SSE2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch);
-extern "C" int processLine0_SSE2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t limit);
+extern "C" int processLine0_SSE2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint8_t val_min,const uint8_t val_max);
+extern "C" int processLine0_SSE2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t val_min,const uint16_t val_max);
 extern "C" int processLine0_SSE2_ASM_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch);
 extern "C" void extract_m8_SSE2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input);
 extern "C" void extract_m8_SSE2_16(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
@@ -67,8 +67,8 @@ extern "C" void e0_m16_SSE2(float *s,const int n);
 extern "C" void e1_m16_SSE2(float *s,const int n);
 extern "C" void e2_m16_SSE2(float *s,const int n);
 extern "C" void weightedAvgElliottMul5_m16_SSE2(const float *w,const int n,float *mstd);
-extern "C" void castScale_SSE(const float *val,const float *scale,uint8_t *dstp);
-extern "C" void castScale_SSE_16(const float *val, const float *scale, uint16_t *dstp,uint32_t limit16);
+extern "C" void castScale_SSE(const float *val,const float *scale,uint8_t *dstp,const uint32_t val_min,const uint32_t val_max);
+extern "C" void castScale_SSE_16(const float *val, const float *scale, uint16_t *dstp,const uint32_t val_min,const uint32_t val_max);
 extern "C" void uc2s64_SSE2(const uint8_t *t,const int pitch,float *p);
 extern "C" void computeNetwork0new_SSE2(const float *datai,const float *weights,uint8_t *d);
 
@@ -114,11 +114,12 @@ void shufflePreScrnL2L3(float *wf, float *rf, const int opt)
 
 
 nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,int _pscrn,
-	int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _Sleep,
+	int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _Sleep,int range_mode,
 	bool _avsp, IScriptEnvironment *env) :
 	GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),A(_A),
 	nsize(_nsize),nns(_nns),qual(_qual),etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox),
-	LogicalCores(_LogicalCores),MaxPhysCores(_MaxPhysCores),SetAffinity(_SetAffinity),Sleep(_Sleep),avsp(_avsp)
+	LogicalCores(_LogicalCores),MaxPhysCores(_MaxPhysCores),SetAffinity(_SetAffinity),Sleep(_Sleep),
+	avsp(_avsp)
 {
 	if ((field<-2) || (field>3)) env->ThrowError("nnedi3: field must be set to -2, -1, 0, 1, 2, or 3!");
 	if ((threads<0) || (threads>MAX_MT_THREADS)) env->ThrowError("nnedi3: threads must be between 0 and %d inclusive!",MAX_MT_THREADS);
@@ -130,6 +131,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if ((fapprox<0) || (fapprox>15)) env->ThrowError("nnedi3: fapprox must be [0,15]!\n");
 	if ((pscrn<0) || (pscrn>4)) env->ThrowError("nnedi3: pscrn must be [0,4]!\n");
 	if ((etype<0) || (etype>1)) env->ThrowError("nnedi3: etype must be [0,1]!\n");
+	if ((range_mode<0) || (range_mode>3)) env->ThrowError("nnedi3: range must be [0,3]!\n");
 	
 	grey = vi.IsY();
 	isRGBPfamily = vi.IsPlanarRGB() || vi.IsPlanarRGBA();
@@ -145,6 +147,37 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	int16_prescreener = ((fapprox & 1)!=0) && (pixelsize<=2);
 	
 	const int PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
+
+	uint8_t plane_range[PLANE_MAX];
+
+	if (range_mode!=1)
+	{
+		if (vi.IsYUV())
+		{
+			plane_range[0]=2;
+			plane_range[1]=3;
+			plane_range[2]=3;
+		}
+		else
+		{
+			if (grey)
+			{
+				for (uint8_t i=0; i<3; i++)
+					plane_range[i]=(range_mode==0) ? 2 : range_mode;
+			}
+			else
+			{
+				for (uint8_t i=0; i<3; i++)
+					plane_range[i]=1;
+			}
+		}
+	}
+	else
+	{
+		for (uint8_t i=0; i<3; i++)
+			plane_range[i]=1;
+	}
+	plane_range[3]=1;
 
 	if (field==-2) field = child->GetParity(0) ? 3 : 2;
 	else
@@ -739,6 +772,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			pssInfo[i].sheight[b] = srow[b];
 			srow[b] += i == 0 ? hslice[b]+hremain[b] : hslice[b];
 			pssInfo[i].eheight[b] = srow[b];
+			pssInfo[i].plane_range[b] = plane_range[b];
 		}
 	}
 
@@ -1317,7 +1351,7 @@ void uc2s48_C(const uint8_t *t, const int pitch, float *pf)
 }
 
 
-int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch)
+int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint8_t val_min,const uint8_t val_max)
 {
 	int count = 0;
 	const uint8_t *src2 = src3p+(src_pitch << 1);
@@ -1327,7 +1361,7 @@ int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t
 	for (int x=0; x<width; x++)
 	{
 		if (tempu[x])
-			dstp[x] = CB2((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5);
+			dstp[x]=max(min(((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5),val_max),val_min);
 		else
 		{
 			dstp[x]=255;
@@ -1339,7 +1373,7 @@ int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t
 
 
 
-int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch)
+int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint8_t val_min,const uint8_t val_max)
 {
 	int count;
 	const int width_m = width;
@@ -1349,13 +1383,13 @@ int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 	const uint8_t *src6 = src3p+(src_pitch*6);
 
 	width-=remain;
-	if (width!=0) count=processLine0_SSE2_ASM(tempu,width,dstp,src3p,src_pitch);
+	if (width!=0) count=processLine0_SSE2_ASM(tempu,width,dstp,src3p,src_pitch,val_min,val_max);
 	else count=0;
 
 	for (int x=width; x<width_m; x++)
 	{
 		if (tempu[x])
-			dstp[x]=CB2((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5);
+			dstp[x]=max(min(((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5),val_max),val_min);
 		else
 		{
 			dstp[x]=255;
@@ -1364,7 +1398,6 @@ int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 	}
 	return count;
 }
-
 
 void evalFunc_1(void *ps)
 {
@@ -1379,7 +1412,7 @@ void evalFunc_1(void *ps)
 	const bool int16_prescreener = pss->int16_prescreener;
 	void (*uc2s)(const uint8_t*,const int,float*);
 	void (*computeNetwork0)(const float*,const float*,uint8_t*);
-	int (*processLine0)(const uint8_t*,int,uint8_t*,const uint8_t*,const int);
+	int (*processLine0)(const uint8_t*,int,uint8_t*,const uint8_t*,const int,const uint8_t,const uint8_t);
 
 	if (opt==1) processLine0=processLine0_C;
 	else processLine0=processLine0_SSE2;
@@ -1426,6 +1459,7 @@ void evalFunc_1(void *ps)
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
+		const uint8_t range_mode=pss->plane_range[b];
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -1440,6 +1474,24 @@ void evalFunc_1(void *ps)
 		const int ystop = pss->eheight[b];
 		const int src_pitch2=src_pitch << 1;
 		const int dst_pitch2=dst_pitch << 1;
+
+		uint8_t val_min,val_max;
+
+		switch(range_mode)
+		{
+			case 1 :
+				val_min=0; val_max=254;
+				break;
+			case 2 :
+				val_min=16; val_max=235;
+				break;
+			case 3 :
+				val_min=16; val_max=240;
+				break;
+			default :
+				val_min=0; val_max=254;
+				break;
+		}
 
 		srcp+=ystart*src_pitch;
 		dstp+=(ystart-6)*dst_pitch-32;
@@ -1458,7 +1510,7 @@ void evalFunc_1(void *ps)
 					uc2s(src0+x,src_pitch,input);
 					computeNetwork0(input,weights0,tempu+x);
 				}
-				lcount[y]+=processLine0(tempu+32,width_64,dstp+32,src3p+32,src_pitch);
+				lcount[y]+=processLine0(tempu+32,width_64,dstp+32,src3p+32,src_pitch,val_min,val_max);
 				src3p+=src_pitch2;
 				dstp+=dst_pitch2;
 			}
@@ -1476,7 +1528,7 @@ void evalFunc_1(void *ps)
 						uc2s(src0+x,src_pitch,input);
 						computeNetwork0(input,weights0,tempu+x);
 					}
-					lcount[y]+=processLine0(tempu+32,width_64,dstp+32,src3p+32,src_pitch);
+					lcount[y]+=processLine0(tempu+32,width_64,dstp+32,src3p+32,src_pitch,val_min,val_max);
 					src3p+=src_pitch2;
 					dstp+=dst_pitch2;
 				}
@@ -1495,7 +1547,7 @@ void evalFunc_1(void *ps)
 }
 
 
-int processLine0_C_16(const uint8_t *tempu,int width, uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t limit)
+int processLine0_C_16(const uint8_t *tempu,int width, uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t val_min,const uint16_t val_max)
 {
 	int count = 0;
 	const uint16_t *src0 = (uint16_t *)src3p;
@@ -1507,7 +1559,7 @@ int processLine0_C_16(const uint8_t *tempu,int width, uint8_t *dstp,const uint8_
 	for (int x=0; x<width; x++)
 	{
 		if (tempu[x])
-			dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,limit),0);
+			dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,val_max),val_min);
 		else
 		{
 			dst0[x]=0xFFFF;
@@ -1646,7 +1698,7 @@ void computeNetwork0new_C_16(const float *datai, const float *weights, uint8_t *
 }
 
 
-int processLine0_SSE2_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t limit)
+int processLine0_SSE2_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t val_min,const uint16_t val_max)
 {
 	int count;
 	const int width_m = width;
@@ -1658,13 +1710,13 @@ int processLine0_SSE2_16(const uint8_t *tempu, int width, uint8_t *dstp, const u
 	uint16_t *dst0 = (uint16_t *)dstp;
 
 	width-=remain;
-	if (width!=0) count=processLine0_SSE2_ASM_16(tempu,width,dstp,src3p,src_pitch,limit);
+	if (width!=0) count=processLine0_SSE2_ASM_16(tempu,width,dstp,src3p,src_pitch,val_min,val_max);
 	else count=0;
 
 	for (int x=width; x<width_m; x++)
 	{
 		if (tempu[x])
-			dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,limit),0);
+			dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,val_max),val_min);
 		else
 		{
 			dst0[x]=0xFFFF;
@@ -1686,10 +1738,9 @@ void evalFunc_1_16(void *ps)
 	const int fapprox = pss->fapprox;
 	const bool int16_prescreener = pss->int16_prescreener;
 	const uint8_t bits_per_pixel = pss->bits_per_pixel;
-	const uint16_t limit16bitsm1 = (uint16_t)(((int)1 << bits_per_pixel) - 2);
 	void(*uc2s)(const uint8_t*, const int, float*);
 	void(*computeNetwork0)(const float*, const float*, uint8_t*);
-	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int, const uint16_t);
+	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int,const uint16_t,const uint16_t);
 
 	if (opt>=3) processLine0 = processLine0_SSE2_16;
 	else processLine0 = processLine0_C_16;
@@ -1735,6 +1786,7 @@ void evalFunc_1_16(void *ps)
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
+		const uint8_t range_mode=pss->plane_range[b];
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -1750,6 +1802,24 @@ void evalFunc_1_16(void *ps)
 		const int ystop = pss->eheight[b];
 		const int src_pitch2 = src_pitch << 1;
 		const int dst_pitch2 = dst_pitch << 1;
+
+		uint16_t val_min,val_max;
+
+		switch(range_mode)
+		{
+			case 1 :
+				val_min=0; val_max=(uint16_t)(((int)1 << bits_per_pixel) - 2);
+				break;
+			case 2 :
+				val_min=(uint16_t)((int)16 << (bits_per_pixel-8)); val_max=val_min+(uint16_t)((int)219 << (bits_per_pixel-8));
+				break;
+			case 3 :
+				val_min=(uint16_t)((int)16 << (bits_per_pixel-8)); val_max=val_min+(uint16_t)((int)224 << (bits_per_pixel-8));
+				break;
+			default :
+				val_min=0; val_max=(uint16_t)(((int)1 << bits_per_pixel) - 2);
+				break;
+		}
 
 		srcp += ystart*src_pitch;
 		dstp += (ystart-6)*dst_pitch-64;
@@ -1768,7 +1838,7 @@ void evalFunc_1_16(void *ps)
 					uc2s(src0+(x<<1),src_pitch,input);
 					computeNetwork0(input,weights0,tempu+x);
 				}
-				lcount[y]+=processLine0(tempu+32,width_64,dstp+64,src3p+64,src_pitch,limit16bitsm1);
+				lcount[y]+=processLine0(tempu+32,width_64,dstp+64,src3p+64,src_pitch,val_min,val_max);
 
 				src3p += src_pitch2;
 				dstp += dst_pitch2;
@@ -1787,7 +1857,7 @@ void evalFunc_1_16(void *ps)
 						uc2s(src0+(x<<1),src_pitch,input);
 						computeNetwork0(input,weights0,tempu+x);
 					}
-					lcount[y] += processLine0(tempu+32,width_64,dstp+64,src3p+64,src_pitch,limit16bitsm1);
+					lcount[y] += processLine0(tempu+32,width_64,dstp+64,src3p+64,src_pitch,val_min,val_max);
 					src3p += src_pitch2;
 					dstp += dst_pitch2;
 				}
@@ -2183,6 +2253,7 @@ void evalFunc_2(void *ps)
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
+		const uint8_t range_mode=pss->plane_range[b];
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -2193,6 +2264,24 @@ void evalFunc_2(void *ps)
 		const int src_pitch2=src_pitch << 1;
 		const int dst_pitch2=dst_pitch << 1;
 		const int width_32=width-32;
+
+		int32_t val_min,val_max;
+
+		switch(range_mode)
+		{
+			case 1 :
+				val_min=0; val_max=255;
+				break;
+			case 2 :
+				val_min=16; val_max=235;
+				break;
+			case 3 :
+				val_min=16; val_max=240;
+				break;
+			default :
+				val_min=0; val_max=255;
+				break;
+		}
 
 		srcp += (ystart+6)*src_pitch;
 		dstp += ystart*dst_pitch-32;
@@ -2215,7 +2304,7 @@ void evalFunc_2(void *ps)
 						expf(temp,nns);
 						wae5(temp,nns,mstd);
 					}
-					castScale_SSE(mstd,&scale,dstp+x);
+					castScale_SSE(mstd,&scale,dstp+x,val_min,val_max);
 				}
 				srcpp += src_pitch2;
 				dstp += dst_pitch2;
@@ -2238,7 +2327,7 @@ void evalFunc_2(void *ps)
 						expf(temp,nns);
 						wae5(temp,nns,mstd);
 					}
-					dstp[x]=min(max((int)(mstd[3]*scale+0.5f),0),255);
+					dstp[x]=min(max((int)(mstd[3]*scale+0.5f),val_min),val_max);
 				}
 				srcpp += src_pitch2;
 				dstp += dst_pitch2;
@@ -2356,7 +2445,6 @@ void evalFunc_2_16(void *ps)
 	const bool int16_predictor = pss->int16_predictor;
 	const float scale = (float)(1.0/(double)qual);
 	const uint8_t bits_per_pixel = pss->bits_per_pixel;
-	const uint32_t limit16bits = ((uint32_t)1 << bits_per_pixel)-1;
 	void(*extract)(const uint8_t*, const int, const int, const int, float*, float*);
 	void(*dotProd)(const float*, const float*, float*, const int, const int, const float*);
 	void(*expf)(float *, const int);
@@ -2435,6 +2523,7 @@ void evalFunc_2_16(void *ps)
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
+		const uint8_t range_mode=pss->plane_range[b];
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -2445,6 +2534,24 @@ void evalFunc_2_16(void *ps)
 		const int src_pitch2 = src_pitch << 1;
 		const int dst_pitch2 = dst_pitch << 1;
 		const int width_32 = width - 32;
+
+		int32_t val_min,val_max;
+
+		switch(range_mode)
+		{
+			case 1 :
+				val_min=0; val_max=(int32_t)(((int32_t)1 << bits_per_pixel) - 1);
+				break;
+			case 2 :
+				val_min=(int32_t)((int32_t)16 << (bits_per_pixel-8)); val_max=val_min+(int32_t)((int32_t)219 << (bits_per_pixel-8));
+				break;
+			case 3 :
+				val_min=(int32_t)((int32_t)16 << (bits_per_pixel-8)); val_max=val_min+(int32_t)((int32_t)224 << (bits_per_pixel-8));
+				break;
+			default :
+				val_min=0; val_max=(int32_t)(((int32_t)1 << bits_per_pixel) - 1);
+				break;
+		}
 
 		srcp += (ystart + 6)*src_pitch;
 		dstp += ystart*dst_pitch-64;
@@ -2469,7 +2576,7 @@ void evalFunc_2_16(void *ps)
 						expf(temp,nns);
 						wae5(temp,nns,mstd);
 					}
-					castScale_SSE_16(mstd,&scale,dst0+x,limit16bits);
+					castScale_SSE_16(mstd,&scale,dst0+x,val_min,val_max);
 				}
 				srcpp += src_pitch2;
 				dstp += dst_pitch2;
@@ -2494,7 +2601,7 @@ void evalFunc_2_16(void *ps)
 						expf(temp,nns);
 						wae5(temp,nns,mstd);
 					}
-					dst0[x] = min(max((int)(mstd[3]*scale+0.5f),0),(int32_t)limit16bits);
+					dst0[x] = min(max((int)(mstd[3]*scale+0.5f),val_min),val_max);
 				}
 				srcpp += src_pitch2;
 				dstp += dst_pitch2;
@@ -2729,7 +2836,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
 				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),
 				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
-				avsp,env);
+				args[19].AsInt(0),avsp,env);
 			if (RGB32) return env->Invoke("ConvertToRGB32",v).AsClip();
 			else
 			{
@@ -2742,7 +2849,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
 				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),
 				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
-				avsp,env);
+				args[19].AsInt(0),avsp,env);
 			
 	}
 	else
@@ -2750,7 +2857,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 				args[3].AsBool(true),false,false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),
 				args[9].AsInt(0),args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),
 				args[13].AsInt(15),args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
-				avsp,env);
+				args[19].AsInt(0),avsp,env);
 }
 
 
@@ -2806,6 +2913,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const bool SetAffinity_rs = args[23].AsBool(false);
 	const bool sleep = args[24].AsBool(false);
 	int prefetch = args[25].AsInt(0);
+	int range_mode = args[26].AsInt(0);
 
 	if (rfactor < 2 || rfactor > 1024) env->ThrowError("nnedi3_rpow2: 2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	int rf = 1, ct = 0;
@@ -2832,6 +2940,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	if (fapprox < 0 || fapprox > 15)
 		env->ThrowError("nnedi3_rpow2: fapprox must be [0,15]!\n");
 
+	if ((range_mode<0) || (range_mode>3)) env->ThrowError("nnedi3_rpow2: [range] must be between 0 and 3!");
+
 	if (prefetch == 0) prefetch = 1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3_rpow2: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
 
@@ -2846,6 +2956,38 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	auto turnRightFunction = (FTurnR) ? "FTurnRight" : "TurnRight";
 	auto turnLeftFunction =  (FTurnL) ? "FTurnLeft" : "TurnLeft";
 	auto Spline36 = (SplineMT) ? "Spline36ResizeMT" : "Spline36Resize";
+
+	uint8_t plane_range[PLANE_MAX];
+
+	if (range_mode!=1)
+	{
+		if (vi.IsYUV())
+		{
+			plane_range[0]=2;
+			plane_range[1]=3;
+			plane_range[2]=3;
+		}
+		else
+		{
+			if (grey)
+			{
+				for (uint8_t i=0; i<3; i++)
+					plane_range[i]=(range_mode==0) ? 2 : range_mode;
+			}
+			else
+			{
+				for (uint8_t i=0; i<3; i++)
+					plane_range[i]=1;
+			}
+		}
+	}
+	else
+	{
+		for (uint8_t i=0; i<3; i++)
+			plane_range[i]=1;
+	}
+	plane_range[3]=1;
+	range_mode=plane_range[0];
 
 	try 
 	{
@@ -2877,9 +3019,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; ++i)
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,range_mode,avsp,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,range_mode,avsp,env);
 			}
 			Y_hshift = Y_vshift = -0.5;
 		}
@@ -2911,25 +3053,25 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				v = new nnedi3(v.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,avsp,env);
+				v = new nnedi3(v.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,plane_range[0],avsp,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,plane_range[0],avsp,env);
 			}
 			for (int i=0; i<ct; ++i)
 			{
 				vu = env->Invoke(turnRightFunction,vu).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,avsp,env);
+				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,plane_range[1],avsp,env);
 				vu = env->Invoke(turnLeftFunction,vu).AsClip();
-				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,avsp,env);
+				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,plane_range[1],avsp,env);
 			}
 			for (int i=0; i<ct; ++i)
 			{
 				vv = env->Invoke(turnRightFunction,vv).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,avsp,env);
+				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,plane_range[2],avsp,env);
 				vv = env->Invoke(turnLeftFunction,vv).AsClip();
-				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,avsp,env);
+				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,plane_range[2],avsp,env);
 			}
 			if (isAlphaChannel)
 			{
@@ -2937,9 +3079,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				{
 					va = env->Invoke(turnRightFunction,va).AsClip();
 					// always use field=1 to keep chroma/luma horizontal alignment
-					va = new nnedi3(va.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,avsp,env);
+					va = new nnedi3(va.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,plane_range[3],avsp,env);
 					va = env->Invoke(turnLeftFunction,va).AsClip();
-					va = new nnedi3(va.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,avsp,env);
+					va = new nnedi3(va.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,plane_range[3],avsp,env);
 				}				
 			}
 
@@ -3011,11 +3153,12 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			if ((type==0) || ((type!=3) && (ep0==-FLT_MAX)) ||
 				((type==3) && (ep0==-FLT_MAX) && (ep1==-FLT_MAX)))
 			{
-				AVSValue sargs[13] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
-					vi.width*rfactor, vi.height*rfactor,threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,sleep,prefetch };
-				const char *nargs[13] = { 0, 0, 0, "src_left", "src_top", 
-					"src_width", "src_height","threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch" };
-				const uint8_t nbarg=(use_rs_mt) ? 13:7;
+				AVSValue sargs[14] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+					vi.width*rfactor, vi.height*rfactor,threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,sleep,
+					prefetch,range_mode };
+				const char *nargs[14] = { 0, 0, 0, "src_left", "src_top", 
+					"src_width", "src_height","threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range" };
+				const uint8_t nbarg=(use_rs_mt) ? 14:7;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
@@ -3024,6 +3167,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					if (isAlphaChannel)
 					{
 						sargs[0]=va;
+						sargs[13]=plane_range[3];
 						va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 					}
 					
@@ -3052,8 +3196,10 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					}
 
 					sargs[0]=vu;
+					sargs[13]=plane_range[1];
 					vu = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 					sargs[0]=vv;
+					sargs[13]=plane_range[2];
 					vv = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
 					AVSValue ytouvargs[4] = {vu,vv,v,va};
@@ -3087,13 +3233,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else if ((type!=3) || (min(ep0,ep1)==-FLT_MAX))
 			{
-				AVSValue sargs[14] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+				AVSValue sargs[15] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor, type==1?AVSValue((int)(ep0+0.5f)):
-					(type==2?ep0:max(ep0,ep1)),threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,sleep,prefetch };
-				const char *nargs[14] = { 0, 0, 0, "src_left", "src_top", 
+					(type==2?ep0:max(ep0,ep1)),threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,sleep,prefetch,range_mode };
+				const char *nargs[15] = { 0, 0, 0, "src_left", "src_top", 
 					"src_width", "src_height", type==1?"taps":(type==2?"p":(max(ep0,ep1)==ep0?"b":"c")),
-					"threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch" };
-				const uint8_t nbarg=(use_rs_mt) ? 14:8;
+					"threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range" };
+				const uint8_t nbarg=(use_rs_mt) ? 15:8;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
@@ -3102,6 +3248,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					if (isAlphaChannel)
 					{
 						sargs[0]=va;
+						sargs[14]=plane_range[3];
 						va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 					}
 					
@@ -3130,8 +3277,10 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					}
 
 					sargs[0]=vu;
+					sargs[14]=plane_range[1];
 					vu = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 					sargs[0]=vv;
+					sargs[14]=plane_range[2];
 					vv = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
 					AVSValue ytouvargs[4] = {vu,vv,v,va};
@@ -3165,13 +3314,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else
 			{
-				AVSValue sargs[15] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+				AVSValue sargs[16] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor, ep0, ep1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,
-					SetAffinity_rs,sleep,prefetch };
-				const char *nargs[15] = { 0, 0, 0, "src_left", "src_top", 
+					SetAffinity_rs,sleep,prefetch,range_mode };
+				const char *nargs[16] = { 0, 0, 0, "src_left", "src_top", 
 					"src_width", "src_height", "b", "c", "threads","logicalCores","MaxPhysCore","SetAffinity",
-					"sleep","prefetch" };
-				const uint8_t nbarg=(use_rs_mt) ? 15:9;
+					"sleep","prefetch","range" };
+				const uint8_t nbarg=(use_rs_mt) ? 16:9;
 
 				v = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
@@ -3180,6 +3329,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					if (isAlphaChannel)
 					{
 						sargs[0]=va;
+						sargs[15]=plane_range[3];
 						va=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 					}
 					
@@ -3208,8 +3358,10 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					}
 
 					sargs[0]=vu;
+					sargs[15]=plane_range[1];
 					vu = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 					sargs[0]=vv;
+					sargs[15]=plane_range[2];
 					vv = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
 
 					AVSValue ytouvargs[4] = {vu,vv,v,va};
@@ -3248,15 +3400,16 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				if (vi.Is420())
 				{
-					AVSValue sargs[13]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
+					AVSValue sargs[14]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
 						(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,
-						SetAffinity_rs,sleep,prefetch };
-					const char *nargs[13]={0,0,0,"src_left","src_top","src_width","src_height","threads",
-					"logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch" };
-					const uint8_t nbarg=(SplineMT) ? 13:7;
+						SetAffinity_rs,sleep,prefetch,plane_range[1]};
+					const char *nargs[14]={0,0,0,"src_left","src_top","src_width","src_height","threads",
+					"logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range" };
+					const uint8_t nbarg=(SplineMT) ? 14:7;
 
 					vu = env->Invoke(Spline36,AVSValue(sargs,nbarg),nargs).AsClip();
 					sargs[0]=vv;
+					sargs[13]=plane_range[2];
 					vv = env->Invoke(Spline36,AVSValue(sargs,nbarg),nargs).AsClip();
 				}
 
@@ -3311,10 +3464,10 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	AVS_linkage = vectors;
 
 	env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
-		"[threads]i[opt]i[fapprox]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[A]b[sleep]b[prefetch]i", Create_nnedi3, 0);
+		"[threads]i[opt]i[fapprox]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[A]b[sleep]b[prefetch]i[range]i", Create_nnedi3, 0);
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
 		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b[logicalCores]b[MaxPhysCore]b" \
-		"[SetAffinity]b[threads_rs]i[logicalCores_rs]b[MaxPhysCore_rs]b[SetAffinity_rs]b[sleep]b[prefetch]i", Create_nnedi3_rpow2, 0);
+		"[SetAffinity]b[threads_rs]i[logicalCores_rs]b[MaxPhysCore_rs]b[SetAffinity_rs]b[sleep]b[prefetch]i[range]i", Create_nnedi3_rpow2, 0);
 
 	return "NNEDI3 plugin";
 	

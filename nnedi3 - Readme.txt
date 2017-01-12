@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.33 (07/01/2017)                                         |
+                                     v0.9.4.34 (12/01/2017)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -21,13 +21,13 @@ INFO:
 
     nnedi3(int field, bool dh, bool Y, bool U, bool V, int nsize, int nns, int qual, int etype,
            int pscrn, int threads, int opt, int fapprox, bool logicalCores, bool MaxPhysCore, bool SetAffinity,
-           bool A, bool sleep, int prefetch)
+           bool A, bool sleep, int prefetch, int range)
 
     nnedi3_rpow2(int rfactor, int nsize, int nns, int qual, int etype, int pscrn, string cshift,
                  int fwidth, int fheight, float ep0, float ep1, int threads, int opt, int fapprox,
                  bool csresize, bool mpeg2,bool logicalCores, bool MaxPhysCore, bool SetAffinity,
                  int threads_rs,bool logicalCores_rs, bool MaxPhysCore_rs, bool SetAffinity_rs,
-                 bool sleep, int prefetch)
+                 bool sleep, int prefetch, int range)
 
 
 
@@ -249,6 +249,25 @@ PARAMETERS (nnedi3):
           now, 0 will result in 1. For now, if you're using "prefetch" in your script, put the same
           value on this parameter.
 
+      Default: 0
+
+  range -
+      This parameter specify the range the output video data has to comply with.
+      Limited range is 16-235 for Y, 16-240 for U/V. Full range is 0-255 for all planes.
+      Alpha channel is not affected by this paramter, it's always full range.
+      Values are adjusted according bit depth of course. This parameter has no effect
+      for float datas.
+      0 : Automatic mode. If video is YUV mode is limited range, if video is RGB mode is
+          full range, if video is greyscale (Y/Y8) mode is Y limited range.
+      1 : Force full range whatever the video is.
+      2 : Force limited Y range for greyscale video (Y/Y8), limited range for YUV video,
+          no effect for RGB video.
+      3 : Force limited U/V range for greyscale video (Y/Y8), limited range for YUV video,
+          no effect for RGB video.
+
+      Default: 0
+
+
 The logicalCores, MaxPhysCore, SetAffinity and sleep are parameters to specify how the pool of thread
 will be created and handled, allowing if necessary each people to tune according his configuration.
 
@@ -304,7 +323,8 @@ PARAMETERS (nnedi3_rpow2):
                 not set  (float)
 
 
-   nsize/nns/qual/etype/pscrn/threads/opt/fapprox/logicalCores/MaxPhysCore/SetAffinity/sleep/prefetch -
+   nsize/nns/qual/etype/pscrn/threads/opt/fapprox/logicalCores/MaxPhysCore/SetAffinity/
+   sleep/prefetch/range -
 
       Same as corresponding parameters in nnedi3. However, nnedi3_rpow2 uses nsize=0 and
       nns=3 by default (versus nsize=6 and nns=1 in nnedi3()).
@@ -373,6 +393,9 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   12/01/2017  v0.9.4.34
+       + Add range parameter.
+
    07/01/2017  v0.9.4.33
 
        + Add support for 9..16 bits and float data formats (thanks to vapoursynth port).

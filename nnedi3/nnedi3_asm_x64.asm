@@ -680,7 +680,7 @@ uc2s48_SSE2 proc public frame
 uc2s48_SSE2 endp
 
 
-;processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword
+;processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:byte,val_max:byte
 ; tempu = rcx
 ; width_ = edx
 ; dstp = r8
@@ -689,6 +689,8 @@ uc2s48_SSE2 endp
 processLine0_SSE2_ASM proc public frame
 
 src_pitch equ dword ptr[rbp+48]
+val_min equ byte ptr[rbp+56]
+val_max equ byte ptr[rbp+64]
 
 	push rbp
 	.pushreg rbp
@@ -699,8 +701,8 @@ src_pitch equ dword ptr[rbp+48]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	sub rsp,112
-	.allocstack 112
+	sub rsp,128
+	.allocstack 128
 	movdqu oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	movdqu oword ptr[rsp+16],xmm7
@@ -715,8 +717,30 @@ src_pitch equ dword ptr[rbp+48]
 	.savexmm128 xmm11,80
 	movdqu oword ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
+	movdqu oword ptr[rsp+112],xmm13
+	.savexmm128 xmm13,112
 	.endprolog
 
+		movzx eax,val_max
+		pinsrw xmm12,eax,0
+		pinsrw xmm12,eax,1
+		pinsrw xmm12,eax,2
+		pinsrw xmm12,eax,3
+		pinsrw xmm12,eax,4
+		pinsrw xmm12,eax,5
+		pinsrw xmm12,eax,6
+		pinsrw xmm12,eax,7
+	
+		movzx eax,val_min
+		pinsrw xmm13,eax,0
+		pinsrw xmm13,eax,1
+		pinsrw xmm13,eax,2
+		pinsrw xmm13,eax,3
+		pinsrw xmm13,eax,4
+		pinsrw xmm13,eax,5
+		pinsrw xmm13,eax,6
+		pinsrw xmm13,eax,7
+	
 		mov rax,rcx
 		mov rbx,r9
 		xor rcx,rcx
@@ -732,7 +756,6 @@ src_pitch equ dword ptr[rbp+48]
 		movdqa xmm9,oword ptr w_3
 		movdqa xmm10,oword ptr ub_1
 		movdqa xmm11,oword ptr uw_16
-		movdqa xmm12,oword ptr w_254
 xloop:
 		movdqa xmm0,[rbx+rdx*2]
 		movdqa xmm1,[rdi]
@@ -771,6 +794,8 @@ xloop:
 		pxor xmm1,xmm4
 		pminsw xmm0,xmm12
 		pminsw xmm2,xmm12
+		pmaxsw xmm0,xmm13
+		pmaxsw xmm2,xmm13
 		movdqa xmm5,xmm1
 		packuswb xmm0,xmm2
 		pand xmm5,xmm10
@@ -792,6 +817,7 @@ xloop:
 		xor  rax,rax
 		movd eax,xmm6
 		
+	movdqu xmm13,oword ptr[rsp+112]
 	movdqu xmm12,oword ptr[rsp+96]
 	movdqu xmm11,oword ptr[rsp+80]
 	movdqu xmm10,oword ptr[rsp+64]
@@ -799,7 +825,7 @@ xloop:
 	movdqu xmm8,oword ptr[rsp+32]
 	movdqu xmm7,oword ptr[rsp+16]
 	movdqu xmm6,oword ptr[rsp]	
-	add rsp,112
+	add rsp,128
 	pop rdi
 	pop rsi
 	pop rbx
@@ -810,7 +836,7 @@ xloop:
 processLine0_SSE2_ASM endp
 
 
-;processLine0_SSE2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,limit16bits:word
+;processLine0_SSE2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
 ; tempu = rcx
 ; width_ = edx
 ; dstp = r8
@@ -819,7 +845,8 @@ processLine0_SSE2_ASM endp
 processLine0_SSE2_ASM_16 proc public frame
 
 src_pitch equ dword ptr[rbp+48]
-limit16bits equ word ptr[rbp+56]
+val_min equ word ptr[rbp+56]
+val_max equ word ptr[rbp+64]
 
 	push rbp
 	.pushreg rbp
@@ -830,8 +857,8 @@ limit16bits equ word ptr[rbp+56]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	sub rsp,112
-	.allocstack 112
+	sub rsp,128
+	.allocstack 128
 	movdqu oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	movdqu oword ptr[rsp+16],xmm7
@@ -846,9 +873,11 @@ limit16bits equ word ptr[rbp+56]
 	.savexmm128 xmm11,80
 	movdqu oword ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
+	movdqu oword ptr[rsp+112],xmm13
+	.savexmm128 xmm13,112
 	.endprolog
 
-		movzx eax,limit16bits
+		movzx eax,val_max
 		pinsrw xmm12,eax,0
 		pinsrw xmm12,eax,1
 		pinsrw xmm12,eax,2
@@ -857,6 +886,16 @@ limit16bits equ word ptr[rbp+56]
 		pinsrw xmm12,eax,5
 		pinsrw xmm12,eax,6
 		pinsrw xmm12,eax,7
+		
+		movzx eax,val_min
+		pinsrw xmm13,eax,0
+		pinsrw xmm13,eax,1
+		pinsrw xmm13,eax,2
+		pinsrw xmm13,eax,3
+		pinsrw xmm13,eax,4
+		pinsrw xmm13,eax,5
+		pinsrw xmm13,eax,6
+		pinsrw xmm13,eax,7		
 	
 		mov rax,rcx
 		mov rbx,r9
@@ -915,6 +954,7 @@ xloop_16:
 		packusdw xmm0,xmm2
 		movdqa xmm5,xmm1
 		pminuw xmm0,xmm12
+		pmaxuw xmm0,xmm13
 		pand xmm5,xmm10
 		pand xmm0,xmm3
 		psadbw xmm5,xmm7
@@ -934,6 +974,7 @@ xloop_16:
 		xor  rax,rax
 		movd eax,xmm6
 		
+	movdqu xmm13,oword ptr[rsp+112]
 	movdqu xmm12,oword ptr[rsp+96]
 	movdqu xmm11,oword ptr[rsp+80]
 	movdqu xmm10,oword ptr[rsp+64]
@@ -941,7 +982,7 @@ xloop_16:
 	movdqu xmm8,oword ptr[rsp+32]
 	movdqu xmm7,oword ptr[rsp+16]
 	movdqu xmm6,oword ptr[rsp]	
-	add rsp,112
+	add rsp,128
 	pop rdi
 	pop rsi
 	pop rbx
@@ -3095,12 +3136,15 @@ finish_5:
 weightedAvgElliottMul5_m16_SSE2 endp
 
 
-;castScale_SSE proc val:dword,scale:dword,dstp:dword
+;castScale_SSE proc val:dword,scale:dword,dstp:dword,val_min:dword,val_max:dword
 ; val = rcx
 ; scale = rdx
 ; dstp = r8
+; val_min = r9d
 
 castScale_SSE proc public frame
+
+val_max equ dword ptr[rbp+48]
 	
 	.endprolog
 	
@@ -3109,14 +3153,14 @@ castScale_SSE proc public frame
 		addss xmm0,dword ptr sse_half
 		cvttss2si eax,xmm0
 		mov rcx,r8
-		cmp eax,255
+		cmp eax,val_max
 		jl b255
-		mov eax,255
+		mov eax,val_max
 		jmp finish_6
 b255:
-		cmp eax,0
+		cmp eax,r9d
 		jge finish_6
-		xor eax,eax
+		mov eax,r9d
 finish_6:
 		mov byte ptr[rcx],al
 		
@@ -3126,13 +3170,15 @@ castScale_SSE endp
 
 
 
-;castScale_SSE_16 proc val:dword,scale:dword,dstp:dword,limit16:dword
+;castScale_SSE_16 proc val:dword,scale:dword,dstp:dword,val_min:dword,val_max:dword
 ; val = rcx
 ; scale = rdx
 ; dstp = r8
-; limit16 = r9d
+; val_min = r9d
 
 castScale_SSE_16 proc public frame
+
+val_max equ dword ptr[rbp+48]
 	
 	.endprolog
 	
@@ -3141,14 +3187,14 @@ castScale_SSE_16 proc public frame
 		addss xmm0,dword ptr sse_half
 		cvttss2si eax,xmm0
 		mov rcx,r8
-		cmp eax,r9d
+		cmp eax,val_max
 		jl b255_16
-		mov eax,r9d
+		mov eax,val_max
 		jmp finish_6_16
 b255_16:
-		cmp eax,0
+		cmp eax,r9d
 		jge finish_6_16
-		xor eax,eax
+		mov eax,r9d
 finish_6_16:
 		mov word ptr[rcx],ax
 		
