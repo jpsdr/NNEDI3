@@ -1811,10 +1811,10 @@ void evalFunc_1_16(void *ps)
 				val_min=0; val_max=(uint16_t)(((int)1 << bits_per_pixel) - 2);
 				break;
 			case 2 :
-				val_min=(uint16_t)((int)16 << (bits_per_pixel-8)); val_max=val_min+(uint16_t)((int)219 << (bits_per_pixel-8));
+				val_min=(uint16_t)((int)16 << (bits_per_pixel-8)); val_max=(uint16_t)((int)235 << (bits_per_pixel-8));
 				break;
 			case 3 :
-				val_min=(uint16_t)((int)16 << (bits_per_pixel-8)); val_max=val_min+(uint16_t)((int)224 << (bits_per_pixel-8));
+				val_min=(uint16_t)((int)16 << (bits_per_pixel-8)); val_max=(uint16_t)((int)240 << (bits_per_pixel-8));
 				break;
 			default :
 				val_min=0; val_max=(uint16_t)(((int)1 << bits_per_pixel) - 2);
@@ -2543,10 +2543,10 @@ void evalFunc_2_16(void *ps)
 				val_min=0; val_max=(int32_t)(((int32_t)1 << bits_per_pixel) - 1);
 				break;
 			case 2 :
-				val_min=(int32_t)((int32_t)16 << (bits_per_pixel-8)); val_max=val_min+(int32_t)((int32_t)219 << (bits_per_pixel-8));
+				val_min=(int32_t)((int32_t)16 << (bits_per_pixel-8)); val_max=(int32_t)((int32_t)235 << (bits_per_pixel-8));
 				break;
 			case 3 :
-				val_min=(int32_t)((int32_t)16 << (bits_per_pixel-8)); val_max=val_min+(int32_t)((int32_t)224 << (bits_per_pixel-8));
+				val_min=(int32_t)((int32_t)16 << (bits_per_pixel-8)); val_max=(int32_t)((int32_t)240 << (bits_per_pixel-8));
 				break;
 			default :
 				val_min=0; val_max=(int32_t)(((int32_t)1 << bits_per_pixel) - 1);
