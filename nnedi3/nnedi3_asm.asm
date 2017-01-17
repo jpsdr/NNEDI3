@@ -2432,14 +2432,9 @@ castScale_SSE proc val:dword,scale:dword,dstp:dword,val_min:dword,val_max:dword
 		cvttss2si eax,xmm0
 		mov ecx,dstp
 		cmp eax,val_max
-		jl b255
-		mov eax,val_max
-		jmp finish_6
-b255:
+		cmovnl eax,val_max
 		cmp eax,val_min
-		jge finish_6
-		mov eax,val_min
-finish_6:
+		cmovng eax,val_min
 		mov byte ptr[ecx],al
 		
 		ret
@@ -2460,14 +2455,9 @@ castScale_SSE_16 proc val:dword,scale:dword,dstp:dword,val_min:dword,val_max:dwo
 		cvttss2si eax,xmm0
 		mov ecx,dstp
 		cmp eax,val_max
-		jl b255_16
-		mov eax,val_max
-		jmp finish_6_16
-b255_16:
+		cmovnl eax,val_max
 		cmp eax,val_min
-		jge finish_6_16
-		mov eax,val_min
-finish_6_16:
+		cmovng eax,val_min
 		mov word ptr[ecx],ax
 		
 		ret

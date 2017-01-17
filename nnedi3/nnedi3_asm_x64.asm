@@ -3154,14 +3154,9 @@ val_max equ dword ptr[rbp+48]
 		cvttss2si eax,xmm0
 		mov rcx,r8
 		cmp eax,val_max
-		jl b255
-		mov eax,val_max
-		jmp finish_6
-b255:
+		cmovnl eax,val_max
 		cmp eax,r9d
-		jge finish_6
-		mov eax,r9d
-finish_6:
+		cmovng eax,r9d
 		mov byte ptr[rcx],al
 		
 		ret
@@ -3188,14 +3183,9 @@ val_max equ dword ptr[rbp+48]
 		cvttss2si eax,xmm0
 		mov rcx,r8
 		cmp eax,val_max
-		jl b255_16
-		mov eax,val_max
-		jmp finish_6_16
-b255_16:
+		cmovnl eax,val_max
 		cmp eax,r9d
-		jge finish_6_16
-		mov eax,r9d
-finish_6_16:
+		cmovng eax,r9d
 		mov word ptr[rcx],ax
 		
 		ret
