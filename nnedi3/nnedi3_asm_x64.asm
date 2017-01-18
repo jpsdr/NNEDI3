@@ -3144,7 +3144,7 @@ weightedAvgElliottMul5_m16_SSE2 endp
 
 castScale_SSE proc public frame
 
-val_max equ dword ptr[rbp+48]
+val_max equ dword ptr[rsp+40]
 	
 	.endprolog
 	
@@ -3173,7 +3173,7 @@ castScale_SSE endp
 
 castScale_SSE_16 proc public frame
 
-val_max equ dword ptr[rbp+48]
+val_max equ dword ptr[rsp+40]
 	
 	.endprolog
 	
