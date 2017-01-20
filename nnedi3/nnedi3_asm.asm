@@ -858,7 +858,7 @@ xloop_32:
 		movd xmm3,dword ptr [eax]					
 		subps xmm0,xmm2	
 		punpcklbw xmm3,xmm7	
-		movdqa [esi],xmm0
+		movaps [esi],xmm0
 		punpcklwd xmm3,xmm7		
 		pcmpeqd xmm3,oword ptr dw_1		
 		pcmpeqd xmm4,xmm4

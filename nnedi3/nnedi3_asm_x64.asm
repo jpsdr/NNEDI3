@@ -1050,7 +1050,7 @@ xloop_32:
 		movd xmm3,dword ptr [rax]
 		subps xmm0,xmm2		
 		punpcklbw xmm3,xmm7
-		movdqa [rsi],xmm0
+		movaps [rsi],xmm0
 		punpcklwd xmm3,xmm7			
 		pcmpeqd xmm3,xmm10
 		pcmpeqd xmm4,xmm4
