@@ -799,9 +799,7 @@ xloop:
 		movdqa xmm5,xmm1
 		packuswb xmm0,xmm2
 		pand xmm5,xmm10
-		pand xmm0,xmm3
 		psadbw xmm5,xmm7
-		por xmm0,xmm1
 		movdqa xmm2,xmm5
 		psrldq xmm5,8
 		movdqa [rsi],xmm0
@@ -956,9 +954,7 @@ xloop_16:
 		pminuw xmm0,xmm12
 		pmaxuw xmm0,xmm13
 		pand xmm5,xmm10
-		pand xmm0,xmm3
 		psadbw xmm5,xmm7
-		por xmm0,xmm1
 		movdqa xmm2,xmm5
 		psrldq xmm5,8
 		movdqa [rsi],xmm0
@@ -1043,41 +1039,28 @@ src_pitch equ dword ptr[rbp+48]
 		movdqa xmm10,oword ptr dw_1
 		
 xloop_32:
+		movaps xmm2,[rbx]
 		movaps xmm0,[rbx+rdx*2]
 		movaps xmm1,[rdi]
-		movaps xmm2,xmm0
-		movaps xmm3,xmm1
+		movaps xmm3,[rdi+rdx*2]
 		addps xmm0,xmm1
 		addps xmm2,xmm3
 		mulps xmm0,xmm8
-		mulps xmm2,xmm8
-		movaps xmm1,[rbx]
-		movaps xmm3,[rdi+rdx*2]
-		movaps xmm4,xmm1
-		movaps xmm5,xmm3
-		addps xmm1,xmm3
-		addps xmm4,xmm5
-		
+		mulps xmm2,xmm9
 		movd xmm3,dword ptr [rax]
-		mulps xmm1,xmm9
-		mulps xmm4,xmm9
-		punpcklbw xmm3,xmm7			
-		subps xmm0,xmm1
-		punpcklwd xmm3,xmm7	
-		subps xmm2,xmm4
-		
+		subps xmm0,xmm2		
+		punpcklbw xmm3,xmm7
+		movdqa [rsi],xmm0
+		punpcklwd xmm3,xmm7			
 		pcmpeqd xmm3,xmm10
-		pcmpeqw xmm4,xmm4
+		pcmpeqd xmm4,xmm4
 		movdqa xmm1,xmm3
 		pxor xmm1,xmm4
 		movdqa xmm5,xmm1
 		pand xmm5,xmm10
-		pand xmm0,xmm3
 		psadbw xmm5,xmm7
-		por xmm0,xmm1
 		movdqa xmm2,xmm5
 		psrldq xmm5,8
-		movdqa [rsi],xmm0
 		paddusw xmm5,xmm2
 		paddusw xmm6,xmm5
 		add rbx,r8

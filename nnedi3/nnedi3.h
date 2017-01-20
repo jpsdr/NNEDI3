@@ -45,6 +45,8 @@ struct PS_INFO {
 	int field[PLANE_MAX],ident;
 	const uint8_t *srcp[PLANE_MAX];
 	uint8_t *dstp[PLANE_MAX];
+	uint8_t *NNPixels[PLANE_MAX];
+	int NNPixels_pitch[PLANE_MAX];
 	int src_pitch[PLANE_MAX],dst_pitch[PLANE_MAX];
 	int height[PLANE_MAX],width[PLANE_MAX];
 	int sheight[PLANE_MAX],eheight[PLANE_MAX];
@@ -78,6 +80,7 @@ protected:
 	bool LogicalCores,MaxPhysCores,SetAffinity,Sleep;
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
 	uint16_t UserId;
+	uint8_t *NNPixels[PLANE_MAX];
 	
 	bool grey,avsp,isRGBPfamily,isAlphaChannel;
 	uint8_t pixelsize; // AVS16
@@ -101,7 +104,3 @@ public:
 
 	int __stdcall SetCacheHints(int cachehints, int frame_range);
 };
-
-// new prescreener functions
-void uc2s64_C(const uint8_t *t,const int pitch,float *p);
-void computeNetwork0new_C(const float *datai,const float *weights,uint8_t *d);

@@ -202,6 +202,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	for (uint8_t i=0; i<PLANE_MAX; i++)
 		lcount[i]=NULL;
 
+	for (uint8_t i=0; i<PLANE_MAX; i++)
+		NNPixels[i]=NULL;
 	for (uint8_t i=0; i<MAX_MT_THREADS; i++)
 	{
 		MT_Thread[i].pClass=this;
@@ -723,19 +725,39 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		hslice[i] = height/(int)threads_number;
 		hremain[i] = height%(int)threads_number;
 	}
-	size_t temp_size = max((size_t)srcPF->GetWidth(0),512*sizeof(float));
 
 	ghMutex=CreateMutex(NULL,FALSE,NULL);
 	if (ghMutex==NULL)
 	{
 		FreeData();
-		env->ThrowError("nnedi3: Unable to create Mutex !");
+		env->ThrowError("nnedi3: Unable to create Mutex!");
 	}
+
+	int NNPixels_pitch[PLANE_MAX];
+	size_t NNPixels_Size[PLANE_MAX];
+
+	for (uint8_t i=0; i<PlaneMax; i++)
+	{
+		NNPixels_pitch[i]=((srcPF->GetWidth(i)+63) >> 6) << 6;
+		NNPixels_Size[i]=(size_t)srcPF->GetHeight(i)*(size_t)NNPixels_pitch[i];
+	}
+	for (uint8_t i=0; i<PlaneMax; i++)
+		NNPixels[i]=(uint8_t *)_aligned_malloc(NNPixels_Size[i],64);
+	for (uint8_t i=0; i<PlaneMax; i++)
+	{
+		if (NNPixels[i]==NULL)
+		{
+			FreeData();
+			env->ThrowError("nnedi3: Unable to create NNPixels[%d]!",i);
+		}
+	}
+	for (uint8_t i=0; i<PlaneMax; i++)
+		A_memset(NNPixels[i],1,NNPixels_Size[i]);
 
 	for (uint8_t i=0; i<threads_number; i++)
 	{
 		pssInfo[i].input = (float *)_aligned_malloc(512*sizeof(float),64);
-		pssInfo[i].temp = (float *)_aligned_malloc(temp_size,64);
+		pssInfo[i].temp = (float *)_aligned_malloc(512*sizeof(float),64);
 		if ((pssInfo[i].input==NULL) || (pssInfo[i].temp==NULL))
 		{
 			FreeData();
@@ -762,6 +784,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		pssInfo[i].bits_per_pixel = bits_per_pixel;
 		for (int b=0; b<PlaneMax; b++)
 		{
+			pssInfo[i].NNPixels[b] = NNPixels[b];
+			pssInfo[i].NNPixels_pitch[b] = NNPixels_pitch[b];
 			pssInfo[i].lcount[b] = lcount[b];
 			pssInfo[i].dstp[b] = dstPF->GetPtr(b);
 			pssInfo[i].srcp[b] = srcPF->GetPtr(b);
@@ -806,6 +830,8 @@ void nnedi3::FreeData(void)
 		myalignedfree(pssInfo[i].temp);
 		myalignedfree(pssInfo[i].input);
 	}
+	for (int8_t i=PLANE_MAX-1; i>=0; i--)
+		myalignedfree(NNPixels[i]);
 	myCloseHandle(ghMutex);
 	for (int8_t i=PLANE_MAX-1; i>=0; i--)
 		myalignedfree(lcount[i]);
@@ -1360,13 +1386,8 @@ int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t
 
 	for (int x=0; x<width; x++)
 	{
-		if (tempu[x])
-			dstp[x]=max(min(((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5),val_max),val_min);
-		else
-		{
-			dstp[x]=255;
-			count++;
-		}
+		if (tempu[x]!=0) dstp[x]=max(min(((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5),val_max),val_min);
+		else count++;
 	}
 	return count;
 }
@@ -1388,24 +1409,77 @@ int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 
 	for (int x=width; x<width_m; x++)
 	{
-		if (tempu[x])
-			dstp[x]=max(min(((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5),val_max),val_min);
-		else
-		{
-			dstp[x]=255;
-			count++;
-		}
+		if (tempu[x]!=0) dstp[x]=max(min(((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5),val_max),val_min);
+		else count++;
 	}
 	return count;
 }
+
+
+// new prescreener functions
+
+void uc2s64_C(const uint8_t *t, const int pitch, float *p)
+{
+	int16_t *ps = (int16_t *)p;
+	const int pitch2 = pitch << 1;
+
+	for (int y = 0; y<4; y++)
+	{
+		for (int x = 0; x<16; x++)
+			ps[x] = t[x];
+
+		ps += 16;
+		t += pitch2;
+	}
+}
+
+
+void computeNetwork0new_C(const float *datai, const float *weights, uint8_t *d)
+{
+	int16_t *data = (int16_t *)datai;
+	int16_t *ws = (int16_t *)weights;
+	float *wf = (float *)&ws[4 * 64];
+	float vals[8];
+
+	for (int i = 0; i<4; i++)
+	{
+		int sum = 0;
+		const int i_3 = i << 3;
+
+		for (int j = 0; j<64; j++)
+			sum += data[j] * ws[i_3 + ((j >> 3) << 5) + (j & 7)];
+
+		const float t = sum*wf[i] + wf[4 + i];
+		vals[i] = t / (1.0f + fabsf(t));
+	}
+
+	for (int i = 0; i<4; i++)
+	{
+		float sum = 0.0f;
+		int const i_8 = 8 + i;
+
+		for (int j = 0; j<4; j++)
+			sum += vals[j] * wf[i_8 + (j << 2)];
+
+		vals[4 + i] = sum + wf[8 + 16 + i];
+	}
+
+	int mask = 0;
+
+	for (int i = 0; i<4; i++)
+	{
+		if (vals[4 + i]>0.0f)
+			mask |= (0x1 << (i << 3));
+	}
+	*((int*)d) = mask;
+}
+
 
 void evalFunc_1(void *ps)
 {
 	PS_INFO *pss = (PS_INFO *)ps;
 	float *input = pss->input;
 	const float *weights0 = pss->weights0;
-	float *temp = pss->temp;
-	uint8_t *tempu = (uint8_t *)temp;
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
 	const int fapprox = pss->fapprox;
@@ -1459,6 +1533,9 @@ void evalFunc_1(void *ps)
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
+		uint8_t *NNPixels = pss->NNPixels[b];
+		const int NNPixels_pitch = pss->NNPixels_pitch[b];
+		const int NNPixels_pitch_2 = NNPixels_pitch << 1;
 		const uint8_t range_mode=pss->plane_range[b];
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
@@ -1480,7 +1557,7 @@ void evalFunc_1(void *ps)
 		switch(range_mode)
 		{
 			case 1 :
-				val_min=0; val_max=254;
+				val_min=0; val_max=255;
 				break;
 			case 2 :
 				val_min=16; val_max=235;
@@ -1489,12 +1566,13 @@ void evalFunc_1(void *ps)
 				val_min=16; val_max=240;
 				break;
 			default :
-				val_min=0; val_max=254;
+				val_min=0; val_max=255;
 				break;
 		}
 
 		srcp+=ystart*src_pitch;
 		dstp+=(ystart-6)*dst_pitch-32;
+		NNPixels+=(ystart-6)*NNPixels_pitch;
 
 		const uint8_t *src3p = srcp-src_pitch*3;
 		int *lcount = pss->lcount[b]-6;
@@ -1508,11 +1586,12 @@ void evalFunc_1(void *ps)
 				for (int x=32; x<width_32; x++)
 				{
 					uc2s(src0+x,src_pitch,input);
-					computeNetwork0(input,weights0,tempu+x);
+					computeNetwork0(input,weights0,NNPixels+x);
 				}
-				lcount[y]+=processLine0(tempu+32,width_64,dstp+32,src3p+32,src_pitch,val_min,val_max);
+				lcount[y]+=processLine0(NNPixels+32,width_64,dstp+32,src3p+32,src_pitch,val_min,val_max);
 				src3p+=src_pitch2;
 				dstp+=dst_pitch2;
+				NNPixels+=NNPixels_pitch_2;
 			}
 		}
 		else
@@ -1526,20 +1605,22 @@ void evalFunc_1(void *ps)
 					for (int x=32; x<width_32; x+=4)
 					{
 						uc2s(src0+x,src_pitch,input);
-						computeNetwork0(input,weights0,tempu+x);
+						computeNetwork0(input,weights0,NNPixels+x);
 					}
-					lcount[y]+=processLine0(tempu+32,width_64,dstp+32,src3p+32,src_pitch,val_min,val_max);
+					lcount[y]+=processLine0(NNPixels+32,width_64,dstp+32,src3p+32,src_pitch,val_min,val_max);
 					src3p+=src_pitch2;
 					dstp+=dst_pitch2;
+					NNPixels+=NNPixels_pitch_2;
 				}
 			}
 			else // no prescreening
 			{
 				for (int y=ystart; y<ystop; y+=2)
 				{
-					A_memset(dstp+32,255,width_64);
+					A_memset(NNPixels,0,width);
 					lcount[y]+=width_64;
 					dstp+=dst_pitch2;
+					NNPixels+=NNPixels_pitch_2;
 				}
 			}
 		}
@@ -1558,13 +1639,8 @@ int processLine0_C_16(const uint8_t *tempu,int width, uint8_t *dstp,const uint8_
 
 	for (int x=0; x<width; x++)
 	{
-		if (tempu[x])
-			dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,val_max),val_min);
-		else
-		{
-			dst0[x]=0xFFFF;
-			count++;
-		}
+		if (tempu[x]) dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,val_max),val_min);
+		else count++;
 	}
 	return count;
 }
@@ -1715,24 +1791,18 @@ int processLine0_SSE2_16(const uint8_t *tempu, int width, uint8_t *dstp, const u
 
 	for (int x=width; x<width_m; x++)
 	{
-		if (tempu[x])
-			dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,val_max),val_min);
-		else
-		{
-			dst0[x]=0xFFFF;
-			count++;
-		}
+		if (tempu[x]) dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,val_max),val_min);
+		else count++;
 	}
 	return count;
 }
+
 
 void evalFunc_1_16(void *ps)
 {
 	PS_INFO *pss = (PS_INFO *)ps;
 	float *input = pss->input;
 	const float *weights0 = pss->weights0;
-	float *temp = pss->temp;
-	uint8_t *tempu = (uint8_t *)temp;
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
 	const int fapprox = pss->fapprox;
@@ -1786,6 +1856,9 @@ void evalFunc_1_16(void *ps)
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
+		uint8_t *NNPixels = pss->NNPixels[b];
+		const int NNPixels_pitch = pss->NNPixels_pitch[b];
+		const int NNPixels_pitch_2 = NNPixels_pitch << 1;
 		const uint8_t range_mode=pss->plane_range[b];
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
@@ -1808,7 +1881,7 @@ void evalFunc_1_16(void *ps)
 		switch(range_mode)
 		{
 			case 1 :
-				val_min=0; val_max=(uint16_t)(((int)1 << bits_per_pixel) - 2);
+				val_min=0; val_max=(uint16_t)(((int)1 << bits_per_pixel) - 1);
 				break;
 			case 2 :
 				val_min=(uint16_t)((int)16 << (bits_per_pixel-8)); val_max=(uint16_t)((int)235 << (bits_per_pixel-8));
@@ -1817,12 +1890,13 @@ void evalFunc_1_16(void *ps)
 				val_min=(uint16_t)((int)16 << (bits_per_pixel-8)); val_max=(uint16_t)((int)240 << (bits_per_pixel-8));
 				break;
 			default :
-				val_min=0; val_max=(uint16_t)(((int)1 << bits_per_pixel) - 2);
+				val_min=0; val_max=(uint16_t)(((int)1 << bits_per_pixel) - 1);
 				break;
 		}
 
 		srcp += ystart*src_pitch;
 		dstp += (ystart-6)*dst_pitch-64;
+		NNPixels+=(ystart-6)*NNPixels_pitch;
 
 		const uint8_t *src3p = srcp-src_pitch*3;
 		int *lcount = pss->lcount[b]-6;
@@ -1836,12 +1910,13 @@ void evalFunc_1_16(void *ps)
 				for (int x=32; x<width_32; x++)
 				{
 					uc2s(src0+(x<<1),src_pitch,input);
-					computeNetwork0(input,weights0,tempu+x);
+					computeNetwork0(input,weights0,NNPixels+x);
 				}
-				lcount[y]+=processLine0(tempu+32,width_64,dstp+64,src3p+64,src_pitch,val_min,val_max);
+				lcount[y]+=processLine0(NNPixels+32,width_64,dstp+64,src3p+64,src_pitch,val_min,val_max);
 
 				src3p += src_pitch2;
 				dstp += dst_pitch2;
+				NNPixels+=NNPixels_pitch_2;
 			}
 		}
 		else
@@ -1855,20 +1930,22 @@ void evalFunc_1_16(void *ps)
 					for (int x=32; x<width_32; x+=4)
 					{
 						uc2s(src0+(x<<1),src_pitch,input);
-						computeNetwork0(input,weights0,tempu+x);
+						computeNetwork0(input,weights0,NNPixels+x);
 					}
-					lcount[y] += processLine0(tempu+32,width_64,dstp+64,src3p+64,src_pitch,val_min,val_max);
+					lcount[y] += processLine0(NNPixels+32,width_64,dstp+64,src3p+64,src_pitch,val_min,val_max);
 					src3p += src_pitch2;
 					dstp += dst_pitch2;
+					NNPixels+=NNPixels_pitch_2;
 				}
 			}
 			else // no prescreening
 			{
 				for (int y=ystart; y<ystop; y+=2)
 				{
-					A_memset(dstp+64,255,width_64_2);
+					A_memset(NNPixels,0,width);
 					lcount[y] += width_64;
 					dstp += dst_pitch2;
+					NNPixels+=NNPixels_pitch_2;
 				}
 			}
 		}
@@ -1889,13 +1966,8 @@ int processLine0_C_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 
 	for (int x=0; x<width; x++)
 	{
-		if (tempu[x])
-			dst0[x] = 0.59375f*(src2[x]+src4[x])-0.09375f*(src0[x]+src6[x]);
-		else
-		{
-			dst[x] = 0xFFFFFFFF;
-			count++;
-		}
+		if (tempu[x]) dst0[x] = 0.59375f*(src2[x]+src4[x])-0.09375f*(src0[x]+src6[x]);
+		else count++;
 	}
 	return count;
 }
@@ -1934,24 +2006,18 @@ int processLine0_SSE2_32(const uint8_t *tempu, int width, uint8_t *dstp, const u
 
 	for (int x=width; x<width_m; x++)
 	{
-		if (tempu[x])
-			dst0[x]=0.59375f*(src2[x]+src4[x])-0.09375f*(src0[x]+src6[x]);
-		else
-		{
-			dst[x]=0xFFFFFFFF;
-			count++;
-		}
+		if (tempu[x]) dst0[x]=0.59375f*(src2[x]+src4[x])-0.09375f*(src0[x]+src6[x]);
+		else count++;
 	}
 	return count;
 }
+
 
 void evalFunc_1_32(void *ps)
 {
 	PS_INFO *pss = (PS_INFO *)ps;
 	float *input = pss->input;
 	const float *weights0 = pss->weights0;
-	float *temp = pss->temp;
-	uint8_t *tempu = (uint8_t *)temp;
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
 	const int fapprox = pss->fapprox;
@@ -1983,6 +2049,9 @@ void evalFunc_1_32(void *ps)
 
 	if (((b == 0) && pss->Y) || ((b == 1) && pss->U) || ((b == 2) && pss->V) || ((b == 3) && pss->A))
 	{
+		uint8_t *NNPixels = pss->NNPixels[b];
+		const int NNPixels_pitch = pss->NNPixels_pitch[b];
+		const int NNPixels_pitch_2 = NNPixels_pitch << 1;
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -2001,6 +2070,7 @@ void evalFunc_1_32(void *ps)
 
 		srcp += ystart*src_pitch;
 		dstp += (ystart-6)*dst_pitch-128;
+		NNPixels+=(ystart-6)*NNPixels_pitch;
 
 		const uint8_t *src3p = srcp-src_pitch*3;
 		int *lcount = pss->lcount[b]-6;
@@ -2014,21 +2084,23 @@ void evalFunc_1_32(void *ps)
 				for (int x=32; x<width_32; x++)
 				{
 					uc2s(src0+(x<<2),src_pitch,input);
-					computeNetwork0(input,weights0,tempu+x);
+					computeNetwork0(input,weights0,NNPixels+x);
 				}
-				lcount[y] += processLine0(tempu+32,width_64,dstp+128,src3p+128,src_pitch);
+				lcount[y] += processLine0(NNPixels+32,width_64,dstp+128,src3p+128,src_pitch);
 
 				src3p += src_pitch2;
 				dstp += dst_pitch2;
+				NNPixels+=NNPixels_pitch_2;
 			}
 		}
 		else // no prescreening
 		{
 			for (int y=ystart; y<ystop; y+=2)
 			{
-				A_memset(dstp+128,255,width_64_4);
+				A_memset(NNPixels,0,width);
 				lcount[y]+=width_64;
 				dstp+=dst_pitch2;
+				NNPixels+=NNPixels_pitch_2;
 			}
 		}
 	}
@@ -2253,6 +2325,9 @@ void evalFunc_2(void *ps)
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
+		uint8_t *NNPixels = pss->NNPixels[b];
+		const int NNPixels_pitch = pss->NNPixels_pitch[b];
+		const int NNPixels_pitch_2 = NNPixels_pitch << 1;
 		const uint8_t range_mode=pss->plane_range[b];
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
@@ -2285,6 +2360,8 @@ void evalFunc_2(void *ps)
 
 		srcp += (ystart+6)*src_pitch;
 		dstp += ystart*dst_pitch-32;
+		NNPixels+=ystart*NNPixels_pitch;
+
 		const uint8_t *srcpp = srcp-((ydia-1)*src_pitch+xdiad2m1);
 
 		if (opt>1)
@@ -2293,7 +2370,7 @@ void evalFunc_2(void *ps)
 			{
 				for (int x=32; x<width_32; x++)
 				{
-					if (dstp[x]!=255) continue;
+					if (NNPixels[x]!=0) continue;
 
 					float mstd[4];
 
@@ -2308,6 +2385,7 @@ void evalFunc_2(void *ps)
 				}
 				srcpp += src_pitch2;
 				dstp += dst_pitch2;
+				NNPixels+=NNPixels_pitch_2;
 			}
 		}
 		else
@@ -2316,7 +2394,7 @@ void evalFunc_2(void *ps)
 			{
 				for (int x=32; x<width_32; x++)
 				{
-					if (dstp[x]!=255) continue;
+					if (NNPixels[x]!=0) continue;
 
 					float mstd[4];
 
@@ -2331,6 +2409,7 @@ void evalFunc_2(void *ps)
 				}
 				srcpp += src_pitch2;
 				dstp += dst_pitch2;
+				NNPixels+=NNPixels_pitch_2;
 			}
 		}
 	}
@@ -2523,6 +2602,9 @@ void evalFunc_2_16(void *ps)
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
+		uint8_t *NNPixels = pss->NNPixels[b];
+		const int NNPixels_pitch = pss->NNPixels_pitch[b];
+		const int NNPixels_pitch_2 = NNPixels_pitch << 1;
 		const uint8_t range_mode=pss->plane_range[b];
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
@@ -2556,16 +2638,17 @@ void evalFunc_2_16(void *ps)
 		srcp += (ystart + 6)*src_pitch;
 		dstp += ystart*dst_pitch-64;
 		const uint8_t *srcpp = srcp-((ydia-1)*src_pitch+(xdiad2m1 << 1));
+		NNPixels+=ystart*NNPixels_pitch;
 
 		if (opt>1)
 		{
 			for (int y=ystart; y<ystop; y+=2)
 			{
-				uint16_t *dst0 = (uint16_t *)dstp;
-
 				for (int x=32; x<width_32; x++)
 				{
-					if (dst0[x]!=0xFFFF) continue;
+					uint16_t *dst0 = (uint16_t *)dstp;
+
+					if (NNPixels[x]!=0) continue;
 
 					float mstd[4];
 
@@ -2580,6 +2663,7 @@ void evalFunc_2_16(void *ps)
 				}
 				srcpp += src_pitch2;
 				dstp += dst_pitch2;
+				NNPixels+=NNPixels_pitch_2;
 			}
 		}
 		else
@@ -2590,7 +2674,7 @@ void evalFunc_2_16(void *ps)
 
 				for (int x=32; x<width_32; x++)
 				{
-					if (dst0[x]!=0xFFFF) continue;
+					if (NNPixels[x]!=0) continue;
 
 					float mstd[4];
 
@@ -2605,6 +2689,7 @@ void evalFunc_2_16(void *ps)
 				}
 				srcpp += src_pitch2;
 				dstp += dst_pitch2;
+				NNPixels+=NNPixels_pitch_2;
 			}
 		}
 	}
@@ -2724,6 +2809,9 @@ void evalFunc_2_32(void *ps)
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
+		uint8_t *NNPixels = pss->NNPixels[b];
+		const int NNPixels_pitch = pss->NNPixels_pitch[b];
+		const int NNPixels_pitch_2 = NNPixels_pitch << 1;
 		const uint8_t *srcp = pss->srcp[b];
 		const int src_pitch = pss->src_pitch[b];
 		const int width = pss->width[b];
@@ -2737,16 +2825,17 @@ void evalFunc_2_32(void *ps)
 
 		srcp += (ystart+6)*src_pitch;
 		dstp += ystart*dst_pitch-128;
+		NNPixels+=ystart*NNPixels_pitch;
+
 		const uint8_t *srcpp = srcp-((ydia-1)*src_pitch+(xdiad2m1<<2));
 
 		for (int y=ystart; y<ystop; y+=2)
 		{
 			float *dst0 = (float *)dstp;
-			uint32_t *dst = (uint32_t *)dstp;
 
 			for (int x=32; x<width_32; x++)
 			{
-				if (dst[x]!=0xFFFFFFFF) continue;
+				if (NNPixels[x]!=0) continue;
 
 				float mstd[4];
 
@@ -2761,6 +2850,7 @@ void evalFunc_2_32(void *ps)
 			}
 			srcpp += src_pitch2;
 			dstp += dst_pitch2;
+			NNPixels+=NNPixels_pitch_2;
 		}
 	}
 }
@@ -3471,62 +3561,4 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 
 	return "NNEDI3 plugin";
 	
-}
-
-// new prescreener functions
-
-void uc2s64_C(const uint8_t *t, const int pitch, float *p)
-{
-	int16_t *ps = (int16_t *)p;
-	const int pitch2 = pitch << 1;
-
-	for (int y = 0; y<4; y++)
-	{
-		for (int x = 0; x<16; x++)
-			ps[x] = t[x];
-
-		ps += 16;
-		t += pitch2;
-	}
-}
-
-
-void computeNetwork0new_C(const float *datai, const float *weights, uint8_t *d)
-{
-	int16_t *data = (int16_t *)datai;
-	int16_t *ws = (int16_t *)weights;
-	float *wf = (float *)&ws[4 * 64];
-	float vals[8];
-
-	for (int i = 0; i<4; i++)
-	{
-		int sum = 0;
-		const int i_3 = i << 3;
-
-		for (int j = 0; j<64; j++)
-			sum += data[j] * ws[i_3 + ((j >> 3) << 5) + (j & 7)];
-
-		const float t = sum*wf[i] + wf[4 + i];
-		vals[i] = t / (1.0f + fabsf(t));
-	}
-
-	for (int i = 0; i<4; i++)
-	{
-		float sum = 0.0f;
-		int const i_8 = 8 + i;
-
-		for (int j = 0; j<4; j++)
-			sum += vals[j] * wf[i_8 + (j << 2)];
-
-		vals[4 + i] = sum + wf[8 + 16 + i];
-	}
-
-	int mask = 0;
-
-	for (int i = 0; i<4; i++)
-	{
-		if (vals[4 + i]>0.0f)
-			mask |= (0x1 << (i << 3));
-	}
-	*((int*)d) = mask;
 }

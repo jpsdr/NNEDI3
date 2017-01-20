@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.35 (18/01/2017)                                         |
+                                     v0.9.4.35 (20/01/2017)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -393,8 +393,9 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
-   18/01/2017  v0.9.4.35
+   20/01/2017  v0.9.4.35
        + Fix crash on x64 version introduced in v0.9.4.34.
+       + Fix prescreener issue on flat area with value of 255.
 
    17/01/2017  v0.9.4.34
        + Add range parameter.

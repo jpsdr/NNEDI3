@@ -647,7 +647,7 @@ processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_p
 		pinsrw xmm0,eax,5
 		pinsrw xmm0,eax,6
 		pinsrw xmm0,eax,7
-		movdqa oword ptr w_254,xmm0		
+		movdqa oword ptr w_254,xmm0	
 				
 		mov eax,tempu
 		mov ebx,src3p
@@ -700,9 +700,7 @@ xloop:
 		movdqa xmm5,xmm1
 		packuswb xmm0,xmm2
 		pand xmm5,oword ptr ub_1
-		pand xmm0,xmm3
 		psadbw xmm5,xmm7
-		por xmm0,xmm1
 		movdqa xmm2,xmm5
 		psrldq xmm5,8
 		movdqa [esi],xmm0
@@ -806,9 +804,7 @@ xloop_16:
 		pminuw xmm0,oword ptr w_254
 		pmaxuw xmm0,oword ptr w_16
 		pand xmm5,oword ptr uw_1
-		pand xmm0,xmm3
 		psadbw xmm5,xmm7
-		por xmm0,xmm1
 		movdqa xmm2,xmm5
 		psrldq xmm5,8
 		movdqa [esi],xmm0
@@ -851,41 +847,28 @@ processLine0_SSE2_ASM_32 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,sr
 		pxor xmm7,xmm7		
 		
 xloop_32:
+		movaps xmm2,[ebx]
 		movaps xmm0,[ebx+edx*2]
 		movaps xmm1,[edi]
-		movaps xmm2,xmm0
-		movaps xmm3,xmm1
+		movaps xmm3,[edi+edx*2]
 		addps xmm0,xmm1
 		addps xmm2,xmm3
 		mulps xmm0,oword ptr f_19
-		mulps xmm2,oword ptr f_19
-		movaps xmm1,[ebx]
-		movaps xmm3,[edi+edx*2]
-		movaps xmm4,xmm1
-		movaps xmm5,xmm3
-		addps xmm1,xmm3
-		addps xmm4,xmm5
-		
-		movd xmm3,dword ptr [eax]		
-		mulps xmm1,oword ptr f_3
-		mulps xmm4,oword ptr f_3		
+		mulps xmm2,oword ptr f_3
+		movd xmm3,dword ptr [eax]					
+		subps xmm0,xmm2	
 		punpcklbw xmm3,xmm7	
-		subps xmm0,xmm1		
+		movdqa [esi],xmm0
 		punpcklwd xmm3,xmm7		
-		subps xmm2,xmm4
-		
 		pcmpeqd xmm3,oword ptr dw_1		
 		pcmpeqd xmm4,xmm4
 		movdqa xmm1,xmm3	
 		pxor xmm1,xmm4		
 		movdqa xmm5,xmm1
 		pand xmm5,oword ptr dw_1
-		pand xmm0,xmm3
 		psadbw xmm5,xmm7
-		por xmm0,xmm1
 		movdqa xmm2,xmm5
 		psrldq xmm5,8
-		movdqa [esi],xmm0
 		paddusw xmm5,xmm2
 		paddusw xmm6,xmm5
 		add ebx,16
