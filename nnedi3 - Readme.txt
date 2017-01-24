@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.35 (20/01/2017)                                         |
+                                     v0.9.4.36 (24/01/2017)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -264,8 +264,10 @@ PARAMETERS (nnedi3):
           no effect for RGB video.
       3 : Force limited U/V range for greyscale video (Y/Y8), limited range for YUV video,
           no effect for RGB video.
+      4 : Force special camera range (16-255) for greyscale video (Y/Y8) and YUV video,
+          no effect for RGB video.
 
-      Default: 0
+      Default: 1
 
 
 The logicalCores, MaxPhysCore, SetAffinity and sleep are parameters to specify how the pool of thread
@@ -393,6 +395,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   24/01/2017  v0.9.4.36
+       * Set range mode default to 1. Apply range only on last step.
+       + Add range mode 4.
+
    20/01/2017  v0.9.4.35
        + Fix crash on x64 version introduced in v0.9.4.34.
        + Fix prescreener issue on flat area with value of 255.
