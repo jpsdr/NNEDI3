@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.36 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.37 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -21,28 +21,55 @@
 */
 
 #include "nnedi3.h"
-#include "asmlib\asmlib.h"
 #include <stdint.h>
 
 #if _MSC_VER >= 1900
-#define FMA_BUILD_POSSIBLE
+#define AVX_BUILD_POSSIBLE
 #endif
 
-extern "C" int IInstrSet;
-// Cache size for asmlib function, a little more the size of a 720p YV12 frame
-#define MAX_CACHE_SIZE 1400000
-
-static size_t CPU_Cache_Size;
-
-#ifdef FMA_BUILD_POSSIBLE
+#ifdef AVX_BUILD_POSSIBLE
+extern "C" void computeNetwork0_AVX2(const float *input,const float *weights,uint8_t *d);
 extern "C" void computeNetwork0_FMA3(const float *input, const float *weights, uint8_t *d);
 extern "C" void computeNetwork0_FMA4(const float *input, const float *weights, uint8_t *d);
+extern "C" void computeNetwork0_i16_AVX2(const float *inputf,const float *weightsf,uint8_t *d);
+extern "C" void computeNetwork0new_AVX2(const float *datai,const float *weights,uint8_t *d);
+extern "C" void uc2f48_AVX2(const uint8_t *t,const int pitch,float *p);
+extern "C" void uc2f48_AVX2_16(const uint8_t *t, const int pitch, float *p);
+extern "C" void uc2s48_AVX2(const uint8_t *t,const int pitch,float *pf);
+extern "C" void uc2s64_AVX2(const uint8_t *t,const int pitch,float *p);
+extern "C" void dotProd_m32_m16_AVX2(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
 extern "C" void dotProd_m32_m16_FMA3(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
 extern "C" void dotProd_m32_m16_FMA4(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
+extern "C" void dotProd_m48_m16_AVX2(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
 extern "C" void dotProd_m48_m16_FMA3(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
 extern "C" void dotProd_m48_m16_FMA4(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
+extern "C" void dotProd_m32_m16_i16_AVX2(const float *dataf,const float *weightsf,float *vals,const int n,const int len,const float *istd);
+extern "C" void dotProd_m48_m16_i16_AVX2(const float *dataf,const float *weightsf,float *vals,const int n,const int len,const float *istd);
 extern "C" void e0_m16_FMA3(float *s, const int n);
 extern "C" void e0_m16_FMA4(float *s, const int n);
+extern "C" void e0_m16_AVX2(float *s,const int n);
+extern "C" void e1_m16_AVX2(float *s,const int n);
+extern "C" void e2_m16_AVX2(float *s,const int n);
+extern "C" int processLine0_AVX2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const int16_t val_min,const int16_t val_max);
+extern "C" int processLine0_AVX2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t val_min,const uint16_t val_max);
+extern "C" int processLine0_AVX2_ASM_32(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch);
+extern "C" void weightedAvgElliottMul5_m16_AVX2(const float *w,const int n,float *mstd);
+extern "C" void weightedAvgElliottMul5_m16_FMA3(const float *w,const int n,float *mstd);
+extern "C" void weightedAvgElliottMul5_m16_FMA4(const float *w,const int n,float *mstd);
+extern "C" void extract_m8_AVX2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input);
+extern "C" void extract_m8_FMA3(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input);
+extern "C" void extract_m8_FMA4(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input);
+extern "C" void extract_m8_i16_AVX2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *inputf);
+extern "C" void extract_m8_i16_AVX2_16(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *inputf);
+extern "C" void extract_m8_i16_AVX2_16_2(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *inputf,int32_t *sum,int64_t *sumsq);
+extern "C" void extract_m8_AVX2_16(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
+extern "C" void extract_m8_FMA3_16(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
+extern "C" void extract_m8_FMA4_16(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
+extern "C" void extract_m8_AVX2_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
+extern "C" void extract_m8_FMA3_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
+extern "C" void extract_m8_FMA4_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
+extern "C" void castScale_AVX2(const float *val,const float *scale,uint8_t *dstp,const uint32_t val_min,const uint32_t val_max);
+extern "C" void castScale_AVX2_16(const float *val, const float *scale, uint16_t *dstp,const uint32_t val_min,const uint32_t val_max);
 #endif
 
 extern "C" void computeNetwork0_SSE2(const float *input,const float *weights,uint8_t *d);
@@ -50,7 +77,7 @@ extern "C" void computeNetwork0_i16_SSE2(const float *inputf,const float *weight
 extern "C" void uc2f48_SSE2(const uint8_t *t,const int pitch,float *p);
 extern "C" void uc2f48_SSE2_16(const uint8_t *t, const int pitch, float *p);
 extern "C" void uc2s48_SSE2(const uint8_t *t,const int pitch,float *pf);
-extern "C" int processLine0_SSE2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint8_t val_min,const uint8_t val_max);
+extern "C" int processLine0_SSE2_ASM(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const int16_t val_min,const int16_t val_max);
 extern "C" int processLine0_SSE2_ASM_16(const uint8_t *tempu,int width,uint8_t *dstp,const uint8_t *src3p,const int src_pitch,const uint16_t val_min,const uint16_t val_max);
 extern "C" int processLine0_SSE2_ASM_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch);
 extern "C" void extract_m8_SSE2(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input);
@@ -127,7 +154,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if ((nsize<0) || (nsize>=NUM_NSIZE)) env->ThrowError("nnedi3: nsize must be in [0,%d]!\n",NUM_NSIZE-1);
 	if ((nns<0) || (nns>=NUM_NNS)) env->ThrowError("nnedi3: nns must be in [0,%d]!\n",NUM_NNS-1);
 	if ((qual<1) || (qual>2)) env->ThrowError("nnedi3: qual must be set to 1 or 2!\n");
-	if ((opt<0) || (opt>5)) env->ThrowError("nnedi3: opt must be in [0,5]!");
+	if ((opt<0) || (opt>6)) env->ThrowError("nnedi3: opt must be in [0,6]!");
 	if ((fapprox<0) || (fapprox>15)) env->ThrowError("nnedi3: fapprox must be [0,15]!\n");
 	if ((pscrn<0) || (pscrn>4)) env->ThrowError("nnedi3: pscrn must be [0,4]!\n");
 	if ((etype<0) || (etype>1)) env->ThrowError("nnedi3: etype must be [0,1]!\n");
@@ -225,15 +252,6 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if (threads_number==0)
 		env->ThrowError("nnedi3: Error with the TheadPool while getting CPU info !");
 
-	const size_t img_size=vi.BMPSize();
-
-	if (img_size<=MAX_CACHE_SIZE)
-	{
-		if (CPU_Cache_Size>=img_size) Cache_Setting=img_size;
-		else Cache_Setting=16;
-	}
-	else Cache_Setting=16;
-
 	srcPF = new PlanarFrame();
 	if (srcPF==NULL)
 		env->ThrowError("nnedi3: Error while creating srcPF!");
@@ -308,19 +326,34 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if (opt==0)
 	{
 		const int CPUF=env->GetCPUFlags();
-
-		if ((CPUF&CPUF_FMA4)!=0) opt=5;
+/*
+		if (((CPUF & CPUF_FMA4)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=6;
 		else
 		{
-			if ((CPUF&CPUF_FMA3)!=0) opt=4;
+			if (((CPUF & CPUF_FMA3)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=5;
 			else
 			{
-				if ((CPUF&CPUF_SSE4_1)!=0) opt=3;
+				if ((CPUF & CPUF_AVX2)!=0) opt=4;
 				else
 				{
-					if ((CPUF&CPUF_SSE2)!=0) opt=2;
-					else opt=1;
+					if ((CPUF & CPUF_SSE4_1)!=0) opt=3;
+					else
+					{
+						if ((CPUF & CPUF_SSE2)!=0) opt=2;
+						else opt=1;
+					}
 				}
+			}
+		}*/
+
+		if ((CPUF & CPUF_AVX2) != 0) opt = 4;
+		else
+		{
+			if ((CPUF & CPUF_SSE4_1) != 0) opt = 3;
+			else
+			{
+				if ((CPUF & CPUF_SSE2) != 0) opt = 2;
+				else opt = 1;
 			}
 		}
 
@@ -392,23 +425,41 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	// Adjust prescreener weights
 	if (pscrn>=2) // using new prescreener
 	{
-		int *offt = (int *)calloc(4*64,sizeof(int));
-
-		if (offt==NULL)
-		{
-			FreeData();
-			env->ThrowError("nnedi3: Error while allocating offt!");
-		}
-		int j_a=0;
+		int offt[4*64],offt2[4*64];
+		int j_a=0,j_b=0;
 
 		for (int j=0; j<4; j++)
 		{
-			int j_3=(j&3) << 3;
-
 			for (int k=0; k<64; k++)
-				offt[j_a+k] = ((k>>3)<<5)+j_3+(k&7);
+				offt[j_a+k] = ((k>>3)<<5)+j_b+(k&7);
 
 			j_a+=64;
+			j_b+=8;
+		}
+
+
+		j_a=0,j_b=0;
+		if (opt>=4)
+		{
+			for (int j=0; j<4; j++)
+			{
+				for (int k=0; k<64; k++)
+					offt2[j_a+k] = ((k>>4)<<6)+j_b+(k&15);
+
+				j_a+=64;
+				j_b+=16;
+			}
+		}
+		else
+		{
+			for (int j=0; j<4; j++)
+			{
+				for (int k=0; k<64; k++)
+					offt2[j_a+k] = ((k>>3)<<5)+j_b+(k&7);
+
+				j_a+=64;
+				j_b+=8;
+			}
 		}
 
 		const float *bdw = bdata+(dims0+dims0new*(pscrn-2));
@@ -445,13 +496,12 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			const double scale = 32767.0/mval;
 
 			for (int k=0; k<64; k++)
-				ws[offt[j_a+k]] = roundds(((bdw[offt[j_a+k]]-mean[j])/half)*scale);
+				ws[offt2[j_a+k]] = roundds(((bdw[offt[j_a+k]]-mean[j])/half)*scale);
 
 			wf[j] = (float)(mval/32767.0);
 			j_a+=64;
 		}
-		A_memcpy(wf+4,bdw+4*64,(dims0new-4*64)*sizeof(float));
-		free(offt);
+		memcpy(wf+4,bdw+4*64,(dims0new-4*64)*sizeof(float));
 	}
 	else // using old prescreener
 	{
@@ -495,7 +545,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				wf[j] = (float)(mval/32767.0);
 				j_a+=48;
 			}
-			A_memcpy(wf+4,bdata+4*48,(dims0-4*48)*sizeof(float));
+			memcpy(wf+4,bdata+4*48,(dims0-4*48)*sizeof(float));
 
 			if ((opt>1) && (bits_per_pixel<=14))// shuffle weight order for asm
 			{
@@ -508,14 +558,27 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				}
 				int j_b=0;
 
-				A_memcpy(rs,weights0,dims0*sizeof(float));
+				memcpy(rs,weights0,dims0*sizeof(float));
 				j_a=0;
-				for (int j=0; j<4; j++)
+				if (opt>=4)
 				{
-					for (int k=0; k<48; k++)
-						ws[((k >> 3) << 5)+j_b+(k&7)] = rs[j_a+k];
-					j_a+=48;
-					j_b+=8;
+					for (int j=0; j<4; j++)
+					{
+						for (int k=0; k<48; k++)
+							ws[((k >> 4) << 6)+j_b+(k&15)] = rs[j_a+k];
+						j_a+=48;
+						j_b+=16;
+					}
+				}
+				else
+				{
+					for (int j=0; j<4; j++)
+					{
+						for (int k=0; k<48; k++)
+							ws[((k >> 3) << 5)+j_b+(k&7)] = rs[j_a+k];
+						j_a+=48;
+						j_b+=8;
+					}
 				}
 				shufflePreScrnL2L3(wf+8,((float*)&rs[4*48])+8,opt);
 				free(rs);
@@ -537,7 +600,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 					weights0[j_a+k] = (float)((bdata[j_a+k]-mean[j])/half);
 				j_a+=48;
 			}
-			A_memcpy(weights0+4*48,bdata+4*48,(dims0-4*48)*sizeof(float));
+			memcpy(weights0+4*48,bdata+4*48,(dims0-4*48)*sizeof(float));
 
 			if (opt>1) // shuffle weight order for asm
 			{
@@ -550,13 +613,27 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				}
 				int j_b=0;
 
-				A_memcpy(rf,weights0,dims0*sizeof(float));
-				for (int j=0; j<4; j++)
+				memcpy(rf,weights0,dims0*sizeof(float));
+				j_a=0;
+				if (opt>=4)
 				{
-					for (int k=0; k<48; k++)
-						wf[((k >> 2) << 4)+j_b+(k&3)] = rf[j_a+k];
-					j_a+=48;
-					j_b+=4;
+					for (int j=0; j<4; j++)
+					{
+						for (int k=0; k<48; k++)
+							wf[((k >> 3) << 5)+j_b+(k&7)] = rf[j_a+k];
+						j_a+=48;
+						j_b+=8;
+					}
+				}
+				else
+				{
+					for (int j=0; j<4; j++)
+					{
+						for (int k=0; k<48; k++)
+							wf[((k >> 2) << 4)+j_b+(k&3)] = rf[j_a+k];
+						j_a+=48;
+						j_b+=4;
+					}
 				}
 				shufflePreScrnL2L3(wf+4*49,rf+4*49,opt);
 				free(rf);
@@ -662,16 +739,31 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 					env->ThrowError("nnedi3: Error while allocating rs!");
 				}
 
-				A_memcpy(rs,ws,nnst2*asize*sizeof(int16_t));
+				memcpy(rs,ws,nnst2*asize*sizeof(int16_t));
 				j_a=0;
-				for (int j=0; j<nnst2; j++)
+				if (opt>=4)
 				{
-					int j_b=((j >> 2) << 2)*asize;
-					int j_c=(j&3) << 3;
+					for (int j=0; j<nnst2; j++)
+					{
+						int j_b=((j >> 2) << 2)*asize;
+						int j_c=(j&3) << 4;
 
-					for (int k=0; k<asize; k++)
-						ws[j_b+((k >> 3) << 5)+j_c+(k&7)] = rs[j_a+k];
-					j_a+=asize;
+						for (int k=0; k<asize; k++)
+							ws[j_b+((k >> 4) << 6)+j_c+(k&15)] = rs[j_a+k];
+						j_a+=asize;
+					}
+				}
+				else
+				{
+					for (int j=0; j<nnst2; j++)
+					{
+						int j_b=((j >> 2) << 2)*asize;
+						int j_c=(j&3) << 3;
+
+						for (int k=0; k<asize; k++)
+							ws[j_b+((k >> 3) << 5)+j_c+(k&7)] = rs[j_a+k];
+						j_a+=asize;
+					}
 				}
 				free(rs);
 			}
@@ -685,19 +777,39 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 			if (opt>1) // shuffle weight order for asm
 			{
-				for (int j=0; j<nnst2; j++)
+				if (opt>=4)
 				{
-					for (int k=0; k<asize; k++)
+					for (int j=0; j<nnst2; j++)
 					{
-						const double q = j < nnst ? mean[k] : 0.0;
-						int j_b=((j >> 2) << 2)*asize;
-						int j_c=(j&3) << 2;
+						for (int k=0; k<asize; k++)
+						{
+							const double q = j < nnst ? mean[k] : 0.0;
+							int j_b=((j >> 2) << 2)*asize;
+							int j_c=(j&3) << 3;
 
-						weights1[i][j_b+((k >> 2) << 4)+j_c+(k&3)]=(float)(bdataT[j_a+k]-mean[j_d]-q);
+							weights1[i][j_b+((k >> 3) << 5)+j_c+(k&7)]=(float)(bdataT[j_a+k]-mean[j_d]-q);
+						}
+						weights1[i][boff+j] = (float)(bdataT[boff+j]-(j<nnst?mean[asize]:0.0));
+						j_a+=asize;
+						j_d++;
 					}
-					weights1[i][boff+j] = (float)(bdataT[boff+j]-(j<nnst?mean[asize]:0.0));
-					j_a+=asize;
-					j_d++;
+				}
+				else
+				{
+					for (int j=0; j<nnst2; j++)
+					{
+						for (int k=0; k<asize; k++)
+						{
+							const double q = j < nnst ? mean[k] : 0.0;
+							int j_b=((j >> 2) << 2)*asize;
+							int j_c=(j&3) << 2;
+
+							weights1[i][j_b+((k >> 2) << 4)+j_c+(k&3)]=(float)(bdataT[j_a+k]-mean[j_d]-q);
+						}
+						weights1[i][boff+j] = (float)(bdataT[boff+j]-(j<nnst?mean[asize]:0.0));
+						j_a+=asize;
+						j_d++;
+					}
 				}
 			}
 			else
@@ -754,7 +866,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		}
 	}
 	for (uint8_t i=0; i<PlaneMax; i++)
-		A_memset(NNPixels[i],1,NNPixels_Size[i]);
+		memset(NNPixels[i],1,NNPixels_Size[i]);
 
 	for (uint8_t i=0; i<threads_number; i++)
 	{
@@ -863,9 +975,6 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 {
 	int field_n;
 
-	SetMemcpyCacheLimit(Cache_Setting);
-	SetMemsetCacheLimit(Cache_Setting);
-
 	if (field>1)
 	{
 		if (n&1) field_n = field == 3 ? 0 : 1;
@@ -893,9 +1002,9 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	}
 
 	for (uint8_t i=0; i<PlaneMax; i++)
-		A_memset(lcount[i],0,dstPF->GetHeight(i)*sizeof(int));
+		memset(lcount[i],0,dstPF->GetHeight(i)*sizeof(int));
 
-	PVideoFrame dst = env->NewVideoFrame(vi);
+	PVideoFrame dst = env->NewVideoFrame(vi,64);
 
 	uint8_t f_proc_1=0,f_proc_2=0;
 
@@ -1187,7 +1296,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 
 		for (int y=off; y<6; y+=2)
 		{
-			A_memcpy(dstp+off1,dstp+off2,width_);
+			memcpy(dstp+off1,dstp+off2,width_);
 			off1+=dst_pitch2;
 			off2-=dst_pitch2;
 		}
@@ -1196,7 +1305,7 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 		off2=(height-10+off)*dst_pitch;
 		for (int y=height-6+off; y<height; y+=2)
 		{
-			A_memcpy(dstp+off1,dstp+off2,width_);
+			memcpy(dstp+off1,dstp+off2,width_);
 			off1+=dst_pitch2;
 			off2-=dst_pitch2;
 		}
@@ -1379,7 +1488,7 @@ void uc2s48_C(const uint8_t *t, const int pitch, float *pf)
 }
 
 
-int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint8_t val_min,const uint8_t val_max)
+int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const int16_t val_min,const int16_t val_max)
 {
 	int count = 0;
 	const uint8_t *src2 = src3p+(src_pitch << 1);
@@ -1388,34 +1497,35 @@ int processLine0_C(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t
 
 	for (int x=0; x<width; x++)
 	{
-		if (tempu[x]!=0) dstp[x]=max(min(((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5),val_max),val_min);
+		if (tempu[x]!=0) dstp[x]=(uint8_t)clamp(((19*((int16_t)(src2[x])+(int16_t)(src4[x]))-3*((int16_t)(src3p[x])+(int16_t)(src6[x]))+16)>>5),val_min,val_max);
 		else count++;
 	}
 	return count;
 }
 
 
-
-int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint8_t val_min,const uint8_t val_max)
+int processLine0_SSE2(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const int16_t val_min,const int16_t val_max)
 {
 	int count;
-	const int width_m = width;
-	const int remain = width & 15;
-	const uint8_t *src2 = src3p+(src_pitch << 1);
-	const uint8_t *src4 = src3p+(src_pitch << 2);
-	const uint8_t *src6 = src3p+(src_pitch*6);
+	const int width_m = ((width+15) >> 4) << 4;
 
-	width-=remain;
-	if (width!=0) count=processLine0_SSE2_ASM(tempu,width,dstp,src3p,src_pitch,val_min,val_max);
+	if (width_m!=0) count=processLine0_SSE2_ASM(tempu,width_m,dstp,src3p,src_pitch,val_min,val_max);
 	else count=0;
-
-	for (int x=width; x<width_m; x++)
-	{
-		if (tempu[x]!=0) dstp[x]=max(min(((19*(src2[x]+src4[x])-3*(src3p[x]+src6[x])+16)>>5),val_max),val_min);
-		else count++;
-	}
 	return count;
 }
+
+
+#ifdef AVX_BUILD_POSSIBLE
+int processLine0_AVX2(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const int16_t val_min,const int16_t val_max)
+{
+	int count;
+	const int width_m = ((width+31) >> 5) << 5;
+
+	if (width_m!=0) count=processLine0_AVX2_ASM(tempu,width_m,dstp,src3p,src_pitch,val_min,val_max);
+	else count=0;
+	return count;
+}
+#endif
 
 
 // new prescreener functions
@@ -1488,10 +1598,77 @@ void evalFunc_1(void *ps)
 	const bool int16_prescreener = pss->int16_prescreener;
 	void (*uc2s)(const uint8_t*,const int,float*);
 	void (*computeNetwork0)(const float*,const float*,uint8_t*);
-	int (*processLine0)(const uint8_t*,int,uint8_t*,const uint8_t*,const int,const uint8_t,const uint8_t);
+	int (*processLine0)(const uint8_t*,int,uint8_t*,const uint8_t*,const int,const int16_t,const int16_t);
 
+#ifdef AVX_BUILD_POSSIBLE
+	if (opt==1) processLine0=processLine0_C;
+	else
+	{
+		if (opt>=4) processLine0=processLine0_AVX2;
+		else processLine0=processLine0_SSE2;
+	}
+
+	if (pscrn<2) // original prescreener
+	{
+		if (int16_prescreener) // int16 dot products
+		{
+			if (opt==1) uc2s=uc2s48_C;
+			else
+			{
+				if (opt>=4) uc2s=uc2s48_AVX2;
+				else uc2s=uc2s48_SSE2;
+			}
+			if (opt==1) computeNetwork0=computeNetwork0_i16_C;
+			else
+			{
+				if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX2;
+				else computeNetwork0=computeNetwork0_i16_SSE2;
+			}
+		}
+		else
+		{
+			if (opt==1) uc2s=uc2f48_C;
+			else
+			{
+				if (opt>=4) uc2s=uc2f48_AVX2;
+				else uc2s=uc2f48_SSE2;
+			}
+			if (opt==1) computeNetwork0=computeNetwork0_C;
+			else
+			{
+				if (opt==6) computeNetwork0=computeNetwork0_FMA4;
+				else
+				{
+					if (opt==5) computeNetwork0=computeNetwork0_FMA3;
+					else
+					{
+						if (opt>=4) computeNetwork0=computeNetwork0_AVX2;
+						else computeNetwork0=computeNetwork0_SSE2;
+					}
+				}
+			}
+		}
+	}
+	else // new prescreener
+	{
+		// only int16 dot products
+		if (opt==1) uc2s=uc2s64_C;
+		else
+		{
+			if (opt>=4) uc2s=uc2s64_AVX2;
+			else uc2s=uc2s64_SSE2;
+		}
+		if (opt==1) computeNetwork0=computeNetwork0new_C;
+		else
+		{
+			if (opt>=4) computeNetwork0=computeNetwork0new_AVX2;
+			else computeNetwork0=computeNetwork0new_SSE2;
+		}
+	}
+#else
 	if (opt==1) processLine0=processLine0_C;
 	else processLine0=processLine0_SSE2;
+
 	if (pscrn<2) // original prescreener
 	{
 		if (int16_prescreener) // int16 dot products
@@ -1505,21 +1682,8 @@ void evalFunc_1(void *ps)
 		{
 			if (opt==1) uc2s=uc2f48_C;
 			else uc2s=uc2f48_SSE2;
-#ifdef FMA_BUILD_POSSIBLE
-			if (opt==1) computeNetwork0=computeNetwork0_C;
-			else
-			{
-				if (opt>=5) computeNetwork0=computeNetwork0_FMA4;
-				else
-				{
-					if (opt>=4) computeNetwork0=computeNetwork0_FMA3;
-					else computeNetwork0=computeNetwork0_SSE2;
-				}
-			}
-#else
 			if (opt==1) computeNetwork0=computeNetwork0_C;
 			else computeNetwork0=computeNetwork0_SSE2;
-#endif
 		}
 	}
 	else // new prescreener
@@ -1530,6 +1694,7 @@ void evalFunc_1(void *ps)
 		if (opt==1) computeNetwork0=computeNetwork0new_C;
 		else computeNetwork0=computeNetwork0new_SSE2;
 	}
+#endif
 
 	uint8_t b = pss->current_plane;
 
@@ -1622,7 +1787,7 @@ void evalFunc_1(void *ps)
 			{
 				for (int y=ystart; y<ystop; y+=2)
 				{
-					A_memset(NNPixels,0,width);
+					memset(NNPixels,0,width);
 					lcount[y]+=width_64;
 					dstp+=dst_pitch2;
 					NNPixels+=NNPixels_pitch_2;
@@ -1644,7 +1809,7 @@ int processLine0_C_16(const uint8_t *tempu,int width, uint8_t *dstp,const uint8_
 
 	for (int x=0; x<width; x++)
 	{
-		if (tempu[x]) dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,val_max),val_min);
+		if (tempu[x]!=0) dst0[x]=(uint16_t)clamp(((19*((int32_t)src2[x]+(int32_t)src4[x])-3*((int32_t)src0[x]+(int32_t)src6[x])+16)>>5),val_min,val_max);
 		else count++;
 	}
 	return count;
@@ -1658,7 +1823,7 @@ void uc2s48_C_16(const uint8_t *t, const int pitch, float *pf)
 
 	for (int y=0; y<4; y++)
 	{
-		A_memcpy(p,t,24);
+		memcpy(p,t,24);
 
 		p += 12;
 		t += pitch2;
@@ -1690,7 +1855,7 @@ void uc2s64_C_16(const uint8_t *t, const int pitch, float *p)
 
 	for (int y=0; y<4; y++)
 	{
-		A_memcpy(ps,t,32);
+		memcpy(ps,t,32);
 
 		ps += 16;
 		t += pitch2;
@@ -1782,25 +1947,27 @@ void computeNetwork0new_C_16(const float *datai, const float *weights, uint8_t *
 int processLine0_SSE2_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t val_min,const uint16_t val_max)
 {
 	int count;
-	const int width_m = width;
-	const int remain = width & 7;
-	const uint16_t *src0 = (uint16_t *)src3p;
-	const uint16_t *src2 = (uint16_t *)(src3p + (src_pitch << 1));
-	const uint16_t *src4 = (uint16_t *)(src3p + (src_pitch << 2));
-	const uint16_t *src6 = (uint16_t *)(src3p + (src_pitch * 6));
-	uint16_t *dst0 = (uint16_t *)dstp;
+	const int width_m = ((width+7) >> 3) << 3;
 
-	width-=remain;
-	if (width!=0) count=processLine0_SSE2_ASM_16(tempu,width,dstp,src3p,src_pitch,val_min,val_max);
+	if (width_m!=0) count=processLine0_SSE2_ASM_16(tempu,width_m,dstp,src3p,src_pitch,val_min,val_max);
 	else count=0;
 
-	for (int x=width; x<width_m; x++)
-	{
-		if (tempu[x]) dst0[x]=max(min((19*(src2[x]+src4[x])-3*(src0[x]+src6[x])+16)>>5,val_max),val_min);
-		else count++;
-	}
 	return count;
 }
+
+
+#ifdef AVX_BUILD_POSSIBLE
+int processLine0_AVX2_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t val_min,const uint16_t val_max)
+{
+	int count;
+	const int width_m = ((width+15) >> 4) << 4;
+
+	if (width_m!=0) count=processLine0_AVX2_ASM_16(tempu,width_m,dstp,src3p,src_pitch,val_min,val_max);
+	else count=0;
+
+	return count;
+}
+#endif
 
 
 void evalFunc_1_16(void *ps)
@@ -1817,6 +1984,62 @@ void evalFunc_1_16(void *ps)
 	void(*computeNetwork0)(const float*, const float*, uint8_t*);
 	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int,const uint16_t,const uint16_t);
 
+#ifdef AVX_BUILD_POSSIBLE
+	if (opt<3) processLine0=processLine0_C_16;
+	else
+	{
+		if (opt>=4) processLine0=processLine0_AVX2_16;
+		else processLine0=processLine0_SSE2_16;
+	}
+
+	if (pscrn<2) // original prescreener
+	{
+		if (int16_prescreener) // int16 dot products
+		{
+			uc2s=uc2s48_C_16;
+			if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0_i16_C;
+			else
+			{
+				if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX2;
+				else computeNetwork0=computeNetwork0_i16_SSE2;
+			}
+		}
+		else
+		{
+			if (opt==1) uc2s=uc2f48_C_16;
+			else
+			{
+				if (opt>=4) uc2s=uc2f48_AVX2_16;
+				else uc2s=uc2f48_SSE2_16;
+			}
+			if (opt==1) computeNetwork0=computeNetwork0_C;
+			else
+			{
+				if (opt==6) computeNetwork0=computeNetwork0_FMA4;
+				else
+				{
+					if (opt==5) computeNetwork0=computeNetwork0_FMA3;
+					else
+					{
+						if (opt>=4) computeNetwork0=computeNetwork0_AVX2;
+						else computeNetwork0=computeNetwork0_SSE2;
+					}
+				}
+			}
+		}
+	}
+	else // new prescreener
+	{
+		// only int16 dot products
+		uc2s = uc2s64_C_16;
+		if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0new_C_16;
+		else
+		{
+			if (opt>=4) computeNetwork0=computeNetwork0new_AVX2;
+			else computeNetwork0=computeNetwork0new_SSE2;
+		}
+	}
+#else
 	if (opt>=3) processLine0 = processLine0_SSE2_16;
 	else processLine0 = processLine0_C_16;
 
@@ -1832,21 +2055,8 @@ void evalFunc_1_16(void *ps)
 		{
 			if (opt==1) uc2s=uc2f48_C_16;
 			else uc2s=uc2f48_SSE2_16;
-#ifdef FMA_BUILD_POSSIBLE
-			if (opt==1) computeNetwork0=computeNetwork0_C;
-			else
-			{
-				if (opt>=5) computeNetwork0=computeNetwork0_FMA4;
-				else
-				{
-					if (opt>=4) computeNetwork0=computeNetwork0_FMA3;
-					else computeNetwork0=computeNetwork0_SSE2;
-				}
-			}
-#else
 			if (opt==1) computeNetwork0=computeNetwork0_C;
 			else computeNetwork0=computeNetwork0_SSE2;
-#endif
 		}
 	}
 	else // new prescreener
@@ -1856,6 +2066,7 @@ void evalFunc_1_16(void *ps)
 		if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0new_C_16;
 		else computeNetwork0=computeNetwork0new_SSE2;
 	}
+#endif
 
 	uint8_t b = pss->current_plane;
 
@@ -1950,7 +2161,7 @@ void evalFunc_1_16(void *ps)
 			{
 				for (int y=ystart; y<ystop; y+=2)
 				{
-					A_memset(NNPixels,0,width);
+					memset(NNPixels,0,width);
 					lcount[y] += width_64;
 					dstp += dst_pitch2;
 					NNPixels+=NNPixels_pitch_2;
@@ -1974,7 +2185,7 @@ int processLine0_C_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 
 	for (int x=0; x<width; x++)
 	{
-		if (tempu[x]) dst0[x] = 0.59375f*(src2[x]+src4[x])-0.09375f*(src0[x]+src6[x]);
+		if (tempu[x]!=0) dst0[x] = 0.59375f*(src2[x]+src4[x])-0.09375f*(src0[x]+src6[x]);
 		else count++;
 	}
 	return count;
@@ -1987,7 +2198,7 @@ void uc2f48_C_32(const uint8_t *t, const int pitch, float *p)
 
 	for (int y=0; y<4; y++)
 	{
-		A_memcpy(p,t,48);
+		memcpy(p,t,48);
 
 		p += 12;
 		t += pitch2;
@@ -1995,30 +2206,30 @@ void uc2f48_C_32(const uint8_t *t, const int pitch, float *p)
 }
 
 
-
 int processLine0_SSE2_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch)
 {
 	int count;
-	const int width_m = width;
-	const int remain = width & 7;
-	const float *src0 = (float *)src3p;
-	const float *src2 = (float *)(src3p + (src_pitch << 1));
-	const float *src4 = (float *)(src3p + (src_pitch << 2));
-	const float *src6 = (float *)(src3p + (src_pitch * 6));
-	float *dst0 = (float *)dstp;
-	uint32_t *dst = (uint32_t *)dstp;
+	const int width_m = ((width+3) >> 2) << 2;
 
-	width-=remain;
-	if (width!=0) count=processLine0_SSE2_ASM_32(tempu,width,dstp,src3p,src_pitch);
+	if (width_m!=0) count=processLine0_SSE2_ASM_32(tempu,width_m,dstp,src3p,src_pitch);
 	else count=0;
 
-	for (int x=width; x<width_m; x++)
-	{
-		if (tempu[x]) dst0[x]=0.59375f*(src2[x]+src4[x])-0.09375f*(src0[x]+src6[x]);
-		else count++;
-	}
 	return count;
 }
+
+
+#ifdef AVX_BUILD_POSSIBLE
+int processLine0_AVX2_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch)
+{
+	int count;
+	const int width_m = ((width+7) >> 3) << 3;
+
+	if (width_m!=0) count=processLine0_AVX2_ASM_32(tempu,width_m,dstp,src3p,src_pitch);
+	else count=0;
+
+	return count;
+}
+#endif
 
 
 void evalFunc_1_32(void *ps)
@@ -2033,25 +2244,35 @@ void evalFunc_1_32(void *ps)
 	void(*computeNetwork0)(const float*, const float*, uint8_t*);
 	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int);
 
-	if (opt==1) processLine0 = processLine0_C_32;
-	else processLine0 = processLine0_SSE2_32;
+#ifdef AVX_BUILD_POSSIBLE
+	if (opt==1) processLine0=processLine0_C_32;
+	else
+	{
+		if (opt>=4) processLine0=processLine0_AVX2_32;
+		else processLine0=processLine0_SSE2_32;
+	}
 
-	uc2s=uc2f48_C_32;
-#ifdef FMA_BUILD_POSSIBLE
 	if (opt==1) computeNetwork0=computeNetwork0_C;
 	else
 	{
-		if (opt>=5) computeNetwork0=computeNetwork0_FMA4;
+		if (opt==6) computeNetwork0=computeNetwork0_FMA4;
 		else
 		{
-			if (opt>=4) computeNetwork0=computeNetwork0_FMA3;
-			else computeNetwork0=computeNetwork0_SSE2;
+			if (opt==5) computeNetwork0=computeNetwork0_FMA3;
+			else
+			{
+				if (opt>=4) computeNetwork0=computeNetwork0_AVX2;
+				else computeNetwork0=computeNetwork0_SSE2;
+			}
 		}
 	}
 #else
+	if (opt==1) processLine0 = processLine0_C_32;
+	else processLine0 = processLine0_SSE2_32;
 	if (opt==1) computeNetwork0=computeNetwork0_C;
 	else computeNetwork0=computeNetwork0_SSE2;
 #endif
+	uc2s=uc2f48_C_32;
 
 	uint8_t b = pss->current_plane;
 
@@ -2105,7 +2326,7 @@ void evalFunc_1_32(void *ps)
 		{
 			for (int y=ystart; y<ystop; y+=2)
 			{
-				A_memset(NNPixels,0,width);
+				memset(NNPixels,0,width);
 				lcount[y]+=width_64;
 				dstp+=dst_pitch2;
 				NNPixels+=NNPixels_pitch_2;
@@ -2268,38 +2489,127 @@ void evalFunc_2(void *ps)
 	void (*expf)(float *,const int);
 	void (*wae5)(const float*,const int,float*);
 
+#ifdef AVX_BUILD_POSSIBLE
+	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
+	else
+	{
+		if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA4;
+		else
+		{
+			if (opt==5) wae5=weightedAvgElliottMul5_m16_FMA3;
+			else
+			{
+				if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX2;
+				else wae5=weightedAvgElliottMul5_m16_SSE2;
+			}
+		}
+	}
+
+	if (int16_predictor) // use int16 dot products
+	{
+		if (opt==1) extract=extract_m8_i16_C;
+		else
+		{
+			if (opt>=4) extract=extract_m8_i16_AVX2;
+			else extract=extract_m8_i16_SSE2;
+		}
+		if (opt==1) dotProd=dotProdS_C;
+		else
+		{
+			if (opt>=4)
+				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
+			else dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
+		}
+	}
+	else // use float dot products
+	{
+		if (opt==1) extract=extract_m8_C;
+		else
+		{
+			if (opt==6) extract=extract_m8_FMA4;
+			else
+			{
+				if (opt==5) extract=extract_m8_FMA3;
+				else
+				{
+					if (opt>=4) extract=extract_m8_AVX2;
+					else extract=extract_m8_SSE2;
+				}
+			}
+		}
+		if (opt==1) dotProd=dotProd_C;
+		else
+		{
+			if (opt==6)
+				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
+			else
+			{
+				if (opt==5)
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
+				else
+				{
+					if (opt>=4)
+						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
+					else dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+				}
+			}
+		}
+	}
+
+	if ((fapprox&12)==0) // use slow exp
+	{
+		if (opt==1) expf=e2_m16_C;
+		else
+		{
+			if (opt>=4) expf=e2_m16_AVX2;
+			else expf=e2_m16_SSE2;
+		}
+	}
+	else if ((fapprox&12)==4) // use faster exp
+	{
+		if (opt==1) expf=e1_m16_C;
+		else
+		{
+			if (opt>=4) expf=e1_m16_AVX2;
+			else expf=e1_m16_SSE2;
+		}
+	}
+	else // use fastest exp
+	{
+		if (opt==1) expf=e0_m16_C;
+		else
+		{
+			if (opt==6) expf=e0_m16_FMA4;
+			else
+			{
+				if (opt==5) expf=e0_m16_FMA3;
+				else
+				{
+					if (opt>=4) expf=e0_m16_AVX2;
+					else expf=e0_m16_SSE2;
+				}
+			}
+		}
+	}
+#else
 	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
 	else wae5=weightedAvgElliottMul5_m16_SSE2;
-	//if (fapprox&2) // use int16 dot products
+
 	if (int16_predictor) // use int16 dot products
 	{
 		if (opt==1) extract=extract_m8_i16_C;
 		else extract=extract_m8_i16_SSE2;
 		if (opt==1) dotProd=dotProdS_C;
-		else dotProd= (asize%48) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
+		else dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
 	}
 	else // use float dot products
 	{
 		if (opt==1) extract=extract_m8_C;
 		else extract=extract_m8_SSE2;
-#ifdef FMA_BUILD_POSSIBLE
 		if (opt==1) dotProd=dotProd_C;
-		else
-		{
-			if (opt>=5)
-				dotProd = (asize % 48) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
-			else
-			{
-				if (opt>=4)
-					dotProd = (asize % 48) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
-				else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
-			}
-		}
-#else
-		if (opt==1) dotProd=dotProd_C;
-		else dotProd= (asize%48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
-#endif
+		else dotProd= ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
 	}
+
 	if ((fapprox&12)==0) // use slow exp
 	{
 		if (opt==1) expf=e2_m16_C;
@@ -2307,27 +2617,15 @@ void evalFunc_2(void *ps)
 	}
 	else if ((fapprox&12)==4) // use faster exp
 	{
-		if (opt == 1) expf=e1_m16_C;
+		if (opt==1) expf=e1_m16_C;
 		else expf=e1_m16_SSE2;
 	}
 	else // use fastest exp
 	{
-#ifdef FMA_BUILD_POSSIBLE
-		if (opt==1) expf=e0_m16_C;
-		else
-		{
-			if (opt>=5) expf=e0_m16_FMA4;
-			else
-			{
-				if (opt>=4) expf=e0_m16_FMA3;
-				else expf=e0_m16_SSE2;
-			}
-		}
-#else
 		if (opt==1) expf=e0_m16_C;
 		else expf=e0_m16_SSE2;
-#endif
 	}
+#endif
 
 	uint8_t b = pss->current_plane;
 
@@ -2375,31 +2673,7 @@ void evalFunc_2(void *ps)
 
 		const uint8_t *srcpp = srcp-((ydia-1)*src_pitch+xdiad2m1);
 
-		if (opt>1)
-		{
-			for (int y=ystart; y<ystop; y+=2)
-			{
-				for (int x=32; x<width_32; x++)
-				{
-					if (NNPixels[x]!=0) continue;
-
-					float mstd[4];
-
-					extract(srcpp+x,src_pitch,xdia,ydia,mstd,input);
-					for (int i=0; i<qual; i++)
-					{
-						dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
-						expf(temp,nns);
-						wae5(temp,nns,mstd);
-					}
-					castScale_SSE(mstd,&scale,dstp+x,val_min,val_max);
-				}
-				srcpp += src_pitch2;
-				dstp += dst_pitch2;
-				NNPixels+=NNPixels_pitch_2;
-			}
-		}
-		else
+		if (opt==1)
 		{
 			for (int y=ystart; y<ystop; y+=2)
 			{
@@ -2423,6 +2697,59 @@ void evalFunc_2(void *ps)
 				NNPixels+=NNPixels_pitch_2;
 			}
 		}
+		else
+		{
+#ifdef AVX_BUILD_POSSIBLE
+			if (opt>=4)
+			{
+				for (int y=ystart; y<ystop; y+=2)
+				{
+					for (int x=32; x<width_32; x++)
+					{
+						if (NNPixels[x]!=0) continue;
+
+						float mstd[4];
+
+						extract(srcpp+x,src_pitch,xdia,ydia,mstd,input);
+						for (int i=0; i<qual; i++)
+						{
+							dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
+							expf(temp,nns);
+							wae5(temp,nns,mstd);
+						}
+						castScale_AVX2(mstd,&scale,dstp+x,val_min,val_max);
+					}
+					srcpp += src_pitch2;
+					dstp += dst_pitch2;
+					NNPixels+=NNPixels_pitch_2;
+				}
+			}
+			else
+#endif
+			{
+				for (int y=ystart; y<ystop; y+=2)
+				{
+					for (int x=32; x<width_32; x++)
+					{
+						if (NNPixels[x]!=0) continue;
+
+						float mstd[4];
+
+						extract(srcpp+x,src_pitch,xdia,ydia,mstd,input);
+						for (int i=0; i<qual; i++)
+						{
+							dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
+							expf(temp,nns);
+							wae5(temp,nns,mstd);
+						}
+						castScale_SSE(mstd,&scale,dstp+x,val_min,val_max);
+					}
+					srcpp += src_pitch2;
+					dstp += dst_pitch2;
+					NNPixels+=NNPixels_pitch_2;
+				}
+			}
+		}
 	}
 }
 
@@ -2438,7 +2765,7 @@ void extract_m8_i16_C_16(const uint8_t *srcp,const int stride,const int xdia,con
 	{
 		const uint16_t *srcpT = (uint16_t *)srcp;
 
-		A_memcpy(input,srcpT,xdia2);
+		memcpy(input,srcpT,xdia2);
 
 		for (int x=0; x<xdia; x++)
 		{
@@ -2483,6 +2810,28 @@ void extract_m8_i16_C_16_2(const uint8_t *srcp, const int stride, const int xdia
 	}
 }
 
+
+#ifdef AVX_BUILD_POSSIBLE
+void extract_m8_i16_C_16_3(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *inputf)
+{
+	int64_t sumsq;
+	int32_t sum;
+
+	extract_m8_i16_AVX2_16_2(srcp,stride,xdia,ydia,inputf,&sum,&sumsq);
+
+	const float scale = (float)(1.0/(double)(xdia*ydia));
+
+	mstd[0] = sum*scale;
+	const double tmp = (double)sumsq*scale-(double)mstd[0]*mstd[0];
+	mstd[3] = 0.0f;
+	if (tmp<=FLT_EPSILON) mstd[1] = mstd[2] = 0.0f;
+	else
+	{
+		mstd[1] = (float)sqrt(tmp);
+		mstd[2] = 1.0f/mstd[1];
+	}
+}
+#endif
 
 void extract_m8_C_16(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input)
 {
@@ -2540,8 +2889,125 @@ void evalFunc_2_16(void *ps)
 	void(*expf)(float *, const int);
 	void(*wae5)(const float*, const int, float*);
 
-	if (opt==1) wae5 = weightedAvgElliottMul5_m16_C;
-	else wae5 = weightedAvgElliottMul5_m16_SSE2;
+#ifdef AVX_BUILD_POSSIBLE
+	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
+	else
+	{
+		if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA4;
+		else
+		{
+			if (opt==5) wae5=weightedAvgElliottMul5_m16_FMA3;
+			else
+			{
+				if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX2;
+				else wae5=weightedAvgElliottMul5_m16_SSE2;
+			}
+		}
+	}
+
+	if (int16_predictor) // use int16 dot products
+	{
+		if (opt>=4)
+		{
+			if (bits_per_pixel<=10) extract=extract_m8_i16_AVX2_16;
+			else extract=extract_m8_i16_C_16_3;
+		}
+		else
+		{
+			if (opt>=3)
+			{
+				if (bits_per_pixel<=10) extract=extract_m8_i16_SSE2_16;
+				else extract=extract_m8_i16_C_16_2;
+			}
+			else
+			{
+				if ((opt>=2) && (bits_per_pixel<=10)) extract=extract_m8_i16_SSE2_16;
+				else extract=extract_m8_i16_C_16;
+			}
+		}
+
+		if ((opt==1) || (bits_per_pixel>14)) dotProd=dotProdS_C_16;
+		else
+		{
+			if (opt>=4)
+				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
+			else dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
+		}
+	}
+	else // use float dot products
+	{
+		if (opt==1) extract=extract_m8_C_16;
+		else
+		{
+			if (opt==6) extract=extract_m8_FMA4_16;
+			else
+			{
+				if (opt==5) extract=extract_m8_FMA3_16;
+				else
+				{
+					if (opt>=4) extract=extract_m8_AVX2_16;
+					else extract=extract_m8_SSE2_16;
+				}
+			}
+		}
+		if (opt==1) dotProd = dotProd_C;
+		else
+		{
+			if (opt==6)
+				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
+			else
+			{
+				if (opt==5)
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
+				else
+				{
+					if (opt>=4)
+						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
+					else dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+				}
+			}
+		}
+	}
+
+	if ((fapprox & 12)==0) // use slow exp
+	{
+		if (opt==1) expf = e2_m16_C;
+		else
+		{
+			if (opt>=4) expf = e2_m16_AVX2;
+			else expf = e2_m16_SSE2;
+		}
+	}
+	else if ((fapprox & 12)==4) // use faster exp
+	{
+		if (opt==1) expf = e1_m16_C;
+		else
+		{
+			if (opt>=4) expf = e1_m16_AVX2;
+			else expf = e1_m16_SSE2;
+		}
+	}
+	else // use fastest exp
+	{
+		if (opt==1) expf=e0_m16_C;
+		else
+		{
+			if (opt==6) expf=e0_m16_FMA4;
+			else
+			{
+				if (opt==5) expf=e0_m16_FMA3;
+				else
+				{
+					if (opt>=4) expf=e0_m16_AVX2;
+					else expf=e0_m16_SSE2;
+				}
+			}
+		}
+	}
+#else
+	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
+	else wae5=weightedAvgElliottMul5_m16_SSE2;
+
 	if (int16_predictor) // use int16 dot products
 	{
 		if (opt>=3)
@@ -2556,30 +3022,16 @@ void evalFunc_2_16(void *ps)
 		}
 
 		if ((opt==1) || (bits_per_pixel>14)) dotProd=dotProdS_C_16;
-		else dotProd= (asize%48) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
+		else dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
 	}
 	else // use float dot products
 	{
 		if (opt==1) extract=extract_m8_C_16;
 		else extract=extract_m8_SSE2_16;
-#ifdef FMA_BUILD_POSSIBLE
 		if (opt==1) dotProd = dotProd_C;
-		else
-		{
-			if (opt>=5)
-				dotProd = (asize % 48) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
-			else
-			{
-				if (opt>=4)
-					dotProd = (asize % 48) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
-				else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
-			}
-		}
-#else
-		if (opt==1) dotProd = dotProd_C;
-		else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
-#endif
+		else dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
 	}
+
 	if ((fapprox & 12)==0) // use slow exp
 	{
 		if (opt==1) expf = e2_m16_C;
@@ -2592,22 +3044,10 @@ void evalFunc_2_16(void *ps)
 	}
 	else // use fastest exp
 	{
-#ifdef FMA_BUILD_POSSIBLE
-		if (opt==1) expf=e0_m16_C;
-		else
-		{
-			if (opt>=5) expf=e0_m16_FMA4;
-			else
-			{
-				if (opt>=4) expf=e0_m16_FMA3;
-				else expf=e0_m16_SSE2;
-			}
-		}
-#else
 		if (opt==1) expf=e0_m16_C;
 		else expf=e0_m16_SSE2;
-#endif
 	}
+#endif
 
 	uint8_t b = pss->current_plane;
 
@@ -2654,33 +3094,7 @@ void evalFunc_2_16(void *ps)
 		const uint8_t *srcpp = srcp-((ydia-1)*src_pitch+(xdiad2m1 << 1));
 		NNPixels+=ystart*NNPixels_pitch;
 
-		if (opt>1)
-		{
-			for (int y=ystart; y<ystop; y+=2)
-			{
-				for (int x=32; x<width_32; x++)
-				{
-					uint16_t *dst0 = (uint16_t *)dstp;
-
-					if (NNPixels[x]!=0) continue;
-
-					float mstd[4];
-
-					extract(srcpp+(x<<1),src_pitch,xdia,ydia,mstd,input);
-					for (int i=0; i<qual; i++)
-					{
-						dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
-						expf(temp,nns);
-						wae5(temp,nns,mstd);
-					}
-					castScale_SSE_16(mstd,&scale,dst0+x,val_min,val_max);
-				}
-				srcpp += src_pitch2;
-				dstp += dst_pitch2;
-				NNPixels+=NNPixels_pitch_2;
-			}
-		}
-		else
+		if (opt==1)
 		{
 			for (int y=ystart; y<ystop; y+=2)
 			{
@@ -2699,11 +3113,68 @@ void evalFunc_2_16(void *ps)
 						expf(temp,nns);
 						wae5(temp,nns,mstd);
 					}
-					dst0[x] = min(max((int)(mstd[3]*scale+0.5f),val_min),val_max);
+					dst0[x]=min(max((int)(mstd[3]*scale+0.5f),val_min),val_max);
 				}
 				srcpp += src_pitch2;
 				dstp += dst_pitch2;
 				NNPixels+=NNPixels_pitch_2;
+			}
+		}
+		else
+		{
+#ifdef AVX_BUILD_POSSIBLE
+			if (opt>=4)
+			{
+				for (int y=ystart; y<ystop; y+=2)
+				{
+					for (int x=32; x<width_32; x++)
+					{
+						uint16_t *dst0 = (uint16_t *)dstp;
+
+						if (NNPixels[x]!=0) continue;
+
+						float mstd[4];
+
+						extract(srcpp+(x<<1),src_pitch,xdia,ydia,mstd,input);
+						for (int i=0; i<qual; i++)
+						{
+							dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
+							expf(temp,nns);
+							wae5(temp,nns,mstd);
+						}
+						castScale_AVX2_16(mstd,&scale,dst0+x,val_min,val_max);
+					}
+					srcpp += src_pitch2;
+					dstp += dst_pitch2;
+					NNPixels+=NNPixels_pitch_2;
+				}
+			}
+			else
+#endif
+			{
+				for (int y=ystart; y<ystop; y+=2)
+				{
+					for (int x=32; x<width_32; x++)
+					{
+						uint16_t *dst0 = (uint16_t *)dstp;
+
+						if (NNPixels[x]!=0) continue;
+
+						float mstd[4];
+
+						extract(srcpp+(x<<1),src_pitch,xdia,ydia,mstd,input);
+						for (int i=0; i<qual; i++)
+						{
+							dotProd(input,weights1[i],temp,nns2,asize,mstd+2);
+							expf(temp,nns);
+							wae5(temp,nns,mstd);
+						}
+						castScale_SSE_16(mstd,&scale,dst0+x,val_min,val_max);
+					}
+					srcpp += src_pitch2;
+					dstp += dst_pitch2;
+					NNPixels+=NNPixels_pitch_2;
+				}
 			}
 		}
 	}
@@ -2720,7 +3191,7 @@ void extract_m8_C_32(const uint8_t *srcp, const int stride, const int xdia, cons
 	{
 		const float *srcpT = (float *)srcp;
 
-		A_memcpy(input,srcpT,xdia4);
+		memcpy(input,srcpT,xdia4);
 
 		for (int x=0; x<xdia; x++)
 		{
@@ -2766,29 +3237,99 @@ void evalFunc_2_32(void *ps)
 	void(*expf)(float *, const int);
 	void(*wae5)(const float*, const int, float*);
 
-	if (opt==1) wae5 = weightedAvgElliottMul5_m16_C;
-	else wae5 = weightedAvgElliottMul5_m16_SSE2;
+#ifdef AVX_BUILD_POSSIBLE
+	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
+	else
+	{
+		if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA4;
+		else
+		{
+			if (opt==5) wae5=weightedAvgElliottMul5_m16_FMA3;
+			else
+			{
+				if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX2;
+				else wae5=weightedAvgElliottMul5_m16_SSE2;
+			}
+		}
+	}
+
+	if (opt==1) extract=extract_m8_C_32;
+	else
+	{
+		if (opt==6) extract=extract_m8_FMA4_32;
+		else
+		{
+			if (opt==5) extract=extract_m8_FMA3_32;
+			else
+			{
+				if (opt>=4) extract=extract_m8_AVX2_32;
+				else extract=extract_m8_SSE2_32;
+			}
+		}
+	}
+
+	if (opt==1) dotProd = dotProd_C;
+	else
+	{
+		if (opt==6)
+			dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
+		else
+		{
+			if (opt==5)
+				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
+			else
+			{
+				if (opt>=4)
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
+				else dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+			}
+		}
+	}
+
+	if ((fapprox & 12)==0) // use slow exp
+	{
+		if (opt==1) expf = e2_m16_C;
+		else
+		{
+			if (opt>=4) expf = e2_m16_AVX2;
+			else expf = e2_m16_SSE2;
+		}
+	}
+	else if ((fapprox & 12)==4) // use faster exp
+	{
+		if (opt==1) expf = e1_m16_C;
+		else
+		{
+			if (opt>=4) expf = e1_m16_AVX2;
+			else expf = e1_m16_SSE2;
+		}
+	}
+	else // use fastest exp
+	{
+		if (opt==1) expf=e0_m16_C;
+		else
+		{
+			if (opt==6) expf=e0_m16_FMA4;
+			else
+			{
+				if (opt==5) expf=e0_m16_FMA3;
+				else
+				{
+					if (opt>=4) expf=e0_m16_AVX2;
+					else expf=e0_m16_SSE2;
+				}
+			}
+		}
+	}
+#else
+	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
+	else wae5=weightedAvgElliottMul5_m16_SSE2;
 
 	if (opt==1) extract=extract_m8_C_32;
 	else extract=extract_m8_SSE2_32;
 
-#ifdef FMA_BUILD_POSSIBLE
 	if (opt==1) dotProd = dotProd_C;
-	else
-	{
-		if (opt>=5)
-			dotProd = (asize % 48) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
-		else
-		{
-			if (opt>=4)
-				dotProd = (asize % 48) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
-			else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
-		}
-	}
-#else
-	if (opt==1) dotProd = dotProd_C;
-	else dotProd = (asize % 48) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
-#endif
+	else dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
 
 	if ((fapprox & 12)==0) // use slow exp
 	{
@@ -2802,22 +3343,10 @@ void evalFunc_2_32(void *ps)
 	}
 	else // use fastest exp
 	{
-#ifdef FMA_BUILD_POSSIBLE
-		if (opt==1) expf=e0_m16_C;
-		else
-		{
-			if (opt>=5) expf=e0_m16_FMA4;
-			else
-			{
-				if (opt>=4) expf=e0_m16_FMA3;
-				else expf=e0_m16_SSE2;
-			}
-		}
-#else
 		if (opt==1) expf=e0_m16_C;
 		else expf=e0_m16_SSE2;
-#endif
 	}
+#endif
 
 	uint8_t b = pss->current_plane;
 
@@ -2860,7 +3389,7 @@ void evalFunc_2_32(void *ps)
 					expf(temp,nns);
 					wae5(temp,nns,mstd);
 				}
-				dst0[x] = mstd[3]*scale;
+				dst0[x]=mstd[3]*scale;
 			}
 			srcpp += src_pitch2;
 			dstp += dst_pitch2;
@@ -3040,8 +3569,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		env->ThrowError("nnedi3_rpow2: 0 <= threads <= %d!\n",MAX_MT_THREADS);
 	if (threads_rs < 0 || threads_rs > MAX_MT_THREADS)
 		env->ThrowError("nnedi3_rpow2: 0 <= threads_rs <= %d!\n",MAX_MT_THREADS);
-	if (opt < 0 || opt > 5)
-		env->ThrowError("nnedi3_rpow2: opt must be in [0,5]!\n");
+	if (opt < 0 || opt > 6)
+		env->ThrowError("nnedi3_rpow2: opt must be in [0,6]!\n");
 	if (fapprox < 0 || fapprox > 15)
 		env->ThrowError("nnedi3_rpow2: fapprox must be [0,15]!\n");
 
@@ -3582,8 +4111,6 @@ const AVS_Linkage *AVS_linkage = nullptr;
 
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
-	if (IInstrSet<0) InstructionSet();
-	CPU_Cache_Size=DataCacheSize(0)>>2;
 	poolInterface=ThreadPoolInterface::Init(0);
 
 	AVS_linkage = vectors;

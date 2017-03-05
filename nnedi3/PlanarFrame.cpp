@@ -22,7 +22,6 @@
 */
 
 #include "PlanarFrame.h"
-#include "asmlib\asmlib.h"
 #include <stdint.h>
 
 #define myalignedfree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
@@ -782,13 +781,13 @@ inline void PlanarFrame::BitBlt(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,
 			srcp+=(height-1)*src_pitch;
 			dstp+=(height-1)*dst_pitch;
 		}
-		A_memcpy(dstp,srcp,(size_t)row_size*(size_t)height);
+		memcpy(dstp,srcp,(size_t)row_size*(size_t)height);
 	}
 	else 
 	{
 		for (int y=0; y<height; y++)
 		{
-			A_memcpy(dstp,srcp,row_size);
+			memcpy(dstp,srcp,row_size);
 			dstp+=dst_pitch;
 			srcp+=src_pitch;
 		}

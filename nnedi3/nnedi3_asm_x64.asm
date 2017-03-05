@@ -89,6 +89,7 @@ computeNetwork0_SSE2 proc public frame
 		mulps xmm1,[rdx+16]
 		mulps xmm2,[rdx+32]
 		mulps xmm3,[rdx+48]
+		
 		movaps xmm4,[rcx+16]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -101,6 +102,7 @@ computeNetwork0_SSE2 proc public frame
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+32]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -113,6 +115,7 @@ computeNetwork0_SSE2 proc public frame
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+48]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -125,6 +128,7 @@ computeNetwork0_SSE2 proc public frame
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+64]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -137,6 +141,7 @@ computeNetwork0_SSE2 proc public frame
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+80]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -149,6 +154,7 @@ computeNetwork0_SSE2 proc public frame
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+96]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -161,6 +167,7 @@ computeNetwork0_SSE2 proc public frame
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+112]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -173,6 +180,7 @@ computeNetwork0_SSE2 proc public frame
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+128]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -185,6 +193,7 @@ computeNetwork0_SSE2 proc public frame
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+144]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -197,6 +206,7 @@ computeNetwork0_SSE2 proc public frame
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+160]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -209,6 +219,7 @@ computeNetwork0_SSE2 proc public frame
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+176]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -221,6 +232,7 @@ computeNetwork0_SSE2 proc public frame
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,xmm0
 		movaps xmm5,xmm2
 		unpcklpd xmm0,xmm1
@@ -232,6 +244,7 @@ computeNetwork0_SSE2 proc public frame
 		movaps xmm6,xmm0
 		shufps xmm0,xmm2,136
 		shufps xmm6,xmm2,221
+		
 		addps xmm0,xmm6
 		addps xmm0,[rdx+768]
 		movaps xmm1,xmm0
@@ -324,6 +337,7 @@ computeNetwork0_i16_SSE2 proc public frame
 		pmaddwd xmm1,[rdx+16]
 		pmaddwd xmm2,[rdx+32]
 		pmaddwd xmm3,[rdx+48]
+		
 		movdqa xmm4,[rcx+16]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -336,6 +350,7 @@ computeNetwork0_i16_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+32]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -348,6 +363,7 @@ computeNetwork0_i16_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+48]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -360,6 +376,7 @@ computeNetwork0_i16_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+64]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -372,6 +389,7 @@ computeNetwork0_i16_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+80]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -384,6 +402,7 @@ computeNetwork0_i16_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,xmm0
 		movdqa xmm5,xmm2
 		punpcklqdq xmm0,xmm1
@@ -395,6 +414,7 @@ computeNetwork0_i16_SSE2 proc public frame
 		movdqa xmm6,xmm0
 		shufps xmm0,xmm2,136
 		shufps xmm6,xmm2,221
+		
 		paddd xmm0,xmm6
 		cvtdq2ps xmm0,xmm0
 		mulps xmm0,[rdx+384]
@@ -615,9 +635,9 @@ uc2f48_SSE2_16 proc public frame
 		cvtdq2ps xmm5,xmm5
 		movaps [rdx+96],xmm0
 		movaps [rdx+112],xmm1
-		movaps [rdx+128],xmm4
-		movaps [rdx+144],xmm2
-		movaps [rdx+160],xmm3
+		movaps [rdx+128],xmm2
+		movaps [rdx+144],xmm3
+		movaps [rdx+160],xmm4
 		movaps [rdx+176],xmm5
 		
 	movdqu xmm6,oword ptr[rsp]
@@ -680,7 +700,7 @@ uc2s48_SSE2 proc public frame
 uc2s48_SSE2 endp
 
 
-;processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:byte,val_max:byte
+;processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
 ; tempu = rcx
 ; width_ = edx
 ; dstp = r8
@@ -689,8 +709,8 @@ uc2s48_SSE2 endp
 processLine0_SSE2_ASM proc public frame
 
 src_pitch equ dword ptr[rbp+48]
-val_min equ byte ptr[rbp+56]
-val_max equ byte ptr[rbp+64]
+val_min equ word ptr[rbp+56]
+val_max equ word ptr[rbp+64]
 
 	push rbp
 	.pushreg rbp
@@ -781,29 +801,24 @@ xloop:
 		paddw xmm4,xmm5
 		pmullw xmm1,xmm9
 		pmullw xmm4,xmm9
-		movdqa xmm3,[rax]
+		movdqa xmm5,[rax]
 		psubusw xmm0,xmm1
 		psubusw xmm2,xmm4
-		pcmpeqb xmm3,xmm10
+		pxor xmm5,xmm10
 		paddusw xmm0,xmm11
 		paddusw xmm2,xmm11
-		movdqa xmm1,xmm3
-		pcmpeqb xmm4,xmm4
+		psadbw xmm5,xmm7		
 		psraw xmm0,5
 		psraw xmm2,5
-		pxor xmm1,xmm4
+		movdqa xmm3,xmm5
 		pminsw xmm0,xmm12
 		pminsw xmm2,xmm12
+		psrldq xmm5,8
 		pmaxsw xmm0,xmm13
 		pmaxsw xmm2,xmm13
-		movdqa xmm5,xmm1
+		paddusw xmm5,xmm3
 		packuswb xmm0,xmm2
-		pand xmm5,xmm10
-		psadbw xmm5,xmm7
-		movdqa xmm2,xmm5
-		psrldq xmm5,8
 		movdqa [rsi],xmm0
-		paddusw xmm5,xmm2
 		paddusw xmm6,xmm5
 		add rbx,r8
 		add rdi,r8
@@ -937,28 +952,23 @@ xloop_16:
 		paddd xmm4,xmm5
 		pmulld xmm1,xmm9
 		pmulld xmm4,xmm9
-		movq xmm3,qword ptr [rax]
+		movq xmm5,qword ptr [rax]
 		psubd xmm0,xmm1
-		punpcklbw xmm3,xmm7
+		punpcklbw xmm5,xmm7
 		psubd xmm2,xmm4
-		pcmpeqw xmm3,xmm10
+		pxor xmm5,xmm10
 		paddd xmm0,xmm11
 		paddd xmm2,xmm11
-		movdqa xmm1,xmm3
-		pcmpeqw xmm4,xmm4
+		psadbw xmm5,xmm7		
 		psrad xmm0,5
 		psrad xmm2,5
-		pxor xmm1,xmm4
+		movdqa xmm3,xmm5		
 		packusdw xmm0,xmm2
-		movdqa xmm5,xmm1
+		psrldq xmm5,8
 		pminuw xmm0,xmm12
 		pmaxuw xmm0,xmm13
-		pand xmm5,xmm10
-		psadbw xmm5,xmm7
-		movdqa xmm2,xmm5
-		psrldq xmm5,8
+		paddusw xmm5,xmm3
 		movdqa [rsi],xmm0
-		paddusw xmm5,xmm2
 		paddusw xmm6,xmm5
 		add rbx,r8
 		add rdi,r8
@@ -1008,8 +1018,8 @@ src_pitch equ dword ptr[rbp+48]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	sub rsp,80
-	.allocstack 80
+	sub rsp,64
+	.allocstack 64
 	movdqu oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	movdqu oword ptr[rsp+16],xmm7
@@ -1018,8 +1028,6 @@ src_pitch equ dword ptr[rbp+48]
 	.savexmm128 xmm8,32
 	movdqu oword ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	movdqu oword ptr[rsp+64],xmm10
-	.savexmm128 xmm10,64
 	.endprolog
 
 		mov rax,rcx
@@ -1032,37 +1040,33 @@ src_pitch equ dword ptr[rbp+48]
 		mov r9,4
 		
 		lea rdi,[rbx+rdx*4]
+		pxor xmm5,xmm5
 		pxor xmm6,xmm6
-		pxor xmm7,xmm7
-		movaps xmm8,oword ptr f_19
-		movaps xmm9,oword ptr f_3
-		movdqa xmm10,oword ptr dw_1
+		movaps xmm7,oword ptr f_19
+		movaps xmm8,oword ptr f_3
+		movdqa xmm9,oword ptr dw_1
 		
 xloop_32:
+		movd xmm4,dword ptr [rax]
 		movaps xmm2,[rbx]
 		movaps xmm0,[rbx+rdx*2]
+		punpcklbw xmm4,xmm6
 		movaps xmm1,[rdi]
 		movaps xmm3,[rdi+rdx*2]
+		punpcklwd xmm4,xmm6
 		addps xmm0,xmm1
+		pxor xmm4,xmm9
 		addps xmm2,xmm3
-		mulps xmm0,xmm8
-		mulps xmm2,xmm9
-		movd xmm3,dword ptr [rax]
+		psadbw xmm4,xmm6
+		mulps xmm0,xmm7
+		movdqa xmm3,xmm4
+		mulps xmm2,xmm8
+		psrldq xmm4,8
 		subps xmm0,xmm2		
-		punpcklbw xmm3,xmm7
+		paddusw xmm4,xmm3
 		movaps [rsi],xmm0
-		punpcklwd xmm3,xmm7			
-		pcmpeqd xmm3,xmm10
-		pcmpeqd xmm4,xmm4
-		movdqa xmm1,xmm3
-		pxor xmm1,xmm4
-		movdqa xmm5,xmm1
-		pand xmm5,xmm10
-		psadbw xmm5,xmm7
-		movdqa xmm2,xmm5
-		psrldq xmm5,8
-		paddusw xmm5,xmm2
-		paddusw xmm6,xmm5
+		paddusw xmm5,xmm4
+		
 		add rbx,r8
 		add rdi,r8
 		add rax,r9
@@ -1071,14 +1075,13 @@ xloop_32:
 		jnz xloop_32
 		
 		xor  rax,rax
-		movd eax,xmm6
+		movd eax,xmm5
 		
-	movdqu xmm10,oword ptr[rsp+64]
 	movdqu xmm9,oword ptr[rsp+48]
 	movdqu xmm8,oword ptr[rsp+32]
 	movdqu xmm7,oword ptr[rsp+16]
 	movdqu xmm6,oword ptr[rsp]	
-	add rsp,80
+	add rsp,64
 	pop rdi
 	pop rsi
 	pop rbx
@@ -1923,6 +1926,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+r11]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1935,6 +1939,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+r12]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1947,6 +1952,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+48]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1959,6 +1965,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+2*r12]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1971,6 +1978,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+80]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1983,6 +1991,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+96]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1995,6 +2004,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+112]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2007,6 +2017,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		add rcx,r13
 		add rdi,r14
 		sub rdx,r12
@@ -2143,6 +2154,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+r11]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2155,6 +2167,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+2*r11]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2167,6 +2180,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+r12]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2179,6 +2193,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+4*r11]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2191,6 +2206,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+80]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2203,6 +2219,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+96]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2215,6 +2232,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+112]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2227,6 +2245,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+8*r11]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2239,6 +2258,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+144]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2251,6 +2271,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+160]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2263,6 +2284,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[rcx+176]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -2275,6 +2297,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		add rcx,r13
 		add rdi,r14
 		sub rdx,r12
@@ -2411,6 +2434,7 @@ lloop_3:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+r11]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2423,6 +2447,7 @@ lloop_3:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+r12]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2435,6 +2460,7 @@ lloop_3:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+48]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2447,6 +2473,7 @@ lloop_3:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		add rcx,r13
 		add rdi,r14
 		sub rdx,r12
@@ -2591,6 +2618,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+r11]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2603,6 +2631,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+2*r11]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2615,6 +2644,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+r12]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2627,6 +2657,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+4*r11]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2639,6 +2670,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+80]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2651,6 +2683,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		add rcx,r13
 		add rdi,r14
 		sub rdx,r12
@@ -3194,7 +3227,6 @@ uc2s64_SSE2 proc public frame
 	
 		mov rax,rcx
 		movsxd rcx,edx
-		mov rdx,r8
 		pxor xmm7,xmm7
 		movq xmm0,QWORD PTR[rax]
 		movq xmm1,QWORD PTR[rax+8]
@@ -3205,10 +3237,10 @@ uc2s64_SSE2 proc public frame
 		punpcklbw xmm2,xmm7
 		punpcklbw xmm3,xmm7
 		lea rax,[rax+rcx*4]
-		movdqa [rdx],xmm0
-		movdqa [rdx+16],xmm1
-		movdqa [rdx+32],xmm2
-		movdqa [rdx+48],xmm3
+		movdqa [r8],xmm0
+		movdqa [r8+16],xmm1
+		movdqa [r8+32],xmm2
+		movdqa [r8+48],xmm3
 		movq xmm4,QWORD PTR[rax]
 		movq xmm5,QWORD PTR[rax+8]
 		movq xmm6,QWORD PTR[rax+rcx*2]
@@ -3217,10 +3249,10 @@ uc2s64_SSE2 proc public frame
 		punpcklbw xmm5,xmm7
 		punpcklbw xmm6,xmm7
 		punpcklbw xmm0,xmm7
-		movdqa [rdx+64],xmm4
-		movdqa [rdx+80],xmm5
-		movdqa [rdx+96],xmm6
-		movdqa [rdx+112],xmm0
+		movdqa [r8+64],xmm4
+		movdqa [r8+80],xmm5
+		movdqa [r8+96],xmm6
+		movdqa [r8+112],xmm0
 		
 	movdqu xmm7,oword ptr[rsp+16]
 	movdqu xmm6,oword ptr[rsp]	
@@ -3255,6 +3287,7 @@ computeNetwork0new_SSE2 proc public frame
 		pmaddwd xmm1,[rax+16]
 		pmaddwd xmm2,[rax+32]
 		pmaddwd xmm3,[rax+48]
+		
 		movdqa xmm4,[rcx+16]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -3267,6 +3300,7 @@ computeNetwork0new_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+32]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -3279,6 +3313,7 @@ computeNetwork0new_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+48]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -3291,6 +3326,7 @@ computeNetwork0new_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+64]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -3303,6 +3339,7 @@ computeNetwork0new_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+80]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -3315,6 +3352,7 @@ computeNetwork0new_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+96]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -3327,6 +3365,7 @@ computeNetwork0new_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[rcx+112]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -3339,6 +3378,7 @@ computeNetwork0new_SSE2 proc public frame
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,xmm0
 		movdqa xmm5,xmm2
 		punpcklqdq xmm0,xmm1
@@ -3350,6 +3390,7 @@ computeNetwork0new_SSE2 proc public frame
 		movdqa xmm6,xmm0
 		shufps xmm0,xmm2,136
 		shufps xmm6,xmm2,221
+		
 		paddd xmm0,xmm6
 		cvtdq2ps xmm0,xmm0
 		mulps xmm0,[rax+512]

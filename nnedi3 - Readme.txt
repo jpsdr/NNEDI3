@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.36 (24/01/2017)                                         |
+                                     v0.9.4.37 (05/03/2017)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -187,8 +187,9 @@ PARAMETERS (nnedi3):
          1 = use c
          2 = use sse2
          3 = use sse4.1
-         4 = use FMA3
-         5 = use FMA4
+         4 = use AVX2
+         5 = use FMA3 [Manual set only, not in auto-detect]
+         6 = use FMA4 [Manual set only, not in auto-detect]
 
         ** for an older version supporting sse use v0.9.1 available at:
         **    http://bengal.missouri.edu/~kes25c/old_stuff/
@@ -395,6 +396,12 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   05/03/2017  v0.9.4.37
+       * Remove the use of asmlib.
+       * Some little bug fixes.
+       + Add an opt intermediate value (4 for AVX).
+       + Use of YMM registers in case of AVX2 (or more) CPU, and some little others cleanup/speedup.
+
    24/01/2017  v0.9.4.36
        * Set range mode default to 1. Apply range only on last step.
        + Add range mode 4.

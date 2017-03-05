@@ -76,6 +76,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		mov ecx,input
 		mov edx,weights
 		mov eax,1
+		
 		movaps xmm0,[ecx]
 		movaps xmm1,xmm0
 		movaps xmm2,xmm0
@@ -84,6 +85,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		mulps xmm1,[edx+16]
 		mulps xmm2,[edx+32]
 		mulps xmm3,[edx+48]
+		
 		movaps xmm4,[ecx+16]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -96,6 +98,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+32]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -108,6 +111,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+48]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -120,6 +124,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+64]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -132,6 +137,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+80]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -144,6 +150,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+96]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -156,6 +163,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+112]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -168,6 +176,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+128]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -180,6 +189,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+144]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -192,6 +202,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+160]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -204,6 +215,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+176]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -216,6 +228,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,xmm0
 		movaps xmm5,xmm2
 		unpcklpd xmm0,xmm1
@@ -224,11 +237,13 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		unpckhpd xmm5,xmm3
 		addps xmm0,xmm4
 		addps xmm2,xmm5
+		
 		movaps xmm6,xmm0
 		shufps xmm0,xmm2,136
 		shufps xmm6,xmm2,221
 		addps xmm0,xmm6
 		addps xmm0,[edx+768]
+		
 		movaps xmm1,xmm0
 		andps xmm0,oword ptr sign_bits_f_zero_l
 		addps xmm0,ones_f
@@ -307,6 +322,7 @@ computeNetwork0_i16_SSE2 proc inputf:dword,weightsf:dword,ptr_d:dword
 		pmaddwd xmm1,[edx+16]
 		pmaddwd xmm2,[edx+32]
 		pmaddwd xmm3,[edx+48]
+		
 		movdqa xmm4,[ecx+16]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -319,6 +335,7 @@ computeNetwork0_i16_SSE2 proc inputf:dword,weightsf:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+32]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -331,6 +348,7 @@ computeNetwork0_i16_SSE2 proc inputf:dword,weightsf:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+48]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -343,6 +361,7 @@ computeNetwork0_i16_SSE2 proc inputf:dword,weightsf:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+64]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -355,6 +374,7 @@ computeNetwork0_i16_SSE2 proc inputf:dword,weightsf:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+80]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -367,6 +387,7 @@ computeNetwork0_i16_SSE2 proc inputf:dword,weightsf:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,xmm0
 		movdqa xmm5,xmm2
 		punpcklqdq xmm0,xmm1
@@ -378,6 +399,7 @@ computeNetwork0_i16_SSE2 proc inputf:dword,weightsf:dword,ptr_d:dword
 		movdqa xmm6,xmm0
 		shufps xmm0,xmm2,136
 		shufps xmm6,xmm2,221
+		
 		paddd xmm0,xmm6
 		cvtdq2ps xmm0,xmm0
 		mulps xmm0,[edx+384]
@@ -517,7 +539,7 @@ uc2f48_SSE2 endp
 
 uc2f48_SSE2_16 proc ptr_t:dword,pitch:dword,ptr_p:dword
 
-    public uc2f48_SSE2
+    public uc2f48_SSE2_16
 
 		mov eax,ptr_t
 		mov ecx,pitch
@@ -572,9 +594,9 @@ uc2f48_SSE2_16 proc ptr_t:dword,pitch:dword,ptr_p:dword
 		cvtdq2ps xmm5,xmm5
 		movaps [edx+96],xmm0
 		movaps [edx+112],xmm1
-		movaps [edx+128],xmm4
-		movaps [edx+144],xmm2
-		movaps [edx+160],xmm3
+		movaps [edx+128],xmm2
+		movaps [edx+144],xmm3
+		movaps [edx+160],xmm4
 		movaps [edx+176],xmm5
 		
 		ret
@@ -619,7 +641,7 @@ uc2s48_SSE2 proc ptr_t:dword,pitch:dword,ptr_pf:dword
 uc2s48_SSE2 endp
 
 
-processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:byte,val_max:byte
+processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
 
     public processLine0_SSE2_ASM
 	
@@ -682,29 +704,24 @@ xloop:
 		paddw xmm4,xmm5
 		pmullw xmm1,oword ptr w_3
 		pmullw xmm4,oword ptr w_3
-		movdqa xmm3,[eax]
+		movdqa xmm5,[eax]
 		psubusw xmm0,xmm1
 		psubusw xmm2,xmm4
-		pcmpeqb xmm3,oword ptr ub_1
+		pxor xmm5,oword ptr ub_1
 		paddusw xmm0,oword ptr uw_16
 		paddusw xmm2,oword ptr uw_16
-		movdqa xmm1,xmm3
-		pcmpeqb xmm4,xmm4
+		psadbw xmm5,xmm7
 		psraw xmm0,5
 		psraw xmm2,5
-		pxor xmm1,xmm4
+		movdqa xmm3,xmm5
 		pminsw xmm0,oword ptr w_254
 		pminsw xmm2,oword ptr w_254
+		psrldq xmm5,8
 		pmaxsw xmm0,oword ptr w_16
 		pmaxsw xmm2,oword ptr w_16
-		movdqa xmm5,xmm1
+		paddusw xmm5,xmm3
 		packuswb xmm0,xmm2
-		pand xmm5,oword ptr ub_1
-		psadbw xmm5,xmm7
-		movdqa xmm2,xmm5
-		psrldq xmm5,8
 		movdqa [esi],xmm0
-		paddusw xmm5,xmm2
 		paddusw xmm6,xmm5
 		add ebx,16
 		add edi,16
@@ -787,28 +804,23 @@ xloop_16:
 		paddd xmm4,xmm5
 		pmulld xmm1,oword ptr d_3
 		pmulld xmm4,oword ptr d_3
-		movq xmm3,qword ptr [eax]
+		movq xmm5,qword ptr [eax]
 		psubd xmm0,xmm1
-		punpcklbw xmm3,xmm7
+		punpcklbw xmm5,xmm7
 		psubd xmm2,xmm4
-		pcmpeqw xmm3,oword ptr uw_1
+		pxor xmm5,oword ptr uw_1
 		paddd xmm0,oword ptr ud_16
 		paddd xmm2,oword ptr ud_16
-		movdqa xmm1,xmm3
-		pcmpeqw xmm4,xmm4
+		psadbw xmm5,xmm7		
 		psrad xmm0,5
 		psrad xmm2,5
-		pxor xmm1,xmm4
+		movdqa xmm3,xmm5
 		packusdw xmm0,xmm2
-		movdqa xmm5,xmm1
+		psrldq xmm5,8
 		pminuw xmm0,oword ptr w_254
 		pmaxuw xmm0,oword ptr w_16
-		pand xmm5,oword ptr uw_1
-		psadbw xmm5,xmm7
-		movdqa xmm2,xmm5
-		psrldq xmm5,8
+		paddusw xmm5,xmm3
 		movdqa [esi],xmm0
-		paddusw xmm5,xmm2
 		paddusw xmm6,xmm5
 		add ebx,16
 		add edi,16
@@ -843,34 +855,29 @@ processLine0_SSE2_ASM_32 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,sr
 		mov edx,src_pitch
 		mov esi,dstp
 		lea edi,[ebx+edx*4]
-		pxor xmm6,xmm6
-		pxor xmm7,xmm7		
+		pxor xmm5,xmm5
+		pxor xmm6,xmm6		
 		
 xloop_32:
-		movaps xmm2,[ebx]
+		movd xmm4,dword ptr [eax]
+		movaps xmm2,[ebx]		
 		movaps xmm0,[ebx+edx*2]
+		punpcklbw xmm4,xmm6		
 		movaps xmm1,[edi]
-		movaps xmm3,[edi+edx*2]
+		movaps xmm3,[edi+edx*2]		
+		punpcklwd xmm4,xmm6		
 		addps xmm0,xmm1
-		addps xmm2,xmm3
+		pxor xmm4,oword ptr dw_1		
+		addps xmm2,xmm3		
+		psadbw xmm4,xmm6
 		mulps xmm0,oword ptr f_19
+		movdqa xmm3,xmm4
 		mulps xmm2,oword ptr f_3
-		movd xmm3,dword ptr [eax]					
+		psrldq xmm4,8
 		subps xmm0,xmm2	
-		punpcklbw xmm3,xmm7	
+		paddusw xmm4,xmm3
 		movaps [esi],xmm0
-		punpcklwd xmm3,xmm7		
-		pcmpeqd xmm3,oword ptr dw_1		
-		pcmpeqd xmm4,xmm4
-		movdqa xmm1,xmm3	
-		pxor xmm1,xmm4		
-		movdqa xmm5,xmm1
-		pand xmm5,oword ptr dw_1
-		psadbw xmm5,xmm7
-		movdqa xmm2,xmm5
-		psrldq xmm5,8
-		paddusw xmm5,xmm2
-		paddusw xmm6,xmm5
+		paddusw xmm5,xmm4
 		add ebx,16
 		add edi,16
 		add eax,4
@@ -882,7 +889,7 @@ xloop_32:
 		pop edi
 		pop ebx
 		
-		movd eax,xmm6
+		movd eax,xmm5
 		
 		ret
 		
@@ -1506,6 +1513,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+16]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1518,6 +1526,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+32]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1530,6 +1539,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+48]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1542,6 +1552,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+64]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1554,6 +1565,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+80]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1566,6 +1578,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+96]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1578,6 +1591,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+112]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1590,6 +1604,7 @@ lloop:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		add ecx,128
 		add edi,512
 		sub edx,32
@@ -1678,6 +1693,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+16]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1690,6 +1706,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+32]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1702,6 +1719,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+48]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1714,6 +1732,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+64]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1726,6 +1745,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+80]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1738,6 +1758,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+96]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1750,6 +1771,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+112]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1762,6 +1784,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+128]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1774,6 +1797,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+144]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1786,6 +1810,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+160]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1798,6 +1823,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		movaps xmm4,[ecx+176]
 		movaps xmm5,xmm4
 		movaps xmm6,xmm4
@@ -1810,6 +1836,7 @@ lloop_2:
 		addps xmm1,xmm5
 		addps xmm2,xmm6
 		addps xmm3,xmm7
+		
 		add ecx,192
 		add edi,768
 		sub edx,48
@@ -1898,6 +1925,7 @@ lloop_3:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+16]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -1910,6 +1938,7 @@ lloop_3:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+32]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -1922,6 +1951,7 @@ lloop_3:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+48]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -1934,6 +1964,7 @@ lloop_3:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		add ecx,64
 		add edi,256
 		sub edx,32
@@ -2030,6 +2061,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+16]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2042,6 +2074,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+32]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2054,6 +2087,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+48]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2066,6 +2100,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+64]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2078,6 +2113,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+80]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2090,6 +2126,7 @@ lloop_4:
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		add ecx,96
 		add edi,384
 		sub edx,48
@@ -2502,6 +2539,7 @@ computeNetwork0new_SSE2 proc datai:dword,weights:dword,ptr_d:dword
 		pmaddwd xmm1,[eax+16]
 		pmaddwd xmm2,[eax+32]
 		pmaddwd xmm3,[eax+48]
+		
 		movdqa xmm4,[ecx+16]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2514,6 +2552,7 @@ computeNetwork0new_SSE2 proc datai:dword,weights:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+32]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2526,6 +2565,7 @@ computeNetwork0new_SSE2 proc datai:dword,weights:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+48]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2538,6 +2578,7 @@ computeNetwork0new_SSE2 proc datai:dword,weights:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+64]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2550,6 +2591,7 @@ computeNetwork0new_SSE2 proc datai:dword,weights:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+80]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2562,6 +2604,7 @@ computeNetwork0new_SSE2 proc datai:dword,weights:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+96]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2574,6 +2617,7 @@ computeNetwork0new_SSE2 proc datai:dword,weights:dword,ptr_d:dword
 		paddd xmm1,xmm5
 		paddd xmm2,xmm6
 		paddd xmm3,xmm7
+		
 		movdqa xmm4,[ecx+112]
 		movdqa xmm5,xmm4
 		movdqa xmm6,xmm4
@@ -2598,6 +2642,7 @@ computeNetwork0new_SSE2 proc datai:dword,weights:dword,ptr_d:dword
 		movdqa xmm6,xmm0
 		shufps xmm0,xmm2,136
 		shufps xmm6,xmm2,221
+		
 		paddd xmm0,xmm6
 		cvtdq2ps xmm0,xmm0
 		mulps xmm0,[eax+512]

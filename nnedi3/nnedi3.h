@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.36 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.37 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -37,7 +37,10 @@ const int ydiaTable[NUM_NSIZE] = {6,6,6,6,4,4,4};
 const int nnsTable[NUM_NNS] = {16,32,64,128,256};
 const int nnsTablePow2[NUM_NNS] = {4,5,6,7,8};
 
-#define CB2(n) max(min((n),254),0)
+#ifndef clamp
+#define clamp(n,vmin,vmax) ((n>vmin)?((n<vmax)?n:vmax):vmin)
+#endif
+#define CB2(n) clamp(n,0,254)
 
 #define PLANE_MAX 4
 
@@ -73,7 +76,6 @@ protected:
 	int *lcount[PLANE_MAX],qual,nsize,fapprox;
 	PlanarFrame *srcPF,*dstPF;
 	PS_INFO pssInfo[MAX_MT_THREADS];
-	size_t Cache_Setting;
 	float *weights0,*weights1[2];
 	HANDLE ghMutex;
 	uint8_t threads_number;
