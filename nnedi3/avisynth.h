@@ -2,7 +2,11 @@
 // Avisynth v2.6.  Copyright 2006 Klaus Post.
 // Avisynth v2.6.  Copyright 2009 Ian Brabham.
 // Avisynth+ project
-// Last modification date: 20161005
+// 20160613: new 16 bit planar pixel_type constants go live!
+// 20160725: pixel_type constants 10-12-14 bit + planar RGB + BRG48/64 
+// 20161005: Fallback of VideoInfo functions to defaults if no function exists
+// 20170117: global variables for VfW output OPT_xxxx
+// 20170310: new MT mode: MT_SPECIAL_MT
 
 // http://www.avisynth.org
 
@@ -1086,6 +1090,14 @@ public:
   int             AsInt2(int def) const;
   double          AsFloat2(float def) const;
   const char*     AsString2(const char* def) const;
+
+#ifdef NEW_AVSVALUE
+  void            MarkArrayAsC();
+  void            CONSTRUCTOR10(const AVSValue& v, bool c_arrays);
+  AVSValue(const AVSValue& v, bool c_arrays);
+  void            Assign2(const AVSValue* src, bool init, bool c_arrays);
+#endif
+
 #endif
 }; // end class AVSValue
 
@@ -1194,7 +1206,8 @@ enum MtMode
   MT_NICE_FILTER = 1,
   MT_MULTI_INSTANCE = 2,
   MT_SERIALIZED = 3,
-  MT_MODE_COUNT = 4
+  MT_SPECIAL_MT = 4,
+  MT_MODE_COUNT = 5
 };
 
 class IJobCompletion
@@ -1282,6 +1295,9 @@ public:
   using IScriptEnvironment::AddFunction;
   using IScriptEnvironment::GetVar;
 
+  virtual PVideoFrame __stdcall SubframePlanarA(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
+    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV, int rel_offsetA) = 0;
+
 }; // end class IScriptEnvironment2
 
 
@@ -1296,7 +1312,11 @@ AVSC_API(IScriptEnvironment*, CreateScriptEnvironment)(int version = AVISYNTH_IN
 #define VARNAME_AVIPadScanlines   "OPT_AVIPadScanlines"   // Have scanlines mod4 padded in all pixel formats
 #define VARNAME_UseWaveExtensible "OPT_UseWaveExtensible" // Use WAVEFORMATEXTENSIBLE when describing audio to Windows
 #define VARNAME_dwChannelMask     "OPT_dwChannelMask"     // Integer audio channel mask. See description of WAVEFORMATEXTENSIBLE for more info.
-
+#define VARNAME_Enable_V210       "OPT_Enable_V210"       // AVS+ use V210 instead of P210 (VfW)
+#define VARNAME_Enable_Y3_10_10   "OPT_Enable_Y3_10_10"   // AVS+ use Y3[10][10] instead of P210 (VfW)
+#define VARNAME_Enable_Y3_10_16   "OPT_Enable_Y3_10_16"   // AVS+ use Y3[10][16] instead of P216 (VfW)
+#define VARNAME_Enable_b64a       "OPT_Enable_b64a"       // AVS+ use b64a instead of BRA[64] (VfW)
+#define VARNAME_Enable_PlanarToPackedRGB "OPT_Enable_PlanarToPackedRGB" // AVS+ convert Planar RGB to packed RGB (VfW)
 
 // C exports
 #include "./avs/capi.h"

@@ -6,103 +6,6 @@ Ymask qword 2 dup(00FF00FF00FF00FFh)
 
 .code
 
-;checkCPU_ASM proc
-
-checkCPU_ASM proc public frame
-
-	push rdi
-	.pushreg rdi
-	push rbx
-	.pushreg rbx
-	.endprolog
-	
-	
-		xor rdi,rdi     ; zero to  begin
-		; remove  CPUID check, it exists, we are on x64 CPU !
-		xor rax,rax   ;check for features register.
-		cpuid
-		or eax,eax
-		jz TEST_END
-		mov eax,1
-		cpuid
-		test edx,00800000h  ;check MMX
-		jz TEST_SSE
-		or edi,1
-TEST_SSE:
-		test edx,02000000h  ;check SSE
-		jz TEST_SSE2
-		or edi,2
-		or edi,4
-TEST_SSE2:
-		test edx,04000000h  ;check SSE2
-		jz TEST_AMD
-		or edi,8
-		test ecx,00000001h  ;check SSE3
-		jz TEST_AMD
-		or edi,64
-		test ecx,00000200h  ;check SSSE3
-		jz TEST_AMD
-		or edi,128
-		test ecx,00080000h  ;check SSE4.1
-		jz TEST_AMD
-		or edi,256
-		test ecx,00100000h  ;check SSE4.2
-		jz TEST_AMD
-		or edi,512
-TEST_AMD:  ;check for vendor feature register (K6/Athlon).
-		mov eax,80000000h
-		cpuid
-		mov ecx,80000001h
-		cmp eax,ecx
-		jb TEST_END
-		mov eax,80000001h
-		cpuid
-		test edx,80000000h ; check 3DNOW
-		jz TEST_3DNOW2
-		or edi,16
-TEST_3DNOW2:
-		test edx,40000000h ; check 3DNOW2
-		jz TEST_SSEMMX
-		or edi,32
-TEST_SSEMMX:
-		test edx,00400000h  ;check iSSE
-		jz TEST_END
-		or edi,2
-TEST_END:
-		mov eax,edi
-		
-		pop rbx
-		pop rdi
-		
-		ret
-		
-checkCPU_ASM  endp
-
-
-;checkSSEOSSupport_ASM proc
-
-checkSSEOSSupport_ASM proc public frame
-
-.endprolog
-	
-	xorps xmm0,xmm0
-	
-	ret
-	
-checkSSEOSSupport_ASM endp
-
-
-;checkSSE2OSSupport_ASM proc
-
-checkSSE2OSSupport_ASM proc public frame
-.endprolog
-	
-	xorpd xmm0,xmm0
-	
-	ret
-	
-checkSSE2OSSupport_ASM endp
-
 
 ;convYUY2to422_MMX proc src:dword,py:dword,pu:dword,pv:dword,pitch1:dword,pitch2Y:dword,pitch2UV:dword,width_:dword,height:dword
 ; src = rcx
@@ -374,13 +277,19 @@ height equ dword ptr[rbp+80]
 	.pushreg rdi
 	push r12
 	.pushreg r12
+	push r13
+	.pushreg r13
+	push r14
+	.pushreg r14
+	push r15
+	.pushreg r15
 	.endprolog
 			
 		mov rbx,rcx
 		mov rsi,r8
 		mov rdi,r9
 		xor rcx,rcx
-		mov ecx,width_
+		mov r15d,width_
 		shr ecx,1
 		
 		xor r8,r8
@@ -388,21 +297,46 @@ height equ dword ptr[rbp+80]
 		movsxd r9,pitch1Y
 		movsxd r10,pitch1UV
 		movsxd r11,pitch2
-		mov r12,4		
+		mov r12,16
+		mov r13,32
+		mov r14,2
 		
 yloop_4:
 		xor rax,rax
-		align 16
+		mov ecx,r15d
+		shr ecx,1
+		jz short suite1
+		
 xloop_4:
-		movq xmm0,qword ptr[rbx+rax*2] ;????????YYYYYYYY
-		movd xmm1,dword ptr[rdx+rax]     ;000000000000UUUU
-		movd xmm2,dword ptr[rsi+rax]     ;000000000000VVVV
-		punpcklbw xmm1,xmm2     ;00000000VUVUVUVU
-		punpcklbw xmm0,xmm1     ;VYUYVYUYVYUYVYUY
-		movdqa [rdi+rax*4],xmm0 ;store
-		add rax,r12
-		cmp rax,rcx
-		jl short xloop_4
+		movq xmm1,qword ptr[rdx+4*rax]     ;00000000UUUUUUUU
+		movq xmm0,qword ptr[rsi+4*rax]     ;00000000VVVVVVVV
+		movdqa xmm2,XMMWORD ptr[rbx+8*rax] ;YYYYYYYYYYYYYYYY
+		punpcklbw xmm1,xmm0					;VUVUVUVUVUVUVUVU
+		movdqa xmm3,xmm2
+		add rax,r14
+		punpcklbw xmm2,xmm1     			;VYUYVYUYVYUYVYUY
+		punpckhbw xmm3,xmm1     			;VYUYVYUYVYUYVYUY
+		
+		movdqa XMMWORD ptr[rdi],xmm2 ;store
+		movdqa XMMWORD ptr[rdi+r12],xmm3 ;store
+		add rdi,r13
+		loop xloop_4
+		
+suite1:		
+		mov ecx,r15d
+		and ecx,1
+		jz short suite2
+
+		movd xmm1,dword ptr[rdx+4*rax]     ;000000000000UUUU
+		movd xmm0,dword ptr[rsi+4*rax]     ;000000000000VVVV
+		movq xmm2,qword ptr[rbx+8*rax] ;00000000YYYYYYY
+		punpcklbw xmm1,xmm0					;00000000VUVUVUVU
+		punpcklbw xmm2,xmm1     			;VYUYVYUYVYUYVYUY
+		
+		movdqa XMMWORD ptr[rdi],xmm2 ;store
+		add rdi,r12			
+		
+suite2:		
 		add rbx,r9
 		add rdx,r10
 		add rsi,r10
@@ -410,6 +344,9 @@ xloop_4:
 		dec r8
 		jnz short yloop_4
 		
+	pop r15
+	pop r14
+	pop r13
 	pop r12
 	pop rdi
 	pop rsi

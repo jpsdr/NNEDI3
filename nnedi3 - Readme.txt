@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.37 (05/03/2017)                                         |
+                                     v0.9.4.38 (20/03/2017)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -396,6 +396,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   20/03/2017  v0.9.4.38
+       * Some cleanup and small modifications on PlanarFrame.
+       * Update AVS+ header.
+
    05/03/2017  v0.9.4.37
        * Remove the use of asmlib.
        * Some little bug fixes.

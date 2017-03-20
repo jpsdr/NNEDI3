@@ -23,12 +23,10 @@
 
 #include "PlanarFrame.h"
 #include <stdint.h>
+#include <intrin.h>
 
 #define myalignedfree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
 
-extern "C" int checkCPU_ASM(void);
-extern "C" void checkSSEOSSupport_ASM(void);
-extern "C" void checkSSE2OSSupport_ASM(void);
 extern "C" void convYUY2to422_MMX(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8_t *pv,int pitch1,int pitch2Y,int pitch2UV,
 	int width,int height);
 extern "C" void convYUY2to422_SSE2(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8_t *pv,int pitch1,int pitch2Y,int pitch2UV,
@@ -37,6 +35,104 @@ extern "C" void conv422toYUY2_MMX(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *d
 	int width,int height);
 extern "C" void conv422toYUY2_SSE2(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst,int pitch1Y,int pitch1UV,int pitch2,
 	int width,int height);
+
+
+#define IS_BIT_SET(bitfield, bit) ((bitfield) & (1<<(bit)) ? true : false)
+
+static int CPUCheckForExtensions()
+{
+  int result = 0;
+  int cpuinfo[4];
+
+  __cpuid(cpuinfo, 1);
+  if (IS_BIT_SET(cpuinfo[3], 0))
+    result |= CPUF_FPU;
+  if (IS_BIT_SET(cpuinfo[3], 23))
+    result |= CPUF_MMX;
+  if (IS_BIT_SET(cpuinfo[3], 25))
+    result |= CPUF_SSE | CPUF_INTEGER_SSE;
+  if (IS_BIT_SET(cpuinfo[3], 26))
+    result |= CPUF_SSE2;
+  if (IS_BIT_SET(cpuinfo[2], 0))
+    result |= CPUF_SSE3;
+  if (IS_BIT_SET(cpuinfo[2], 9))
+    result |= CPUF_SSSE3;
+  if (IS_BIT_SET(cpuinfo[2], 19))
+    result |= CPUF_SSE4_1;
+  if (IS_BIT_SET(cpuinfo[2], 20))
+    result |= CPUF_SSE4_2;
+  if (IS_BIT_SET(cpuinfo[2], 22))
+    result |= CPUF_MOVBE;
+  if (IS_BIT_SET(cpuinfo[2], 23))
+    result |= CPUF_POPCNT;
+  if (IS_BIT_SET(cpuinfo[2], 25))
+    result |= CPUF_AES;
+  if (IS_BIT_SET(cpuinfo[2], 29))
+    result |= CPUF_F16C;
+  // AVX
+  bool xgetbv_supported = IS_BIT_SET(cpuinfo[2], 27);
+  bool avx_supported = IS_BIT_SET(cpuinfo[2], 28);
+  if (xgetbv_supported && avx_supported)
+  {
+    unsigned long long xgetbv0 = _xgetbv(_XCR_XFEATURE_ENABLED_MASK);
+    if ((xgetbv0 & 0x6ull) == 0x6ull) {
+      result |= CPUF_AVX;
+      if (IS_BIT_SET(cpuinfo[2], 12))
+        result |= CPUF_FMA3;
+      __cpuid(cpuinfo, 7);
+      if (IS_BIT_SET(cpuinfo[1], 5))
+        result |= CPUF_AVX2;
+    }
+    if((xgetbv0 & (0x7ull << 5)) && // OPMASK: upper-256 enabled by OS
+       (xgetbv0 & (0x3ull << 1))) { // XMM/YMM enabled by OS
+      // Verify that XCR0[7:5] = ‘111b’ (OPMASK state, upper 256-bit of ZMM0-ZMM15 and
+      // ZMM16-ZMM31 state are enabled by OS)
+      /// and that XCR0[2:1] = ‘11b’ (XMM state and YMM state are enabled by OS).
+      __cpuid(cpuinfo, 7);
+      if (IS_BIT_SET(cpuinfo[1], 16))
+        result |= CPUF_AVX512F;
+      if (IS_BIT_SET(cpuinfo[1], 17))
+        result |= CPUF_AVX512DQ;
+      if (IS_BIT_SET(cpuinfo[1], 21))
+        result |= CPUF_AVX512IFMA;
+      if (IS_BIT_SET(cpuinfo[1], 26))
+        result |= CPUF_AVX512PF;
+      if (IS_BIT_SET(cpuinfo[1], 27))
+        result |= CPUF_AVX512ER;
+      if (IS_BIT_SET(cpuinfo[1], 28))
+        result |= CPUF_AVX512CD;
+      if (IS_BIT_SET(cpuinfo[1], 30))
+        result |= CPUF_AVX512BW;
+      if (IS_BIT_SET(cpuinfo[1], 31))
+        result |= CPUF_AVX512VL;
+      if (IS_BIT_SET(cpuinfo[2], 1)) // [2]!
+        result |= CPUF_AVX512VBMI;
+    }
+  }
+
+  // 3DNow!, 3DNow!, ISSE, FMA4
+  __cpuid(cpuinfo, 0x80000000);   
+  if (cpuinfo[0] >= 0x80000001)
+  {
+    __cpuid(cpuinfo, 0x80000001);
+
+    if (IS_BIT_SET(cpuinfo[3], 31))
+      result |= CPUF_3DNOW;
+
+    if (IS_BIT_SET(cpuinfo[3], 30))
+      result |= CPUF_3DNOW_EXT;
+
+    if (IS_BIT_SET(cpuinfo[3], 22))
+      result |= CPUF_INTEGER_SSE;
+
+    if (result & CPUF_AVX) {
+      if (IS_BIT_SET(cpuinfo[2], 16))
+        result |= CPUF_FMA4;
+    }
+  }
+
+  return result;
+}
 
 
 int modnpf(const int m, const int n)
@@ -55,13 +151,14 @@ PlanarFrame::PlanarFrame(void)
 	yheight = uvheight = 0;
 	planar_1 = planar_2 = planar_3 = planar_4 = NULL;
 	useSIMD = true;
-	cpu = getCPUInfo();
+	cpu = CPUCheckForExtensions();
 	isRGBPfamily = false;
 	isAlphaChannel = false;
 	grey = false;
 	pixelsize=1;
 	bits_per_pixel=8;
 }
+
 
 PlanarFrame::PlanarFrame(VideoInfo &viInfo)
 {
@@ -70,9 +167,10 @@ PlanarFrame::PlanarFrame(VideoInfo &viInfo)
 	yheight = uvheight = 0;
 	planar_1 = planar_2 = planar_3 = planar_4 = NULL;
 	useSIMD = true;
-	cpu = getCPUInfo();
+	cpu = CPUCheckForExtensions();
 	alloc_ok=allocSpace(viInfo);
 }
+
 
 PlanarFrame::~PlanarFrame(void)
 {
@@ -81,6 +179,7 @@ PlanarFrame::~PlanarFrame(void)
 	myalignedfree(planar_2);
 	myalignedfree(planar_1);
 }
+
 
 bool PlanarFrame::allocSpace(VideoInfo &viInfo)
 {
@@ -180,6 +279,7 @@ bool PlanarFrame::allocSpace(VideoInfo &viInfo)
 	return(true);
 }
 
+
 bool PlanarFrame::allocSpace(int specs[4],bool rgbplanar,bool alphaplanar,uint8_t _pixelsize,uint8_t _bits_per_pixel)
 {
 	myalignedfree(planar_4);
@@ -233,9 +333,10 @@ bool PlanarFrame::allocSpace(int specs[4],bool rgbplanar,bool alphaplanar,uint8_
 	return(true);
 }
 
+
 int PlanarFrame::getCPUInfo(void)
 {
-	static const int cpu_saved = checkCPU();
+	static const int cpu_saved = CPUCheckForExtensions();
 	return cpu_saved;
 }
 
@@ -243,41 +344,17 @@ int PlanarFrame::checkCPU(void)
 {
 	int cput = 0;
 
-	cput=checkCPU_ASM();
-	if (cput&0x04) checkSSEOSSupport(cput);
-	if (cput&0x08) checkSSE2OSSupport(cput);
+	cput=CPUCheckForExtensions();
 	return cput;
 }
 
-void PlanarFrame::checkSSEOSSupport(int &cput)
-{
-	__try
-	{
-		checkSSEOSSupport_ASM();
-	} 
-	__except (EXCEPTION_EXECUTE_HANDLER) 
-	{
-		if (GetExceptionCode() == 0xC000001Du) cput &= ~0x04;
-	}
-}
-
-void PlanarFrame::checkSSE2OSSupport(int &cput)
-{
-	__try
-	{
-		checkSSE2OSSupport_ASM();
-	} 
-	__except (EXCEPTION_EXECUTE_HANDLER) 
-	{
-		if (GetExceptionCode() == 0xC000001Du) cput &= ~0x08;
-	}
-}
 
 bool PlanarFrame::createPlanar(int yheight, int uvheight, int ywidth, int uvwidth,bool rgbplanar,bool alphaplanar,uint8_t pixelsize,uint8_t bits_per_pixel)
 {
 	int specs[4] = {yheight,uvheight,ywidth,uvwidth};
 	return(allocSpace(specs,rgbplanar,alphaplanar,pixelsize,bits_per_pixel));
 }
+
 
 bool PlanarFrame::createPlanar(int height,int width,uint8_t chroma_format,bool rgbplanar,bool alphaplanar,uint8_t pixelsize,uint8_t bits_per_pixel)
 {
@@ -312,16 +389,19 @@ bool PlanarFrame::createPlanar(int height,int width,uint8_t chroma_format,bool r
 	return(allocSpace(specs,rgbplanar,alphaplanar,pixelsize,bits_per_pixel));
 }
 
+
 bool PlanarFrame::createFromProfile(VideoInfo &viInfo)
 {
 	return(allocSpace(viInfo));
 }
+
 
 bool PlanarFrame::createFromFrame(PVideoFrame &frame,VideoInfo &viInfo)
 {
 	if (!allocSpace(viInfo)) return(false);
 	else return(copyInternalFrom(frame,viInfo));
 }
+
 
 bool PlanarFrame::createFromPlanar(PlanarFrame &frame)
 {
@@ -330,30 +410,36 @@ bool PlanarFrame::createFromPlanar(PlanarFrame &frame)
 	else return(copyInternalFrom(frame));
 }
 
+
 bool PlanarFrame::copyFrom(PVideoFrame &frame,VideoInfo &viInfo)
 {
 	return(copyInternalFrom(frame,viInfo));
 }
+
 
 bool PlanarFrame::copyFrom(PlanarFrame &frame)
 {
 	return(copyInternalFrom(frame));
 }
 
+
 bool PlanarFrame::copyTo(PVideoFrame &frame,VideoInfo &viInfo)
 {
 	return(copyInternalTo(frame,viInfo));
 }
+
 
 bool PlanarFrame::copyTo(PlanarFrame &frame)
 {
 	return(copyInternalTo(frame));
 }
 
+
 bool PlanarFrame::copyPlaneTo(PlanarFrame &frame,uint8_t plane)
 {
 	return(copyInternalPlaneTo(frame,plane));
 }
+
 
 uint8_t* PlanarFrame::GetPtr(uint8_t plane)
 {
@@ -367,6 +453,7 @@ uint8_t* PlanarFrame::GetPtr(uint8_t plane)
 	}
 }
 
+
 int PlanarFrame::GetWidth(uint8_t plane)
 {
 	switch(plane)
@@ -378,6 +465,7 @@ int PlanarFrame::GetWidth(uint8_t plane)
 		default : return 0; break;
 	}
 }
+
 
 int PlanarFrame::GetHeight(uint8_t plane)
 {
@@ -391,6 +479,7 @@ int PlanarFrame::GetHeight(uint8_t plane)
 	}
 }
 
+
 int PlanarFrame::GetPitch(uint8_t plane)
 {
 	switch(plane)
@@ -402,6 +491,7 @@ int PlanarFrame::GetPitch(uint8_t plane)
 		default : return 0; break;
 	}
 }
+
 
 void PlanarFrame::freePlanar()
 {
@@ -421,6 +511,7 @@ void PlanarFrame::freePlanar()
 	pixelsize=1;
 	bits_per_pixel=8;
 }
+
 
 bool PlanarFrame::copyInternalFrom(PVideoFrame &frame,VideoInfo &viInfo)
 {
@@ -484,6 +575,7 @@ bool PlanarFrame::copyInternalFrom(PVideoFrame &frame,VideoInfo &viInfo)
 	return(true);
 }
 
+
 bool PlanarFrame::copyInternalFrom(PlanarFrame &frame)
 {
 	if ((planar_1==NULL) || ((frame.uvpitch!=0) && ((planar_2==NULL) || (planar_3==NULL))) || (frame.isAlphaChannel && (planar_4==NULL))) return(false);
@@ -497,6 +589,7 @@ bool PlanarFrame::copyInternalFrom(PlanarFrame &frame)
 	if (frame.isAlphaChannel) BitBlt(planar_4,ypitch,frame.planar_4,frame.ypitch,(int)frame.pixelsize*frame.ywidth,frame.yheight);
 	return(true);
 }
+
 
 bool PlanarFrame::copyInternalTo(PVideoFrame &frame,VideoInfo &viInfo)
 {
@@ -620,14 +713,15 @@ PlanarFrame& PlanarFrame::operator=(PlanarFrame &ob2)
 	return *this;
 }
 
+
 void PlanarFrame::convYUY2to422(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8_t *pv,int pitch1,int pitch2Y,int pitch2UV,
 	int width,int height)
 {
-	if (((cpu&CPU_SSE2)!=0) && useSIMD && (((size_t(src)|pitch1)&15)==0))
+	if (((cpu&CPUF_SSE2)!=0) && useSIMD && (((size_t(src)|pitch1)&15)==0))
 		convYUY2to422_SSE2(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,width,height);
 	else
 	{
-		if (((cpu&CPU_MMX)!=0) && useSIMD) convYUY2to422_MMX(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,width,height);
+		if (((cpu&CPUF_MMX)!=0) && useSIMD) convYUY2to422_MMX(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,width,height);
 		else
 		{
 			width >>= 1;
@@ -657,11 +751,13 @@ void PlanarFrame::convYUY2to422(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8
 void PlanarFrame::conv422toYUY2(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst,int pitch1Y,int pitch1UV,int pitch2,
 	int width,int height)
 {
-	if (((cpu&CPU_SSE2)!=0) && useSIMD && ((size_t(dst)&15)==0))
-		conv422toYUY2_SSE2(py,pu,pv,dst,pitch1Y,pitch1UV,pitch2,width,height);
+	const int w_8=(width+7)>>3;
+	const int modulo2=pitch2-(w_8 << 4);
+
+	if (((cpu&CPUF_SSE2)!=0) && useSIMD) conv422toYUY2_SSE2(py,pu,pv,dst,pitch1Y,pitch1UV,modulo2,w_8,height);
 	else
 	{
-		if (((cpu&CPU_MMX)!=0) && useSIMD) conv422toYUY2_MMX(py,pu,pv,dst,pitch1Y,pitch1UV,pitch2,width,height);
+		if (((cpu&CPUF_MMX)!=0) && useSIMD) conv422toYUY2_MMX(py,pu,pv,dst,pitch1Y,pitch1UV,pitch2,width,height);
 		else
 		{
 			width >>= 1;
@@ -709,6 +805,7 @@ void PlanarFrame::convRGB24to444(const uint8_t *src,uint8_t *py,uint8_t *pu,uint
 	}
 }
 
+
 void PlanarFrame::conv444toRGB24(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst,int pitch1Y,int pitch1UV,int pitch2,
 	int width,int height)
 {
@@ -730,6 +827,7 @@ void PlanarFrame::conv444toRGB24(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *ds
 		dst -= pitch2;
 	}
 }
+
 
 // Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
 // http://www.avisynth.org
