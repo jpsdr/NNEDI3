@@ -1749,7 +1749,7 @@ yloop_:
 		
 suite_0:		
 		test rax,15
-		jnz short yloop__
+		jnz yloop__
 		
 yloop:
 		xor rcx,rcx			
@@ -1776,9 +1776,9 @@ xloop_2:
 		add rdx,r12
 		cmp rcx,rdi
 		jl short xloop_2
-		lea eax,[rax+rbx*4]
-		lea esi,[rsi+rbx*4]
-		lea edx,[rdx+rdi*2]
+		lea rax,[rax+rbx*4]
+		lea rsi,[rsi+rbx*4]
+		lea rdx,[rdx+rdi*2]
 		sub r8d,r10d
 		jnz short yloop
 		
@@ -1787,7 +1787,7 @@ xloop_2:
 		vpaddd xmm4,xmm4,xmm1
 		vpaddd xmm5,xmm5,xmm2
 		
-		jmp short suite0
+		jmp suite0
 		
 yloop__:
 		xor rcx,rcx			
@@ -1814,9 +1814,9 @@ xloop_2_:
 		add rdx,r12
 		cmp rcx,rdi
 		jl short xloop_2_
-		lea eax,[rax+rbx*4]
-		lea esi,[rsi+rbx*4]
-		lea edx,[rdx+rdi*2]
+		lea rax,[rax+rbx*4]
+		lea rsi,[rsi+rbx*4]
+		lea rdx,[rdx+rdi*2]
 		sub r8d,r10d
 		jnz short yloop__
 		
