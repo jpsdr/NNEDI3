@@ -398,7 +398,7 @@ nnedi3_rpow2 EXAMPLES:
 CHANGE LIST:
    10/05/2017  v0.9.4.41
        * Fix crash in PlanarFrame for YUYV.
-v
+
    11/04/2017  v0.9.4.40
        * Fix bug in x64 AVX2 asm code.
 
