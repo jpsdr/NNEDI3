@@ -718,7 +718,7 @@ void PlanarFrame::convYUY2to422(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8
 	int width,int height)
 {
 	if (((cpu&CPUF_SSE2)!=0) && useSIMD && (((size_t(src)|pitch1)&15)==0))
-		convYUY2to422_SSE2(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,(width+3)>>2,height);
+		convYUY2to422_SSE2(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,(width+7)>>3,height);
 	else
 	{
 		if (((cpu&CPUF_MMX)!=0) && useSIMD) convYUY2to422_MMX(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,width,height);

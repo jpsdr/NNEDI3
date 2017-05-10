@@ -79,8 +79,6 @@ convYUY2to422_SSE2 proc src:dword,py:dword,pu:dword,pv:dword,pitch1:dword,pitch2
 		mov ebx,py
 		mov edx,pu
 		mov esi,pv
-		mov ecx,width_
-		shr ecx,1
 		
 yloop_2:
 		xor eax,eax
