@@ -396,7 +396,7 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
-   10/05/2017  v0.9.4.42
+   19/05/2017  v0.9.4.42
        * Minor change in the threadpool.
 
    10/05/2017  v0.9.4.41
