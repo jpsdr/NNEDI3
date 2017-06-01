@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.42 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.43 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -72,14 +72,14 @@ class nnedi3 : public GenericVideoFilter
 protected:
 	bool dh,Y,U,V,A;
 	int pscrn;
-	int field,threads,opt,nns,etype;
+	int field,opt,nns,etype;
 	int *lcount[PLANE_MAX],qual,nsize,fapprox;
 	PlanarFrame *srcPF,*dstPF;
 	PS_INFO pssInfo[MAX_MT_THREADS];
 	float *weights0,*weights1[2];
 	HANDLE ghMutex;
-	uint8_t threads_number;
-	bool LogicalCores,MaxPhysCores,SetAffinity,Sleep;
+	uint8_t threads,threads_number;
+	bool sleep;
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
 	uint16_t UserId;
 	uint8_t *NNPixels[PLANE_MAX];
@@ -99,9 +99,8 @@ protected:
 
 public:
 	nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,
-		int _pscrn,int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,
-		bool _Sleep,int range_mode,bool _asvp,IScriptEnvironment *env);
-	~nnedi3();
+		int _pscrn,uint8_t _threads,int _opt,int _fapprox,bool _sleep,int range_mode,bool _asvp,IScriptEnvironment *env);
+	virtual ~nnedi3();
 	PVideoFrame __stdcall nnedi3::GetFrame(int n,IScriptEnvironment *env);
 
 	int __stdcall SetCacheHints(int cachehints, int frame_range);

@@ -5,7 +5,7 @@
 
 #include "ThreadPoolDef.h"
 
-#define THREADPOOL_VERSION "ThreadPool 1.3.1"
+#define THREADPOOL_VERSION "ThreadPool 1.3.2"
 
 typedef struct _MT_Data_Thread
 {
@@ -28,6 +28,7 @@ class ThreadPool
 {
 	public :
 	ThreadPool(void);
+	virtual ~ThreadPool();
 
 	protected :
 

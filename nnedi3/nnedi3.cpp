@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.42 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.43 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -141,12 +141,9 @@ void shufflePreScrnL2L3(float *wf, float *rf, const int opt)
 
 
 nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,int _pscrn,
-	int _threads,int _opt,int _fapprox,bool _LogicalCores,bool _MaxPhysCores, bool _SetAffinity,bool _Sleep,int range_mode,
-	bool _avsp, IScriptEnvironment *env) :
-	GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),A(_A),
-	nsize(_nsize),nns(_nns),qual(_qual),etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox),
-	LogicalCores(_LogicalCores),MaxPhysCores(_MaxPhysCores),SetAffinity(_SetAffinity),Sleep(_Sleep),
-	avsp(_avsp)
+	uint8_t _threads,int _opt,int _fapprox,bool _sleep,int range_mode,bool _avsp, IScriptEnvironment *env) :
+	GenericVideoFilter(_child),field(_field),dh(_dh),Y(_Y),U(_U),V(_V),A(_A),nsize(_nsize),nns(_nns),qual(_qual),
+	etype(_etype),pscrn(_pscrn),threads(_threads),opt(_opt),fapprox(_fapprox),sleep(_sleep),avsp(_avsp)
 {
 	if ((field<-2) || (field>3)) env->ThrowError("nnedi3: field must be set to -2, -1, 0, 1, 2, or 3!");
 	if ((threads<0) || (threads>MAX_MT_THREADS)) env->ThrowError("nnedi3: threads must be between 0 and %d inclusive!",MAX_MT_THREADS);
@@ -246,11 +243,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	ghMutex=NULL;
 	UserId=0;
 
-	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("nnedi3: Error with the TheadPool status !");
-
-	threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
-	if (threads_number==0)
-		env->ThrowError("nnedi3: Error with the TheadPool while getting CPU info !");
+	if (vi.height<32) threads_number=1;
+	else threads_number=threads;
 
 	srcPF = new PlanarFrame();
 	if (srcPF==NULL)
@@ -916,10 +910,10 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 	if (threads_number>1)
 	{
-		if (!poolInterface->AllocateThreads(UserId,threads_number,0,0,MaxPhysCores,SetAffinity,Sleep,-1))
+		if (!poolInterface->GetUserId(UserId))
 		{
 			FreeData();
-			env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool !");
+			env->ThrowError("nnedi3: Error with the TheadPool while getting UserId!");
 		}
 	}
 }
@@ -958,7 +952,11 @@ void nnedi3::FreeData(void)
 
 nnedi3::~nnedi3()
 {
-	if (threads_number>1) poolInterface->DeAllocateThreads(UserId);
+	if (threads_number>1)
+	{
+		poolInterface->RemoveUserId(UserId);
+		poolInterface->DeAllocateAllThreads(true);
+	}
 	FreeData();
 }
 
@@ -1090,7 +1088,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 
 			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 		}
-		poolInterface->ReleaseThreadPool(UserId,Sleep);
+		poolInterface->ReleaseThreadPool(UserId,sleep);
 	}
 	else
 	{
@@ -3446,15 +3444,36 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 			env->ThrowError("nnedi3: only planar, YUY2 and RGB24 input are supported!");				
 	}
 
-	int prefetch = args[18].AsInt(0);
-	if (prefetch == 0) prefetch = 1;
-	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("ResizeMT: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
+	const int threads=args[11].AsInt(0);
+	const bool LogicalCores=args[14].AsBool(true);
+	const bool MaxPhysCores=args[15].AsBool(true);
+	const bool SetAffinity=args[16].AsBool(false);
+	const bool sleep = args[18].AsBool(false);
+	int prefetch = args[19].AsInt(0);
+
+	if ((threads<0) || (threads>MAX_MT_THREADS))
+		env->ThrowError("nnedi3: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
+
+	if (prefetch==0) prefetch=1;
+	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
 			
 	const bool dh = args[2].AsBool(false);
-	if ((vi.height&1) && !dh)
+	if (((vi.height&1)!=0) && !dh)
 		env->ThrowError("nnedi3: height must be mod 2 when dh=false (%d)!", vi.height);
 
-	if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3: Unable to create ThreadPool!");
+	uint8_t threads_number=1;
+
+	if (threads!=1)
+	{
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3: Unable to create ThreadPool!");
+
+		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		if (threads_number==0) env->ThrowError("nnedi3: Error with the TheadPool while getting CPU info!");
+
+		if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,sleep,-1))
+			env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
+	}
 
 	if (!vi.IsY8())
 	{
@@ -3466,10 +3485,8 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 			else v=env->Invoke("ConvertToPlanarRGB",v).AsClip();
 			v= new nnedi3(v.AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
-				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),
-				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
-				args[19].AsInt(1),avsp,env);
+				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),args[10].AsInt(2),
+				threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),args[20].AsInt(1),avsp,env);
 			if (RGB32) return env->Invoke("ConvertToRGB32",v).AsClip();
 			else
 			{
@@ -3479,18 +3496,14 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 		}
 		else return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),args[4].AsBool(true),args[5].AsBool(true),args[17].AsBool(true),
-				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),
-				args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),args[13].AsInt(15),
-				args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
-				args[19].AsInt(1),avsp,env);
-			
+				args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),args[9].AsInt(0),args[10].AsInt(2),
+				threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),args[20].AsInt(1),avsp,env);			
 	}
 	else
 		return new nnedi3(args[0].AsClip(),args[1].AsInt(-1),args[2].AsBool(false),
 				args[3].AsBool(true),false,false,false,args[6].AsInt(6),args[7].AsInt(1),args[8].AsInt(1),
-				args[9].AsInt(0),args[10].AsInt(2),args[11].AsInt(0),args[12].AsInt(0),
-				args[13].AsInt(15),args[14].AsBool(true),args[15].AsBool(true),args[16].AsBool(false),args[17].AsBool(false),
-				args[19].AsInt(1),avsp,env);
+				args[9].AsInt(0),args[10].AsInt(2),threads_number,args[12].AsInt(0),args[13].AsInt(15),args[18].AsBool(false),
+				args[20].AsInt(1),avsp,env);
 }
 
 
@@ -3579,7 +3592,19 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3_rpow2: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
 
-	if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3_rpow2: Unable to create ThreadPool!");
+	uint8_t threads_number=1;
+
+	if (threads!=1)
+	{
+		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3_rpow2: Unable to create ThreadPool!");
+
+		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
+
+		if (threads_number==0) env->ThrowError("nnedi3_rpow2: Error with the TheadPool while getting CPU info!");
+		
+		if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,sleep,-1))
+			env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
+	}
 
 	AVSValue v = args[0].AsClip();
 
@@ -3708,9 +3733,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			for (int i=0; i<ct; i++)
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,1,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,(i==(ct-1))?range_:1,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,UV_process,UV_process,isAlphaChannel || RGB32,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
 			}
 		}
 		else
@@ -3743,9 +3768,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				v = env->Invoke(turnRightFunction,v).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				v = new nnedi3(v.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,1,avsp,env);
+				v = new nnedi3(v.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
 				v = env->Invoke(turnLeftFunction,v).AsClip();
-				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,(i==(ct-1))?range_:1,avsp,env);
+				v = new nnedi3(v.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
 			}
 
 			range_=(do_resize) ? 1 : plane_range[1];
@@ -3753,9 +3778,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				vu = env->Invoke(turnRightFunction,vu).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,1,avsp,env);
+				vu = new nnedi3(vu.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
 				vu = env->Invoke(turnLeftFunction,vu).AsClip();
-				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,(i==(ct-1))?range_:1,avsp,env);
+				vu = new nnedi3(vu.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
 			}
 
 			range_=(do_resize) ? 1 : plane_range[2];
@@ -3763,9 +3788,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				vv = env->Invoke(turnRightFunction,vv).AsClip();
 				// always use field=1 to keep chroma/luma horizontal alignment
-				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,1,avsp,env);
+				vv = new nnedi3(vv.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
 				vv = env->Invoke(turnLeftFunction,vv).AsClip();
-				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,(i==(ct-1))?range_:1,avsp,env);
+				vv = new nnedi3(vv.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
 			}
 
 			range_=(do_resize) ? 1 : plane_range[3];
@@ -3775,9 +3800,9 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				{
 					va = env->Invoke(turnRightFunction,va).AsClip();
 					// always use field=1 to keep chroma/luma horizontal alignment
-					va = new nnedi3(va.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,1,avsp,env);
+					va = new nnedi3(va.AsClip(),1,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,1,avsp,env);
 					va = env->Invoke(turnLeftFunction,va).AsClip();
-					va = new nnedi3(va.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads,opt,fapprox,LogicalCores,MaxPhysCores,SetAffinity,sleep,(i==(ct-1))?range_:1,avsp,env);
+					va = new nnedi3(va.AsClip(),i==0?1:0,true,true,false,false,false,nsize,nns,qual,etype,pscrn,threads_number,opt,fapprox,sleep,(i==(ct-1))?range_:1,avsp,env);
 				}				
 			}
 		}
@@ -4111,9 +4136,11 @@ const AVS_Linkage *AVS_linkage = nullptr;
 
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
+	AVS_linkage = vectors;
+
 	poolInterface=ThreadPoolInterface::Init(0);
 
-	AVS_linkage = vectors;
+	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("nnedi3: Error with the TheadPool status!");
 
 	env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
 		"[threads]i[opt]i[fapprox]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[A]b[sleep]b[prefetch]i[range]i", Create_nnedi3, 0);

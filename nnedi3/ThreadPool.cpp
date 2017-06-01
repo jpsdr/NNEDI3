@@ -263,6 +263,12 @@ void ThreadPool::FreeThreadPool(void)
 }
 
 
+ThreadPool::~ThreadPool()
+{
+	FreeThreadPool();
+}
+
+
 uint8_t ThreadPool::GetThreadNumber(uint8_t thread_number,bool logical)
 {
 	const uint8_t nCPU=(logical) ? CPU.NbLogicCPU:CPU.NbPhysCore;
@@ -363,13 +369,9 @@ void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool Use
 		}
 		i++;
 	}
-	if (!Status_Ok)
-	{
-		FreeThreadPool();
-		return;
-	}
 
-	CurrentThreadsAllocated=TotalThreadsRequested;
+	if (!Status_Ok) FreeThreadPool();
+	else CurrentThreadsAllocated=TotalThreadsRequested;
 }
 
 

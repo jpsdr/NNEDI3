@@ -70,7 +70,7 @@ private:
 public:
 	PlanarFrame(void);
 	PlanarFrame(VideoInfo &viInfo);
-	~PlanarFrame(void);
+	virtual ~PlanarFrame(void);
 	bool GetAllocStatus(void) {return(alloc_ok);}
 	bool createPlanar(int yheight,int uvheight,int ywidth,int uvwidth,bool rgbplanar,bool alphaplanar,uint8_t pixelsize,uint8_t bits_per_pixel);
 	bool createPlanar(int height,int width,uint8_t chroma_format,bool rgbplanar,bool alphaplanar,uint8_t pixelsize,uint8_t bits_per_pixel);
