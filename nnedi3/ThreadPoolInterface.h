@@ -27,7 +27,6 @@ class ThreadPoolInterface
 	bool DeletePool(uint8_t num);
 	bool RemovePool(uint8_t num);
 	bool AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep,int8_t nPool);
-	bool AllocateThreads(uint16_t &UserId,uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep,int8_t nPool);
 	bool GetUserId(uint16_t &UserId);
 	bool RemoveUserId(uint16_t UserId);
 	bool ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep,int8_t nPool);
