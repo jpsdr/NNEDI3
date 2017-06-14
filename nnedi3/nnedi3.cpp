@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.43 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.44 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -3471,8 +3471,11 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 
 		if (threads_number==0) env->ThrowError("nnedi3: Error with the TheadPool while getting CPU info!");
 
-		if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-			env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
+		if (threads_number>1)
+		{
+			if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
+		}
 	}
 
 	if (!vi.IsY8())
@@ -3602,8 +3605,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 		if (threads_number==0) env->ThrowError("nnedi3_rpow2: Error with the TheadPool while getting CPU info!");
 		
-		if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
-			env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
+		if (threads_number>1)
+		{
+			if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
+		}
 	}
 
 	AVSValue v = args[0].AsClip();
