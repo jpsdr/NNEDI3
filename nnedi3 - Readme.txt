@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.44 (14/06/2017)                                         |
+                                     v0.9.4.45 (xx/xx/2017)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -187,9 +187,10 @@ PARAMETERS (nnedi3):
          1 = use c
          2 = use sse2
          3 = use sse4.1
-         4 = use AVX2
-         5 = use FMA3 [Manual set only, not in auto-detect]
-         6 = use FMA4 [Manual set only, not in auto-detect]
+         4 = use AVX
+         5 = use AVX2
+         6 = use FMA3 [Manual set only, not in auto-detect]
+         7 = use FMA4 [Manual set only, not in auto-detect]
 
         ** for an older version supporting sse use v0.9.1 available at:
         **    http://bengal.missouri.edu/~kes25c/old_stuff/
@@ -396,6 +397,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   xx/xx/2017  v0.9.4.45
+       + Add AVX path code.
+       * Revert to original MT multi-planar mode, may improve MT efficiency.
+
    14/06/2017  v0.9.4.44
        * Minor fix.
 

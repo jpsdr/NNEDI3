@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.44 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.45 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -151,7 +151,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	if ((nsize<0) || (nsize>=NUM_NSIZE)) env->ThrowError("nnedi3: nsize must be in [0,%d]!\n",NUM_NSIZE-1);
 	if ((nns<0) || (nns>=NUM_NNS)) env->ThrowError("nnedi3: nns must be in [0,%d]!\n",NUM_NNS-1);
 	if ((qual<1) || (qual>2)) env->ThrowError("nnedi3: qual must be set to 1 or 2!\n");
-	if ((opt<0) || (opt>6)) env->ThrowError("nnedi3: opt must be in [0,6]!");
+	if ((opt<0) || (opt>7)) env->ThrowError("nnedi3: opt must be in [0,7]!");
 	if ((fapprox<0) || (fapprox>15)) env->ThrowError("nnedi3: fapprox must be [0,15]!\n");
 	if ((pscrn<0) || (pscrn>4)) env->ThrowError("nnedi3: pscrn must be [0,4]!\n");
 	if ((etype<0) || (etype>1)) env->ThrowError("nnedi3: etype must be [0,1]!\n");
@@ -321,33 +321,41 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	{
 		const int CPUF=env->GetCPUFlags();
 /*
-		if (((CPUF & CPUF_FMA4)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=6;
+		if (((CPUF & CPUF_FMA4)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=7;
 		else
 		{
-			if (((CPUF & CPUF_FMA3)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=5;
+			if (((CPUF & CPUF_FMA3)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=6;
 			else
 			{
-				if ((CPUF & CPUF_AVX2)!=0) opt=4;
+				if ((CPUF & CPUF_AVX2)!=0) opt=5;
 				else
 				{
-					if ((CPUF & CPUF_SSE4_1)!=0) opt=3;
+					if ((CPUF & CPUF_AVX) != 0) opt = 4;
 					else
 					{
-						if ((CPUF & CPUF_SSE2)!=0) opt=2;
-						else opt=1;
+						if ((CPUF & CPUF_SSE4_1)!=0) opt=3;
+						else
+						{
+							if ((CPUF & CPUF_SSE2)!=0) opt=2;
+							else opt=1;
+						}
 					}
 				}
 			}
 		}*/
 
-		if ((CPUF & CPUF_AVX2) != 0) opt = 4;
+		if ((CPUF & CPUF_AVX2) != 0) opt = 5;
 		else
 		{
-			if ((CPUF & CPUF_SSE4_1) != 0) opt = 3;
+			if ((CPUF & CPUF_AVX) != 0) opt = 4;
 			else
 			{
-				if ((CPUF & CPUF_SSE2) != 0) opt = 2;
-				else opt = 1;
+				if ((CPUF & CPUF_SSE4_1) != 0) opt = 3;
+				else
+				{
+					if ((CPUF & CPUF_SSE2) != 0) opt = 2;
+					else opt = 1;
+				}
 			}
 		}
 
@@ -433,7 +441,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 
 		j_a=0,j_b=0;
-		if (opt>=4)
+		if (opt>=5)
 		{
 			for (int j=0; j<4; j++)
 			{
@@ -554,7 +562,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 				memcpy(rs,weights0,dims0*sizeof(float));
 				j_a=0;
-				if (opt>=4)
+				if (opt>=5)
 				{
 					for (int j=0; j<4; j++)
 					{
@@ -609,7 +617,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 				memcpy(rf,weights0,dims0*sizeof(float));
 				j_a=0;
-				if (opt>=4)
+				if (opt>=5)
 				{
 					for (int j=0; j<4; j++)
 					{
@@ -735,7 +743,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 				memcpy(rs,ws,nnst2*asize*sizeof(int16_t));
 				j_a=0;
-				if (opt>=4)
+				if (opt>=5)
 				{
 					for (int j=0; j<nnst2; j++)
 					{
@@ -771,7 +779,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 			if (opt>1) // shuffle weight order for asm
 			{
-				if (opt>=4)
+				if (opt>=5)
 				{
 					for (int j=0; j<nnst2; j++)
 					{
@@ -1037,39 +1045,17 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 			ReleaseMutex(ghMutex);
 			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
 		}
-		for (uint8_t b=0; b<PlaneMax; b++)
-		{
-			for (uint8_t i=0; i<threads_number; i++)
-				pssInfo[i].current_plane=b;
 
-			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
-		}
+		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+
 	}
 	else
 	{
 		switch (f_proc_1)
 		{
-			case 1 :
-				for (uint8_t b=0; b<PlaneMax; b++)
-				{
-					pssInfo[0].current_plane=b;
-					evalFunc_1(pssInfo);
-				}
-				break;
-			case 3 :
-				for (uint8_t b=0; b<PlaneMax; b++)
-				{
-					pssInfo[0].current_plane=b;
-					evalFunc_1_16(pssInfo);
-				}
-				break;
-			case 5 :
-				for (uint8_t b=0; b<PlaneMax; b++)
-				{
-					pssInfo[0].current_plane=b;
-					evalFunc_1_32(pssInfo);
-				}
-				break;
+			case 1 : evalFunc_1(pssInfo); break;
+			case 3 : evalFunc_1_16(pssInfo); break;
+			case 5 : evalFunc_1_32(pssInfo); break;
 			default : ;
 		}
 	}
@@ -1081,40 +1067,16 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		for (uint8_t i=0; i<threads_number; i++)
 			MT_Thread[i].f_process= f_proc_2;
 
-		for (uint8_t b=0; b<PlaneMax; b++)
-		{
-			for (uint8_t i=0; i<threads_number; i++)
-				pssInfo[i].current_plane=b;
-
-			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
-		}
+		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
 		poolInterface->ReleaseThreadPool(UserId,sleep);
 	}
 	else
 	{
 		switch (f_proc_2)
 		{
-			case 2 :
-				for (uint8_t b=0; b<PlaneMax; b++)
-				{
-					pssInfo[0].current_plane=b;
-					evalFunc_2(pssInfo);
-				}
-				break;
-			case 4 :
-				for (uint8_t b=0; b<PlaneMax; b++)
-				{
-					pssInfo[0].current_plane=b;
-					evalFunc_2_16(pssInfo);
-				}
-				break;
-			case 6 :
-				for (uint8_t b=0; b<PlaneMax; b++)
-				{
-					pssInfo[0].current_plane=b;
-					evalFunc_2_32(pssInfo);
-				}
-				break;
+			case 2 : evalFunc_2(pssInfo); break;
+			case 4 : evalFunc_2_16(pssInfo); break;
+			case 6 : evalFunc_2_32(pssInfo); break;
 			default :;
 		}
 	}
@@ -1602,7 +1564,7 @@ void evalFunc_1(void *ps)
 	if (opt==1) processLine0=processLine0_C;
 	else
 	{
-		if (opt>=4) processLine0=processLine0_AVX2;
+		if (opt>=5) processLine0=processLine0_AVX2;
 		else processLine0=processLine0_SSE2;
 	}
 
@@ -1613,13 +1575,13 @@ void evalFunc_1(void *ps)
 			if (opt==1) uc2s=uc2s48_C;
 			else
 			{
-				if (opt>=4) uc2s=uc2s48_AVX2;
+				if (opt>=5) uc2s=uc2s48_AVX2;
 				else uc2s=uc2s48_SSE2;
 			}
 			if (opt==1) computeNetwork0=computeNetwork0_i16_C;
 			else
 			{
-				if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX2;
+				if (opt>=5) computeNetwork0=computeNetwork0_i16_AVX2;
 				else computeNetwork0=computeNetwork0_i16_SSE2;
 			}
 		}
@@ -1628,19 +1590,19 @@ void evalFunc_1(void *ps)
 			if (opt==1) uc2s=uc2f48_C;
 			else
 			{
-				if (opt>=4) uc2s=uc2f48_AVX2;
+				if (opt>=5) uc2s=uc2f48_AVX2;
 				else uc2s=uc2f48_SSE2;
 			}
 			if (opt==1) computeNetwork0=computeNetwork0_C;
 			else
 			{
-				if (opt==6) computeNetwork0=computeNetwork0_FMA4;
+				if (opt==7) computeNetwork0=computeNetwork0_FMA4;
 				else
 				{
-					if (opt==5) computeNetwork0=computeNetwork0_FMA3;
+					if (opt==6) computeNetwork0=computeNetwork0_FMA3;
 					else
 					{
-						if (opt>=4) computeNetwork0=computeNetwork0_AVX2;
+						if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
 						else computeNetwork0=computeNetwork0_SSE2;
 					}
 				}
@@ -1653,13 +1615,13 @@ void evalFunc_1(void *ps)
 		if (opt==1) uc2s=uc2s64_C;
 		else
 		{
-			if (opt>=4) uc2s=uc2s64_AVX2;
+			if (opt>=5) uc2s=uc2s64_AVX2;
 			else uc2s=uc2s64_SSE2;
 		}
 		if (opt==1) computeNetwork0=computeNetwork0new_C;
 		else
 		{
-			if (opt>=4) computeNetwork0=computeNetwork0new_AVX2;
+			if (opt>=5) computeNetwork0=computeNetwork0new_AVX2;
 			else computeNetwork0=computeNetwork0new_SSE2;
 		}
 	}
@@ -1694,7 +1656,8 @@ void evalFunc_1(void *ps)
 	}
 #endif
 
-	uint8_t b = pss->current_plane;
+	for (uint8_t b=0; b<PLANE_MAX; b++)
+	{
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
@@ -1792,6 +1755,8 @@ void evalFunc_1(void *ps)
 				}
 			}
 		}
+	}
+
 	}
 }
 
@@ -1986,7 +1951,7 @@ void evalFunc_1_16(void *ps)
 	if (opt<3) processLine0=processLine0_C_16;
 	else
 	{
-		if (opt>=4) processLine0=processLine0_AVX2_16;
+		if (opt>=5) processLine0=processLine0_AVX2_16;
 		else processLine0=processLine0_SSE2_16;
 	}
 
@@ -1998,7 +1963,7 @@ void evalFunc_1_16(void *ps)
 			if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0_i16_C;
 			else
 			{
-				if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX2;
+				if (opt>=5) computeNetwork0=computeNetwork0_i16_AVX2;
 				else computeNetwork0=computeNetwork0_i16_SSE2;
 			}
 		}
@@ -2007,19 +1972,19 @@ void evalFunc_1_16(void *ps)
 			if (opt==1) uc2s=uc2f48_C_16;
 			else
 			{
-				if (opt>=4) uc2s=uc2f48_AVX2_16;
+				if (opt>=5) uc2s=uc2f48_AVX2_16;
 				else uc2s=uc2f48_SSE2_16;
 			}
 			if (opt==1) computeNetwork0=computeNetwork0_C;
 			else
 			{
-				if (opt==6) computeNetwork0=computeNetwork0_FMA4;
+				if (opt==7) computeNetwork0=computeNetwork0_FMA4;
 				else
 				{
-					if (opt==5) computeNetwork0=computeNetwork0_FMA3;
+					if (opt==6) computeNetwork0=computeNetwork0_FMA3;
 					else
 					{
-						if (opt>=4) computeNetwork0=computeNetwork0_AVX2;
+						if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
 						else computeNetwork0=computeNetwork0_SSE2;
 					}
 				}
@@ -2033,7 +1998,7 @@ void evalFunc_1_16(void *ps)
 		if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0new_C_16;
 		else
 		{
-			if (opt>=4) computeNetwork0=computeNetwork0new_AVX2;
+			if (opt>=5) computeNetwork0=computeNetwork0new_AVX2;
 			else computeNetwork0=computeNetwork0new_SSE2;
 		}
 	}
@@ -2066,7 +2031,8 @@ void evalFunc_1_16(void *ps)
 	}
 #endif
 
-	uint8_t b = pss->current_plane;
+	for (uint8_t b=0; b<PLANE_MAX; b++)
+	{
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
@@ -2167,6 +2133,8 @@ void evalFunc_1_16(void *ps)
 			}
 		}
 	}
+
+	}
 }
 
 
@@ -2246,20 +2214,20 @@ void evalFunc_1_32(void *ps)
 	if (opt==1) processLine0=processLine0_C_32;
 	else
 	{
-		if (opt>=4) processLine0=processLine0_AVX2_32;
+		if (opt>=5) processLine0=processLine0_AVX2_32;
 		else processLine0=processLine0_SSE2_32;
 	}
 
 	if (opt==1) computeNetwork0=computeNetwork0_C;
 	else
 	{
-		if (opt==6) computeNetwork0=computeNetwork0_FMA4;
+		if (opt==7) computeNetwork0=computeNetwork0_FMA4;
 		else
 		{
-			if (opt==5) computeNetwork0=computeNetwork0_FMA3;
+			if (opt==6) computeNetwork0=computeNetwork0_FMA3;
 			else
 			{
-				if (opt>=4) computeNetwork0=computeNetwork0_AVX2;
+				if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
 				else computeNetwork0=computeNetwork0_SSE2;
 			}
 		}
@@ -2272,7 +2240,8 @@ void evalFunc_1_32(void *ps)
 #endif
 	uc2s=uc2f48_C_32;
 
-	uint8_t b = pss->current_plane;
+	for (uint8_t b=0; b<PLANE_MAX; b++)
+	{
 
 	if (((b == 0) && pss->Y) || ((b == 1) && pss->U) || ((b == 2) && pss->V) || ((b == 3) && pss->A))
 	{
@@ -2330,6 +2299,8 @@ void evalFunc_1_32(void *ps)
 				NNPixels+=NNPixels_pitch_2;
 			}
 		}
+	}
+
 	}
 }
 
@@ -2491,13 +2462,13 @@ void evalFunc_2(void *ps)
 	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
 	else
 	{
-		if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA4;
+		if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
 		else
 		{
-			if (opt==5) wae5=weightedAvgElliottMul5_m16_FMA3;
+			if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
 			else
 			{
-				if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX2;
+				if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
 				else wae5=weightedAvgElliottMul5_m16_SSE2;
 			}
 		}
@@ -2508,13 +2479,13 @@ void evalFunc_2(void *ps)
 		if (opt==1) extract=extract_m8_i16_C;
 		else
 		{
-			if (opt>=4) extract=extract_m8_i16_AVX2;
+			if (opt>=5) extract=extract_m8_i16_AVX2;
 			else extract=extract_m8_i16_SSE2;
 		}
 		if (opt==1) dotProd=dotProdS_C;
 		else
 		{
-			if (opt>=4)
+			if (opt>=5)
 				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
 			else dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
 		}
@@ -2524,13 +2495,13 @@ void evalFunc_2(void *ps)
 		if (opt==1) extract=extract_m8_C;
 		else
 		{
-			if (opt==6) extract=extract_m8_FMA4;
+			if (opt==7) extract=extract_m8_FMA4;
 			else
 			{
-				if (opt==5) extract=extract_m8_FMA3;
+				if (opt==6) extract=extract_m8_FMA3;
 				else
 				{
-					if (opt>=4) extract=extract_m8_AVX2;
+					if (opt>=5) extract=extract_m8_AVX2;
 					else extract=extract_m8_SSE2;
 				}
 			}
@@ -2538,15 +2509,15 @@ void evalFunc_2(void *ps)
 		if (opt==1) dotProd=dotProd_C;
 		else
 		{
-			if (opt==6)
+			if (opt==7)
 				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
 			else
 			{
-				if (opt==5)
+				if (opt==6)
 					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
 				else
 				{
-					if (opt>=4)
+					if (opt>=5)
 						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
 					else dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
 				}
@@ -2559,7 +2530,7 @@ void evalFunc_2(void *ps)
 		if (opt==1) expf=e2_m16_C;
 		else
 		{
-			if (opt>=4) expf=e2_m16_AVX2;
+			if (opt>=5) expf=e2_m16_AVX2;
 			else expf=e2_m16_SSE2;
 		}
 	}
@@ -2568,7 +2539,7 @@ void evalFunc_2(void *ps)
 		if (opt==1) expf=e1_m16_C;
 		else
 		{
-			if (opt>=4) expf=e1_m16_AVX2;
+			if (opt>=5) expf=e1_m16_AVX2;
 			else expf=e1_m16_SSE2;
 		}
 	}
@@ -2577,13 +2548,13 @@ void evalFunc_2(void *ps)
 		if (opt==1) expf=e0_m16_C;
 		else
 		{
-			if (opt==6) expf=e0_m16_FMA4;
+			if (opt==7) expf=e0_m16_FMA4;
 			else
 			{
-				if (opt==5) expf=e0_m16_FMA3;
+				if (opt==6) expf=e0_m16_FMA3;
 				else
 				{
-					if (opt>=4) expf=e0_m16_AVX2;
+					if (opt>=5) expf=e0_m16_AVX2;
 					else expf=e0_m16_SSE2;
 				}
 			}
@@ -2625,7 +2596,8 @@ void evalFunc_2(void *ps)
 	}
 #endif
 
-	uint8_t b = pss->current_plane;
+	for (uint8_t b=0; b<PLANE_MAX; b++)
+	{
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
@@ -2698,7 +2670,7 @@ void evalFunc_2(void *ps)
 		else
 		{
 #ifdef AVX_BUILD_POSSIBLE
-			if (opt>=4)
+			if (opt>=5)
 			{
 				for (int y=ystart; y<ystop; y+=2)
 				{
@@ -2748,6 +2720,8 @@ void evalFunc_2(void *ps)
 				}
 			}
 		}
+	}
+
 	}
 }
 
@@ -2891,13 +2865,13 @@ void evalFunc_2_16(void *ps)
 	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
 	else
 	{
-		if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA4;
+		if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
 		else
 		{
-			if (opt==5) wae5=weightedAvgElliottMul5_m16_FMA3;
+			if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
 			else
 			{
-				if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX2;
+				if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
 				else wae5=weightedAvgElliottMul5_m16_SSE2;
 			}
 		}
@@ -2905,7 +2879,7 @@ void evalFunc_2_16(void *ps)
 
 	if (int16_predictor) // use int16 dot products
 	{
-		if (opt>=4)
+		if (opt>=5)
 		{
 			if (bits_per_pixel<=10) extract=extract_m8_i16_AVX2_16;
 			else extract=extract_m8_i16_C_16_3;
@@ -2927,7 +2901,7 @@ void evalFunc_2_16(void *ps)
 		if ((opt==1) || (bits_per_pixel>14)) dotProd=dotProdS_C_16;
 		else
 		{
-			if (opt>=4)
+			if (opt>=5)
 				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
 			else dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
 		}
@@ -2937,13 +2911,13 @@ void evalFunc_2_16(void *ps)
 		if (opt==1) extract=extract_m8_C_16;
 		else
 		{
-			if (opt==6) extract=extract_m8_FMA4_16;
+			if (opt==7) extract=extract_m8_FMA4_16;
 			else
 			{
-				if (opt==5) extract=extract_m8_FMA3_16;
+				if (opt==6) extract=extract_m8_FMA3_16;
 				else
 				{
-					if (opt>=4) extract=extract_m8_AVX2_16;
+					if (opt>=5) extract=extract_m8_AVX2_16;
 					else extract=extract_m8_SSE2_16;
 				}
 			}
@@ -2951,15 +2925,15 @@ void evalFunc_2_16(void *ps)
 		if (opt==1) dotProd = dotProd_C;
 		else
 		{
-			if (opt==6)
+			if (opt==7)
 				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
 			else
 			{
-				if (opt==5)
+				if (opt==6)
 					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
 				else
 				{
-					if (opt>=4)
+					if (opt>=5)
 						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
 					else dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
 				}
@@ -2972,7 +2946,7 @@ void evalFunc_2_16(void *ps)
 		if (opt==1) expf = e2_m16_C;
 		else
 		{
-			if (opt>=4) expf = e2_m16_AVX2;
+			if (opt>=5) expf = e2_m16_AVX2;
 			else expf = e2_m16_SSE2;
 		}
 	}
@@ -2981,7 +2955,7 @@ void evalFunc_2_16(void *ps)
 		if (opt==1) expf = e1_m16_C;
 		else
 		{
-			if (opt>=4) expf = e1_m16_AVX2;
+			if (opt>=5) expf = e1_m16_AVX2;
 			else expf = e1_m16_SSE2;
 		}
 	}
@@ -2990,13 +2964,13 @@ void evalFunc_2_16(void *ps)
 		if (opt==1) expf=e0_m16_C;
 		else
 		{
-			if (opt==6) expf=e0_m16_FMA4;
+			if (opt==7) expf=e0_m16_FMA4;
 			else
 			{
-				if (opt==5) expf=e0_m16_FMA3;
+				if (opt==6) expf=e0_m16_FMA3;
 				else
 				{
-					if (opt>=4) expf=e0_m16_AVX2;
+					if (opt>=5) expf=e0_m16_AVX2;
 					else expf=e0_m16_SSE2;
 				}
 			}
@@ -3047,7 +3021,8 @@ void evalFunc_2_16(void *ps)
 	}
 #endif
 
-	uint8_t b = pss->current_plane;
+	for (uint8_t b=0; b<PLANE_MAX; b++)
+	{
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
@@ -3121,7 +3096,7 @@ void evalFunc_2_16(void *ps)
 		else
 		{
 #ifdef AVX_BUILD_POSSIBLE
-			if (opt>=4)
+			if (opt>=5)
 			{
 				for (int y=ystart; y<ystop; y+=2)
 				{
@@ -3175,6 +3150,8 @@ void evalFunc_2_16(void *ps)
 				}
 			}
 		}
+	}
+
 	}
 }
 
@@ -3239,13 +3216,13 @@ void evalFunc_2_32(void *ps)
 	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
 	else
 	{
-		if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA4;
+		if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
 		else
 		{
-			if (opt==5) wae5=weightedAvgElliottMul5_m16_FMA3;
+			if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
 			else
 			{
-				if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX2;
+				if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
 				else wae5=weightedAvgElliottMul5_m16_SSE2;
 			}
 		}
@@ -3254,13 +3231,13 @@ void evalFunc_2_32(void *ps)
 	if (opt==1) extract=extract_m8_C_32;
 	else
 	{
-		if (opt==6) extract=extract_m8_FMA4_32;
+		if (opt==7) extract=extract_m8_FMA4_32;
 		else
 		{
-			if (opt==5) extract=extract_m8_FMA3_32;
+			if (opt==6) extract=extract_m8_FMA3_32;
 			else
 			{
-				if (opt>=4) extract=extract_m8_AVX2_32;
+				if (opt>=5) extract=extract_m8_AVX2_32;
 				else extract=extract_m8_SSE2_32;
 			}
 		}
@@ -3269,15 +3246,15 @@ void evalFunc_2_32(void *ps)
 	if (opt==1) dotProd = dotProd_C;
 	else
 	{
-		if (opt==6)
+		if (opt==7)
 			dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
 		else
 		{
-			if (opt==5)
+			if (opt==6)
 				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
 			else
 			{
-				if (opt>=4)
+				if (opt>=5)
 					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
 				else dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
 			}
@@ -3289,7 +3266,7 @@ void evalFunc_2_32(void *ps)
 		if (opt==1) expf = e2_m16_C;
 		else
 		{
-			if (opt>=4) expf = e2_m16_AVX2;
+			if (opt>=5) expf = e2_m16_AVX2;
 			else expf = e2_m16_SSE2;
 		}
 	}
@@ -3298,7 +3275,7 @@ void evalFunc_2_32(void *ps)
 		if (opt==1) expf = e1_m16_C;
 		else
 		{
-			if (opt>=4) expf = e1_m16_AVX2;
+			if (opt>=5) expf = e1_m16_AVX2;
 			else expf = e1_m16_SSE2;
 		}
 	}
@@ -3307,13 +3284,13 @@ void evalFunc_2_32(void *ps)
 		if (opt==1) expf=e0_m16_C;
 		else
 		{
-			if (opt==6) expf=e0_m16_FMA4;
+			if (opt==7) expf=e0_m16_FMA4;
 			else
 			{
-				if (opt==5) expf=e0_m16_FMA3;
+				if (opt==6) expf=e0_m16_FMA3;
 				else
 				{
-					if (opt>=4) expf=e0_m16_AVX2;
+					if (opt>=5) expf=e0_m16_AVX2;
 					else expf=e0_m16_SSE2;
 				}
 			}
@@ -3346,7 +3323,8 @@ void evalFunc_2_32(void *ps)
 	}
 #endif
 
-	uint8_t b = pss->current_plane;
+	for (uint8_t b=0; b<PLANE_MAX; b++)
+	{
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
@@ -3393,6 +3371,8 @@ void evalFunc_2_32(void *ps)
 			dstp += dst_pitch2;
 			NNPixels+=NNPixels_pitch_2;
 		}
+	}
+
 	}
 }
 
@@ -3585,8 +3565,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		env->ThrowError("nnedi3_rpow2: 0 <= threads <= %d!\n",MAX_MT_THREADS);
 	if (threads_rs < 0 || threads_rs > MAX_MT_THREADS)
 		env->ThrowError("nnedi3_rpow2: 0 <= threads_rs <= %d!\n",MAX_MT_THREADS);
-	if (opt < 0 || opt > 6)
-		env->ThrowError("nnedi3_rpow2: opt must be in [0,6]!\n");
+	if (opt < 0 || opt > 7)
+		env->ThrowError("nnedi3_rpow2: opt must be in [0,7]!\n");
 	if (fapprox < 0 || fapprox > 15)
 		env->ThrowError("nnedi3_rpow2: fapprox must be [0,15]!\n");
 
