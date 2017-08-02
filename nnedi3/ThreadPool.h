@@ -5,7 +5,7 @@
 
 #include "ThreadPoolDef.h"
 
-#define THREADPOOL_VERSION "ThreadPool 1.3.2"
+#define THREADPOOL_VERSION "ThreadPool 1.3.3"
 
 typedef struct _MT_Data_Thread
 {
