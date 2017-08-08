@@ -5026,9 +5026,8 @@ eloop8:
 		vpslld ymm2,ymm0,23
 		vsubps ymm0,ymm0,ymm6
 		vsubps ymm1,ymm1,ymm0
-		vmovaps ymm0,ymm1
+		vmulps ymm0,ymm1,ymm7
 		vmulps ymm1,ymm1,ymm1
-		vmulps ymm0,ymm0,ymm7
 		vmulps ymm1,ymm1,ymm8
 		vaddps ymm0,ymm0,ymm9
 		vaddps ymm0,ymm0,ymm1
@@ -5158,62 +5157,6 @@ eloop4:
 		ret
 		
 e2_m16_AVX2 endp
-
-
-;castScale_AVX2 proc val:dword,scale:dword,dstp:dword,val_min:dword,val_max:dword
-; val = rcx
-; scale = rdx
-; dstp = r8
-; val_min = r9d
-
-castScale_AVX2 proc public frame
-
-val_max equ dword ptr[rsp+40]
-	
-	.endprolog
-	
-		vmovss xmm0,dword ptr[rcx+12]
-		vmulss xmm0,xmm0,dword ptr[rdx]
-		vaddss xmm0,xmm0,dword ptr sse_half
-		vcvttss2si eax,xmm0
-		mov rcx,r8
-		cmp eax,val_max
-		cmovnl eax,val_max
-		cmp eax,r9d
-		cmovng eax,r9d
-		mov byte ptr[rcx],al
-		
-		ret
-		
-castScale_AVX2 endp
-
-
-;castScale_AVX2_16 proc val:dword,scale:dword,dstp:dword,val_min:dword,val_max:dword
-; val = rcx
-; scale = rdx
-; dstp = r8
-; val_min = r9d
-
-castScale_AVX2_16 proc public frame
-
-val_max equ dword ptr[rsp+40]
-	
-	.endprolog
-	
-		vmovss xmm0,dword ptr[rcx+12]
-		vmulss xmm0,xmm0,dword ptr[rdx]
-		vaddss xmm0,xmm0,dword ptr sse_half
-		vcvttss2si eax,xmm0
-		mov rcx,r8
-		cmp eax,val_max
-		cmovnl eax,val_max
-		cmp eax,r9d
-		cmovng eax,r9d
-		mov word ptr[rcx],ax
-		
-		ret
-		
-castScale_AVX2_16 endp
 
 
 end

@@ -398,6 +398,7 @@ nnedi3_rpow2 EXAMPLES:
 
 CHANGE LIST:
    xx/xx/2017  v0.9.4.45
+       + Fix Threadpool.
        + Add AVX path code.
        * Revert to original MT multi-planar mode, may improve MT efficiency.
 

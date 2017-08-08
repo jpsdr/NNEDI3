@@ -3978,9 +3978,8 @@ eloop8:
 		vpslld ymm2,ymm0,23
 		vsubps ymm0,ymm0,YMMWORD ptr e1_bias
 		vsubps ymm1,ymm1,ymm0
-		vmovaps ymm0,ymm1
+		vmulps ymm0,ymm1,YMMWORD ptr e1_c1
 		vmulps ymm1,ymm1,ymm1
-		vmulps ymm0,ymm0,YMMWORD ptr e1_c1
 		vmulps ymm1,ymm1,YMMWORD ptr e1_c2
 		vaddps ymm0,ymm0,YMMWORD ptr e1_c0
 		vaddps ymm0,ymm0,ymm1
@@ -4051,52 +4050,6 @@ eloop4:
 		ret
 		
 e2_m16_AVX2 endp
-
-
-castScale_AVX2 proc val:dword,scale:dword,dstp:dword,val_min:dword,val_max:dword
-
-	public castScale_AVX2
-	
-		mov ecx,val
-		mov eax,scale
-		
-		vmovss xmm0,dword ptr[ecx+12]
-		vmulss xmm0,xmm0,dword ptr[eax]
-		vaddss xmm0,xmm0,dword ptr sse_half
-		vcvttss2si eax,xmm0
-		mov ecx,dstp
-		cmp eax,val_max
-		cmovnl eax,val_max
-		cmp eax,val_min
-		cmovng eax,val_min
-		mov byte ptr[ecx],al
-		
-		ret
-		
-castScale_AVX2 endp
-
-
-castScale_AVX2_16 proc val:dword,scale:dword,dstp:dword,val_min:dword,val_max:dword
-
-	public castScale_AVX2_16
-	
-		mov ecx,val
-		mov eax,scale
-		
-		vmovss xmm0,dword ptr[ecx+12]
-		vmulss xmm0,xmm0,dword ptr[eax]
-		vaddss xmm0,xmm0,dword ptr sse_half
-		vcvttss2si eax,xmm0
-		mov ecx,dstp
-		cmp eax,val_max
-		cmovnl eax,val_max
-		cmp eax,val_min
-		cmovng eax,val_min
-		mov word ptr[ecx],ax
-		
-		ret
-		
-castScale_AVX2_16 endp
 
 
 end
