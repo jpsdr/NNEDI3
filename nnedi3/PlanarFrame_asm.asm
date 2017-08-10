@@ -142,6 +142,77 @@ suite2_2:
 convYUY2to422_SSE2 endp
 
 
+convYUY2to422_AVX proc src:dword,py:dword,pu:dword,pv:dword,pitch1:dword,pitch2Y:dword,pitch2UV:dword,width_:dword,height:dword
+
+	public convYUY2to422_AVX		
+	
+		push ebx
+		push edi
+		push esi
+	
+		mov edi,src
+		mov ebx,py
+		mov edx,pu
+		mov esi,pv
+		
+yloop_2_AVX:
+		xor eax,eax
+		mov ecx,width_
+		shr ecx,1
+		jz short suite1_2_AVX
+		
+xloop_2_AVX:
+	vmovdqa xmm0,XMMWORD ptr[edi+4*eax]   ;V4Y8U4Y7V3Y6U3Y5 V2Y4U2Y3V1Y2U1Y1
+	vmovdqa xmm1,XMMWORD ptr[edi+4*eax+16]   ;V8Y16U8Y15V7Y14U7Y13 V6Y12U6Y11V5Y10U5Y9
+	vpunpckhbw xmm2,xmm0,xmm1                ;V8V4Y16Y8U8U4Y15Y7 V7V3Y14Y6U7U3Y13Y5
+	vpunpcklbw xmm0,xmm0,xmm1                ;V6V2Y12Y4U6U2Y11Y3 V5V1Y10Y2U5U1Y9Y1
+	vpunpckhbw xmm1,xmm0,xmm2                ;V8V6V4V2Y16Y12Y8Y4 U8U6U4U2Y15Y11Y7Y3
+	vpunpcklbw xmm0,xmm0,xmm2                ;V7V5V3V1Y14Y10Y6Y2 U7U5U3U1Y13Y9Y5Y1
+	vpunpckhbw xmm2,xmm0,xmm1                ;V8V7V6V5V4V3V2V1 Y16Y14Y12Y10Y8Y6Y4Y2
+	vpunpcklbw xmm0,xmm0,xmm1                ;U8U7U6U5U4U3U2U1 Y15Y13Y11Y9Y5Y3Y1
+	vmovhps qword ptr [edx+eax],xmm0
+	vpunpcklbw xmm0,xmm0,xmm2                ;Y16Y15Y14Y13Y12Y11Y10Y9Y8Y7Y6Y5Y4Y3Y2Y1
+	vmovhps qword ptr [esi+eax],xmm2
+	vmovdqa XMMWORD ptr[ebx+2*eax],xmm0
+	add eax,8
+	loop xloop_2_AVX
+
+suite1_2_AVX:
+		mov ecx,width_
+		and ecx,1
+		jz short suite2_2_AVX
+		
+	vmovdqa xmm0,XMMWORD ptr[esi+4*eax]   ;V4Y8U4Y7V3Y6U3Y5 V2Y4U2Y3V1Y2U1Y1
+	vmovhlps xmm1,xmm1,xmm0               ;V4Y8U4Y7V3Y6U3Y5 V4Y8U4Y7V3Y6U3Y5
+	vpunpcklbw xmm0,xmm0,xmm1             ;V4V2Y8Y4U4U2Y7Y3 V3V1Y6Y2U3U1Y5Y1
+	vmovhlps xmm1,xmm1,xmm0               ;V4V2Y8Y4U4U2Y7Y3 V4V2Y8Y4U4U2Y7Y3
+	vpunpcklbw xmm0,xmm0,xmm1             ;V4V3V2V1Y8Y6Y4Y2 U4U3U2U1Y7Y5Y3Y1
+	vmovhlps xmm2,xmm2,xmm0               ;xxxxxxxx V4V3V2V1Y8Y6Y4Y2
+	vpunpcklbw xmm1,xmm0,xmm2             ; xxxxxxxx Y8Y7Y6Y5Y4Y3Y2Y1
+	vpsrlq xmm0,xmm0,32                   ;0000V4V3V2V1 0000U4U3U2U1
+	vmovd dword ptr[edx+eax],xmm0
+	vmovhlps xmm2,xmm2,xmm0
+	vmovq qword ptr[ebx+2*eax],xmm1
+	vmovd dword ptr[esi+eax],xmm2
+		
+	
+suite2_2_AVX:	
+		add edi,pitch1
+		add ebx,pitch2Y
+		add edx,pitch2UV
+		add esi,pitch2UV
+		dec height
+		jnz yloop_2_AVX
+		
+		pop esi
+		pop edi
+		pop ebx
+		
+		ret
+		
+convYUY2to422_AVX endp
+
+
 conv422toYUY2_MMX proc py:dword,pu:dword,pv:dword,dst:dword,pitch1Y:dword,pitch1UV:dword,pitch2:dword,width_:dword,height:dword
 
 	public conv422toYUY2_MMX		
@@ -253,6 +324,71 @@ suite2:
 		ret
 		
 conv422toYUY2_SSE2 endp
+
+
+conv422toYUY2_AVX proc py:dword,pu:dword,pv:dword,dst:dword,pitch1Y:dword,pitch1UV:dword,modulo2:dword,width_:dword,height:dword
+
+	public conv422toYUY2_AVX		
+	
+		push ebx
+		push edi
+		push esi
+		
+		mov ebx,py
+		mov edx,pu
+		mov esi,pv
+		mov edi,dst
+		
+yloop_4_AVX:
+		xor eax,eax
+		mov ecx,width_
+		shr ecx,1
+		jz suite1_AVX
+		
+xloop_4_AVX:
+	vmovq xmm1,qword ptr[edx+4*eax]		;00000000UUUUUUUU
+	vmovq xmm0,qword ptr[esi+4*eax]		;00000000VVVVVVVV
+	vmovdqa xmm2,XMMWORD ptr[ebx+8*eax]	;YYYYYYYYYYYYYYYY	
+	vpunpcklbw xmm1,xmm1,xmm0				;VUVUVUVUVUVUVUVU
+	add eax,2
+	vpunpckhbw xmm3,xmm2,xmm1     			;VYUYVYUYVYUYVYUY
+	vpunpcklbw xmm2,xmm2,xmm1     			;VYUYVYUYVYUYVYUY
+	
+	vmovdqa XMMWORD ptr[edi],xmm2
+	vmovdqa XMMWORD ptr[edi+16],xmm3
+	add edi,32
+
+	loop xloop_4_AVX
+		
+suite1_AVX:
+	mov ecx,width_
+	and ecx,1
+	jz short suite2_AVX
+	
+	vmovd xmm1,dword ptr[edx+4*eax]		;000000000000UUUU
+	vmovd xmm0,dword ptr[esi+4*eax]		;000000000000VVVV
+	vmovq xmm2,qword ptr[ebx+8*eax]		;00000000YYYYYYYY
+	vpunpcklbw xmm1,xmm1,xmm0			;00000000VUVUVUVU
+	vpunpcklbw xmm2,xmm2,xmm1   		;VYUYVYUYVYUYVYUY
+	
+	vmovdqa XMMWORD ptr[edi],xmm2
+	add edi,16
+		
+suite2_AVX:		
+		add ebx,pitch1Y
+		add edx,pitch1UV
+		add esi,pitch1UV
+		add edi,modulo2
+		dec height
+		jnz short yloop_4_AVX
+		
+		pop esi
+		pop edi
+		pop ebx
+		
+		ret
+		
+conv422toYUY2_AVX endp
 
 
 end

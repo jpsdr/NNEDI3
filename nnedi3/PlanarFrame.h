@@ -41,7 +41,7 @@
 class PlanarFrame
 {
 private:
-	bool useSIMD;
+	bool useSIMD,useAVX;
 	int cpu;
 	int ypitch,uvpitch;
 	int ywidth,uvwidth;

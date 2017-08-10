@@ -31,9 +31,13 @@ extern "C" void convYUY2to422_MMX(const uint8_t *src,uint8_t *py,uint8_t *pu,uin
 	int width,int height);
 extern "C" void convYUY2to422_SSE2(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8_t *pv,int pitch1,int pitch2Y,int pitch2UV,
 	int width,int height);
+extern "C" void convYUY2to422_AVX(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8_t *pv,int pitch1,int pitch2Y,int pitch2UV,
+	int width,int height);
 extern "C" void conv422toYUY2_MMX(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst,int pitch1Y,int pitch1UV,int pitch2,
 	int width,int height);
 extern "C" void conv422toYUY2_SSE2(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst,int pitch1Y,int pitch1UV,int pitch2,
+	int width,int height);
+extern "C" void conv422toYUY2_AVX(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst,int pitch1Y,int pitch1UV,int pitch2,
 	int width,int height);
 
 
@@ -151,6 +155,7 @@ PlanarFrame::PlanarFrame(void)
 	yheight = uvheight = 0;
 	planar_1 = planar_2 = planar_3 = planar_4 = NULL;
 	useSIMD = true;
+	useAVX = true;
 	cpu = CPUCheckForExtensions();
 	isRGBPfamily = false;
 	isAlphaChannel = false;
@@ -167,6 +172,7 @@ PlanarFrame::PlanarFrame(VideoInfo &viInfo)
 	yheight = uvheight = 0;
 	planar_1 = planar_2 = planar_3 = planar_4 = NULL;
 	useSIMD = true;
+	useAVX = true;
 	cpu = CPUCheckForExtensions();
 	alloc_ok=allocSpace(viInfo);
 }
@@ -696,6 +702,8 @@ bool PlanarFrame::copyChromaTo(PlanarFrame &dst)
 
 PlanarFrame& PlanarFrame::operator=(PlanarFrame &ob2)
 {
+	useSIMD = ob2.useSIMD;
+	useAVX = ob2.useAVX;
 	cpu = ob2.cpu;
 	ypitch = ob2.ypitch;
 	yheight = ob2.yheight;
@@ -717,31 +725,36 @@ PlanarFrame& PlanarFrame::operator=(PlanarFrame &ob2)
 void PlanarFrame::convYUY2to422(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8_t *pv,int pitch1,int pitch2Y,int pitch2UV,
 	int width,int height)
 {
-	if (((cpu&CPUF_SSE2)!=0) && useSIMD && (((size_t(src)|pitch1)&15)==0))
-		convYUY2to422_SSE2(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,(width+7)>>3,height);
+	if (((cpu&CPUF_AVX)!=0) && useAVX && (((size_t(src)|pitch1)&15)==0))
+		convYUY2to422_AVX(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,(width+7)>>3,height);
 	else
 	{
-		if (((cpu&CPUF_MMX)!=0) && useSIMD) convYUY2to422_MMX(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,width,height);
+		if (((cpu&CPUF_SSE2)!=0) && useSIMD && (((size_t(src)|pitch1)&15)==0))
+			convYUY2to422_SSE2(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,(width+7)>>3,height);
 		else
 		{
-			width >>= 1;
-			for (int y=0; y<height; ++y)
+			if (((cpu&CPUF_MMX)!=0) && useSIMD) convYUY2to422_MMX(src,py,pu,pv,pitch1,pitch2Y,pitch2UV,width,height);
+			else
 			{
-				int x_1=0,x_2=0;
-
-				for (int x=0; x<width; ++x)
+				width >>= 1;
+				for (int y=0; y<height; ++y)
 				{
-					py[x_1] = src[x_2];
-					pu[x] = src[x_2+1];
-					py[x_1+1] = src[x_2+2];
-					pv[x] = src[x_2+3];
-					x_1+=2;
-					x_2+=4;
+					int x_1=0,x_2=0;
+
+					for (int x=0; x<width; ++x)
+					{
+						py[x_1] = src[x_2];
+						pu[x] = src[x_2+1];
+						py[x_1+1] = src[x_2+2];
+						pv[x] = src[x_2+3];
+						x_1+=2;
+						x_2+=4;
+					}
+					py += pitch2Y;
+					pu += pitch2UV;
+					pv += pitch2UV;
+					src += pitch1;
 				}
-				py += pitch2Y;
-				pu += pitch2UV;
-				pv += pitch2UV;
-				src += pitch1;
 			}
 		}
 	}
@@ -754,30 +767,34 @@ void PlanarFrame::conv422toYUY2(uint8_t *py,uint8_t *pu,uint8_t *pv,uint8_t *dst
 	const int w_8=(width+7)>>3;
 	const int modulo2=pitch2-(w_8 << 4);
 
-	if (((cpu&CPUF_SSE2)!=0) && useSIMD) conv422toYUY2_SSE2(py,pu,pv,dst,pitch1Y,pitch1UV,modulo2,w_8,height);
+	if (((cpu&CPUF_AVX)!=0) && useAVX) conv422toYUY2_AVX(py,pu,pv,dst,pitch1Y,pitch1UV,modulo2,w_8,height);
 	else
 	{
-		if (((cpu&CPUF_MMX)!=0) && useSIMD) conv422toYUY2_MMX(py,pu,pv,dst,pitch1Y,pitch1UV,pitch2,width,height);
+		if (((cpu&CPUF_SSE2)!=0) && useSIMD) conv422toYUY2_SSE2(py,pu,pv,dst,pitch1Y,pitch1UV,modulo2,w_8,height);
 		else
 		{
-			width >>= 1;
-			for (int y=0; y<height; ++y)
+			if (((cpu&CPUF_MMX)!=0) && useSIMD) conv422toYUY2_MMX(py,pu,pv,dst,pitch1Y,pitch1UV,pitch2,width,height);
+			else
 			{
-				int x_1=0,x_2=0;
-
-				for (int x=0; x<width; ++x)
+				width >>= 1;
+				for (int y=0; y<height; ++y)
 				{
-					dst[x_2] = py[x_1];
-					dst[x_2+1] = pu[x];
-					dst[x_2+2] = py[x_1+1];
-					dst[x_2+3] = pv[x];
-					x_1+=2;
-					x_2+=4;
+					int x_1=0,x_2=0;
+
+					for (int x=0; x<width; ++x)
+					{
+						dst[x_2] = py[x_1];
+						dst[x_2+1] = pu[x];
+						dst[x_2+2] = py[x_1+1];
+						dst[x_2+3] = pv[x];
+						x_1+=2;
+						x_2+=4;
+					}
+					py += pitch1Y;
+					pu += pitch1UV;
+					pv += pitch1UV;
+					dst += pitch2;
 				}
-				py += pitch1Y;
-				pu += pitch1UV;
-				pv += pitch1UV;
-				dst += pitch2;
 			}
 		}
 	}

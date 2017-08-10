@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.45 (09/08/2017)                                         |
+                                     v0.9.4.46 (10/08/2017)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -397,6 +397,9 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   10/08/2017  v0.9.4.46
+       + Forget to add AVX path code on planarframe.
+
    09/08/2017  v0.9.4.45
        + Fix Threadpool.
        + Add AVX path code.
