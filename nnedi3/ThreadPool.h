@@ -5,13 +5,13 @@
 
 #include "ThreadPoolDef.h"
 
-#define THREADPOOL_VERSION "ThreadPool 1.3.3"
+#define THREADPOOL_VERSION "ThreadPool 1.3.4"
 
 typedef struct _MT_Data_Thread
 {
 	Public_MT_Data_Thread *MTData;
 	volatile uint8_t f_process,thread_Id;
-	volatile HANDLE nextJob, jobFinished;
+	volatile HANDLE nextJob,jobFinished;
 } MT_Data_Thread;
 
 
@@ -63,6 +63,7 @@ class ThreadPool
 	volatile uint8_t TotalThreadsRequested,CurrentThreadsAllocated,CurrentThreadsUsed;
 	
 	void FreeThreadPool(void);
+	void DestroyThreadPool(void);
 	void CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep);
 
 	private :

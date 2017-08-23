@@ -181,7 +181,7 @@ static void CreateThreadsMasks(Arch_CPU cpu, ULONG_PTR *TabMask,uint8_t NbThread
 
 DWORD WINAPI ThreadPool::StaticThreadpool(LPVOID lpParam )
 {
-	MT_Data_Thread *data=(MT_Data_Thread *)lpParam;
+	const MT_Data_Thread *data=(MT_Data_Thread *)lpParam;
 	
 	while (true)
 	{
@@ -192,7 +192,7 @@ DWORD WINAPI ThreadPool::StaticThreadpool(LPVOID lpParam )
 				if (data->MTData!=NULL)
 				{
 					data->MTData->thread_Id=data->thread_Id;
-					data->MTData->pFunc(data->MTData);
+					if (data->MTData->pFunc!=NULL) data->MTData->pFunc(data->MTData);
 				}
 				break;
 			case 255 : return(0); break;
@@ -202,7 +202,6 @@ DWORD WINAPI ThreadPool::StaticThreadpool(LPVOID lpParam )
 		SetEvent(data->jobFinished);
 	}
 }
-
 
 
 
@@ -248,6 +247,9 @@ void ThreadPool::FreeThreadPool(void)
 				WaitForSingleObject(thds[i],INFINITE);
 				myCloseHandle(thds[i]);
 				MT_Thread[i].f_process=0;
+				MT_Thread[i].MTData=NULL;
+				MT_Thread[i].jobFinished=NULL;
+				MT_Thread[i].nextJob=NULL;
 				ThreadSleep[i]=true;
 			}
 		}
@@ -265,9 +267,45 @@ void ThreadPool::FreeThreadPool(void)
 }
 
 
+/*
+This function is called by the destructor only, meaning there
+is a high probability being in an "unload DLL" stage when this
+function is called.
+In normal usage, threads should have been exited "properly"
+before by a FreeThreadPool call, and this function should
+do nothing. But, if unfortunately it's not the case, this
+function will clean-up the remaining threads in the "hard" way,
+the "proper" way not being possible anymore if we are in
+an "unload DLL" stage.
+*/
+
+void ThreadPool::DestroyThreadPool(void) 
+{
+	int16_t i;
+
+	if (TotalThreadsRequested>0)
+	{
+		for (i=TotalThreadsRequested-1; i>=0; i--)
+		{
+			if (thds[i]!=NULL)
+			{
+				TerminateThread(thds[i],0);
+				myCloseHandle(thds[i]);
+			}
+		}
+
+		for (i=TotalThreadsRequested-1; i>=0; i--)
+		{
+			myCloseHandle(nextJob[i]);
+			myCloseHandle(jobFinished[i]);
+		}
+	}
+}
+
+
 ThreadPool::~ThreadPool()
 {
-	FreeThreadPool();
+	DestroyThreadPool();
 }
 
 

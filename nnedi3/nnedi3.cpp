@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.46 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.47 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -946,6 +946,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	{
 		if (!poolInterface->GetUserId(UserId))
 		{
+			poolInterface->DeAllocateAllThreads(true);
 			FreeData();
 			env->ThrowError("nnedi3: Error with the TheadPool while getting UserId!");
 		}
