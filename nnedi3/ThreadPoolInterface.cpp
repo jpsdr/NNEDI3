@@ -213,7 +213,7 @@ void ThreadPoolInterface::FreePool(void)
 ThreadPoolInterface::ThreadPoolInterface(void):CSectionOk(FALSE),Status_Ok(true),Error_Occured(false),
 	NbrePool(0),NbrePoolEvent(0),ghMutexResources(NULL)
 {
-	CSectionOk=InitializeCriticalSectionAndSpinCount(&CriticalSection,0x00000040);
+	CSectionOk=InitializeCriticalSectionAndSpinCount(&CriticalSection,0x00000400);
 	if (CSectionOk==TRUE)
 	{
 		ghMutexResources=CreateMutex(NULL,FALSE,NULL);
