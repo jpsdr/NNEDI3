@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.48 (14/11/2017)                                         |
+                                     v0.9.4.48 (23/11/2017)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -397,7 +397,8 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
-   14/11/2017  v0.9.4.48
+   23/11/2017  v0.9.4.48
+       * Put back process whole plane by whole plane.
        * Minor change in threadpool interface.
 
    23/08/2017  v0.9.4.47

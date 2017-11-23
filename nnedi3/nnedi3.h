@@ -60,6 +60,7 @@ struct PS_INFO {
 	int asize,nns,xdia,ydia,fapprox;
 	bool Y,U,V,A;
 	int pscrn;
+	uint8_t current_plane;
 	uint8_t plane_range[PLANE_MAX];
 	bool int16_prescreener,int16_predictor;
 	uint8_t bits_per_pixel;

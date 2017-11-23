@@ -1074,16 +1074,39 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
 		}
 
-		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+		for (uint8_t b=0; b<PlaneMax; b++)
+		{
+			for (uint8_t i=0; i<threads_number; i++)
+				pssInfo[i].current_plane=b;
 
+			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+		}
 	}
 	else
 	{
 		switch (f_proc_1)
 		{
-			case 1 : evalFunc_1(pssInfo); break;
-			case 3 : evalFunc_1_16(pssInfo); break;
-			case 5 : evalFunc_1_32(pssInfo); break;
+			case 1 : 
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_1(pssInfo);
+				}
+				break;
+			case 3 :
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_1_16(pssInfo); 
+				}
+				break;
+			case 5 :
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_1_32(pssInfo);
+				}
+				break;
 			default : ;
 		}
 	}
@@ -1095,16 +1118,41 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 		for (uint8_t i=0; i<threads_number; i++)
 			MT_Thread[i].f_process= f_proc_2;
 
-		if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+		for (uint8_t b=0; b<PlaneMax; b++)
+		{
+			for (uint8_t i=0; i<threads_number; i++)
+				pssInfo[i].current_plane=b;
+
+			if (poolInterface->StartThreads(UserId)) poolInterface->WaitThreadsEnd(UserId);
+		}
+
 		poolInterface->ReleaseThreadPool(UserId,sleep);
 	}
 	else
 	{
 		switch (f_proc_2)
 		{
-			case 2 : evalFunc_2(pssInfo); break;
-			case 4 : evalFunc_2_16(pssInfo); break;
-			case 6 : evalFunc_2_32(pssInfo); break;
+			case 2 :
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_2(pssInfo);
+				}
+				break;
+			case 4 :
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_2_16(pssInfo);
+				}
+				break;
+			case 6 :
+				for (uint8_t b=0; b<PlaneMax; b++)
+				{
+					pssInfo[0].current_plane=b;
+					evalFunc_2_32(pssInfo);
+				}
+				break;
 			default :;
 		}
 	}
@@ -1749,8 +1797,7 @@ void evalFunc_1(void *ps)
 	}
 #endif
 
-	for (uint8_t b=0; b<PLANE_MAX; b++)
-	{
+	uint8_t b = pss->current_plane;
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
@@ -1848,8 +1895,6 @@ void evalFunc_1(void *ps)
 				}
 			}
 		}
-	}
-
 	}
 }
 
@@ -2176,8 +2221,7 @@ void evalFunc_1_16(void *ps)
 	}
 #endif
 
-	for (uint8_t b=0; b<PLANE_MAX; b++)
-	{
+	uint8_t b = pss->current_plane;
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
@@ -2277,8 +2321,6 @@ void evalFunc_1_16(void *ps)
 				}
 			}
 		}
-	}
-
 	}
 }
 
@@ -2413,8 +2455,7 @@ void evalFunc_1_32(void *ps)
 #endif
 	uc2s=uc2f48_C_32;
 
-	for (uint8_t b=0; b<PLANE_MAX; b++)
-	{
+	uint8_t b = pss->current_plane;
 
 	if (((b == 0) && pss->Y) || ((b == 1) && pss->U) || ((b == 2) && pss->V) || ((b == 3) && pss->A))
 	{
@@ -2472,8 +2513,6 @@ void evalFunc_1_32(void *ps)
 				NNPixels+=NNPixels_pitch_2;
 			}
 		}
-	}
-
 	}
 }
 
@@ -2841,8 +2880,7 @@ void evalFunc_2(void *ps)
 	}
 #endif
 
-	for (uint8_t b=0; b<PLANE_MAX; b++)
-	{
+	uint8_t b = pss->current_plane;
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
@@ -2963,8 +3001,6 @@ void evalFunc_2(void *ps)
 				}
 			}
 		}
-	}
-
 	}
 }
 
@@ -3365,8 +3401,7 @@ void evalFunc_2_16(void *ps)
 	}
 #endif
 
-	for (uint8_t b=0; b<PLANE_MAX; b++)
-	{
+	uint8_t b = pss->current_plane;
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
@@ -3492,8 +3527,6 @@ void evalFunc_2_16(void *ps)
 				}
 			}
 		}
-	}
-
 	}
 }
 
@@ -3717,8 +3750,7 @@ void evalFunc_2_32(void *ps)
 	}
 #endif
 
-	for (uint8_t b=0; b<PLANE_MAX; b++)
-	{
+	uint8_t b = pss->current_plane;
 
 	if (((b==0) && pss->Y) || ((b==1) && pss->U) || ((b==2) && pss->V) || ((b==3) && pss->A))
 	{
@@ -3765,8 +3797,6 @@ void evalFunc_2_32(void *ps)
 			dstp += dst_pitch2;
 			NNPixels+=NNPixels_pitch_2;
 		}
-	}
-
 	}
 }
 
