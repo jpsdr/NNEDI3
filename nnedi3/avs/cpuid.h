@@ -61,7 +61,7 @@ enum {
   CPUF_POPCNT       = 0x20000,
   CPUF_AES          = 0x40000,
   CPUF_FMA4         = 0x80000,
-  
+
   CPUF_AVX512F      = 0x100000,  // AVX-512 Foundation.
   CPUF_AVX512DQ     = 0x200000,  // AVX-512 DQ (Double/Quad granular) Instructions
   CPUF_AVX512PF     = 0x400000,  // AVX-512 Prefetch
