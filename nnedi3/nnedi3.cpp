@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.48 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.49 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1723,6 +1723,7 @@ void evalFunc_1(void *ps)
 		else
 		{
 			if (opt>=5) uc2s=uc2s64_AVX2;
+			else
 			{
 				if (opt>=4) uc2s=uc2s64_AVX;
 				else uc2s=uc2s64_SSE2;
@@ -1732,6 +1733,7 @@ void evalFunc_1(void *ps)
 		else
 		{
 			if (opt>=5) computeNetwork0=computeNetwork0new_AVX2;
+			else
 			{
 				if (opt>=4) computeNetwork0=computeNetwork0new_AVX;
 				else computeNetwork0=computeNetwork0new_SSE2;
