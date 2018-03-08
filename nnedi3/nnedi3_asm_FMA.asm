@@ -433,25 +433,22 @@ computeNetwork0new_AVX2 proc datai:dword,weights:dword,ptr_d:dword
 computeNetwork0new_AVX2 endp
 
 
-processLine0_AVX2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
+processLine0_AVX2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
 
     public processLine0_AVX2_ASM
 	
 		push ebx
 		push edi
 		push esi
+		push ebp
 		
-		vpbroadcastw ymm0,val_min
-		vpbroadcastw ymm1,val_max
-		vmovdqa YMMWORD ptr w_16,ymm0
-		vmovdqa YMMWORD ptr w_254,ymm1
-				
 		mov eax,tempu
 		mov ebx,src3p
 		mov ecx,width_
 		mov edx,src_pitch
 		mov esi,dstp
 		lea edi,[ebx+edx*4]
+		mov ebp,val_min_max
 		
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm7,ymm7,ymm7
@@ -487,12 +484,12 @@ xloop:
 		vpsraw ymm0,ymm0,5		
 		vpsraw ymm2,ymm2,5		
 		vmovdqa ymm3,ymm5
-		vpminsw ymm0,ymm0,YMMWORD PTR w_254
+		vpmaxsw ymm0,ymm0,YMMWORD PTR[ebp]
 		vpsrldq ymm5,ymm5,8
-		vpminsw ymm2,ymm2,YMMWORD PTR w_254
+		vpmaxsw ymm2,ymm2,YMMWORD PTR[ebp]
 		vpaddusw ymm5,ymm5,ymm3
-		vpmaxsw ymm0,ymm0,YMMWORD PTR w_16
-		vpmaxsw ymm2,ymm2,YMMWORD PTR w_16
+		vpminsw ymm0,ymm0,YMMWORD PTR[ebp+64]
+		vpminsw ymm2,ymm2,YMMWORD PTR[ebp+64]
 		vextracti128 xmm3,ymm5,1
 		vpackuswb ymm0,ymm0,ymm2
 		vpaddusw xmm5,xmm5,xmm3
@@ -506,6 +503,7 @@ xloop:
 		sub ecx,32
 		jnz xloop
 			
+		pop ebp
 		pop esi
 		pop edi
 		pop ebx
@@ -519,18 +517,14 @@ xloop:
 processLine0_AVX2_ASM endp
 
 
-processLine0_AVX2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
+processLine0_AVX2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
 
     public processLine0_AVX2_ASM_16
 	
 		push ebx
 		push edi
 		push esi
-
-		vpbroadcastw ymm0,val_min
-		vpbroadcastw ymm1,val_max
-		vmovdqa YMMWORD ptr w_16,ymm0
-		vmovdqa YMMWORD ptr w_254,ymm1
+		push ebp
 				
 		mov eax,tempu
 		mov ebx,src3p
@@ -538,6 +532,7 @@ processLine0_AVX2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,sr
 		mov edx,src_pitch
 		mov esi,dstp
 		lea edi,[ebx+edx*4]
+		mov ebp,val_min_max
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm7,ymm7,ymm7
 xloop_16:
@@ -572,9 +567,9 @@ xloop_16:
 		vpsadbw xmm5,xmm5,xmm7
 		vpackusdw ymm0,ymm0,ymm2
 		vmovdqa xmm3,xmm5
-		vpminuw ymm0,ymm0,YMMWORD ptr w_254		
+		vpmaxuw ymm0,ymm0,YMMWORD ptr[ebp]
 		vpsrldq xmm5,xmm5,8
-		vpmaxuw ymm0,ymm0,YMMWORD ptr w_16
+		vpminuw ymm0,ymm0,YMMWORD ptr[ebp+64]
 		vpaddusw xmm5,xmm5,xmm3
 		vmovdqa YMMWORD ptr [esi],ymm0
 		vpaddusw xmm6,xmm6,xmm5
@@ -586,6 +581,7 @@ xloop_16:
 		sub ecx,16
 		jnz xloop_16
 			
+		pop ebp
 		pop esi
 		pop edi
 		pop ebx

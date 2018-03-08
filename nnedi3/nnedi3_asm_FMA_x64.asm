@@ -467,7 +467,7 @@ computeNetwork0new_AVX2 proc public frame
 computeNetwork0new_AVX2 endp
 
 
-;processLine0_AVX2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
+;processLine0_AVX2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
 ; tempu = rcx
 ; width_ = edx
 ; dstp = r8
@@ -476,8 +476,7 @@ computeNetwork0new_AVX2 endp
 processLine0_AVX2_ASM proc public frame
 
 src_pitch equ dword ptr[rbp+48]
-val_min equ word ptr[rbp+56]
-val_max equ word ptr[rbp+64]
+val_min_max equ qword ptr[rbp+56]
 
 	push rbp
 	.pushreg rbp
@@ -507,10 +506,7 @@ val_max equ word ptr[rbp+64]
 	vmovdqu XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
-		
-		vpbroadcastw ymm12,val_min
-		vpbroadcastw ymm13,val_max
-				
+			
 		mov rax,rcx
 		mov rbx,r9
 		xor rcx,rcx
@@ -518,6 +514,7 @@ val_max equ word ptr[rbp+64]
 		movsxd rdx,src_pitch
 		mov rsi,r8
 		mov r8,32
+		mov r10,val_min_max
 		
 		lea rdi,[rbx+rdx*4]
 		
@@ -525,6 +522,8 @@ val_max equ word ptr[rbp+64]
 		vmovdqa ymm9,YMMWORD ptr w_3
 		vmovdqa ymm10,YMMWORD ptr ub_1
 		vmovdqa ymm11,YMMWORD ptr uw_16		
+		vmovdqa ymm12,YMMWORD ptr[r10]
+		vmovdqa ymm13,YMMWORD ptr[r10+64]
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm7,ymm7,ymm7
 		
@@ -602,7 +601,7 @@ xloop:
 processLine0_AVX2_ASM endp
 
 
-;processLine0_AVX2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
+;processLine0_AVX2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
 ; tempu = rcx
 ; width_ = edx
 ; dstp = r8
@@ -611,8 +610,7 @@ processLine0_AVX2_ASM endp
 processLine0_AVX2_ASM_16 proc public frame
 
 src_pitch equ dword ptr[rbp+48]
-val_min equ word ptr[rbp+56]
-val_max equ word ptr[rbp+64]
+val_min_max equ qword ptr[rbp+56]
 
 	push rbp
 	.pushreg rbp
@@ -643,9 +641,6 @@ val_max equ word ptr[rbp+64]
 	.savexmm128 xmm13,112
 	.endprolog
 		
-		vpbroadcastw ymm12,val_min
-		vpbroadcastw ymm13,val_max
-				
 		mov rax,rcx
 		mov rbx,r9
 		xor rcx,rcx
@@ -654,13 +649,16 @@ val_max equ word ptr[rbp+64]
 		mov rsi,r8
 		mov r8,32
 		mov r9,16
+		mov r10,val_min_max
 			
 		lea rdi,[rbx+rdx*4]
 		
 		vmovdqa ymm8,YMMWORD ptr d_19
 		vmovdqa ymm9,YMMWORD ptr d_3
 		vmovdqa xmm10,XMMWORD ptr ub_1
-		vmovdqa ymm11,YMMWORD ptr ud_16		
+		vmovdqa ymm11,YMMWORD ptr ud_16
+		vmovdqa ymm12,YMMWORD ptr[r10]
+		vmovdqa ymm13,YMMWORD ptr[r10+64]
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm7,ymm7,ymm7
 		

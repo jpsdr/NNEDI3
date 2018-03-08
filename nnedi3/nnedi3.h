@@ -64,6 +64,7 @@ struct PS_INFO {
 	uint8_t plane_range[PLANE_MAX];
 	bool int16_prescreener,int16_predictor;
 	uint8_t bits_per_pixel;
+	uint16_t *val_min_max;
 	IScriptEnvironment *env;
 };
 

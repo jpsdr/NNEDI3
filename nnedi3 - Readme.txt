@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.49 (31/01/2018)                                         |
+                                     v0.9.4.49 (08/03/2018)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -189,8 +189,8 @@ PARAMETERS (nnedi3):
          3 = use sse4.1
          4 = use AVX
          5 = use AVX2
-         6 = use FMA3 [Manual set only, not in auto-detect]
-         7 = use FMA4 [Manual set only, not in auto-detect]
+         6 = use FMA3
+         7 = use FMA4
 
         ** for an older version supporting sse use v0.9.1 available at:
         **    http://bengal.missouri.edu/~kes25c/old_stuff/
@@ -233,7 +233,7 @@ PARAMETERS (nnedi3):
       If this parameter is set to true, the pool of threads will set each thread to a specific core,
       according the status of previous parameters. If set to false, it's leaved to the OS.
 
-      Default: false (bool)
+      Default: true (bool)
 
   sleep -
       If this parameter is set to true, once the filter has finished one frame, the threads of the
@@ -374,7 +374,7 @@ PARAMETERS (nnedi3_rpow2):
 
       SetAffinity parameter for the multithreaded resamplers if they are used, otherwise no effect.
 
-      Default:  false  (bool)
+      Default:  true  (bool)
 
 nnedi3_rpow2 EXAMPLES:
 
@@ -397,21 +397,23 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
-   31/01/2018  v0.9.4.49
-       + Fix AVX2 path code.
+   08/03/2018  v0.9.4.49
+       * Fix AVX2 path code.
+       * Fix some potential issue with range modes.
+       * Change some default value setting.
 
    23/11/2017  v0.9.4.48
        * Put back process whole plane by whole plane.
        * Minor change in threadpool interface.
 
    23/08/2017  v0.9.4.47
-       + Fix possible deadlock on threadpool destructor.
+       * Fix possible deadlock on threadpool destructor.
 
    10/08/2017  v0.9.4.46
-       + Forget to add AVX path code on planarframe.
+       * Forget to add AVX path code on planarframe.
 
    09/08/2017  v0.9.4.45
-       + Fix Threadpool.
+       * Fix Threadpool.
        + Add AVX path code.
        * Revert to original MT multi-planar mode, may improve MT efficiency.
 
@@ -438,7 +440,7 @@ CHANGE LIST:
        * Update AVS+ header.
 
    05/03/2017  v0.9.4.37
-       * Remove the use of asmlib.
+       - Remove the use of asmlib.
        * Some little bug fixes.
        + Add an opt intermediate value (4 for AVX).
        + Use of YMM registers in case of AVX2 (or more) CPU, and some little others cleanup/speedup.
@@ -448,8 +450,8 @@ CHANGE LIST:
        + Add range mode 4.
 
    20/01/2017  v0.9.4.35
-       + Fix crash on x64 version introduced in v0.9.4.34.
-       + Fix prescreener issue on flat area with value of 255.
+       * Fix crash on x64 version introduced in v0.9.4.34.
+       * Fix prescreener issue on flat area with value of 255.
 
    17/01/2017  v0.9.4.34
        + Add range parameter.
@@ -459,7 +461,7 @@ CHANGE LIST:
        + Add support for 9..16 bits and float data formats (thanks to vapoursynth port).
        + Add FMA3 and FMA4 functions on some parts (thanks to vapoursynth port).
        + Add sleep and prefetch paremeters.
-       + Fix bug in YUY2 x64 ASM code.
+       * Fix bug in YUY2 x64 ASM code.
 
    05/12/2016  v0.9.4.32
 
@@ -496,7 +498,7 @@ CHANGE LIST:
 
    12/08/2016  v0.9.4.25
 
-       * Use Spline36ResizeMT if avaible.
+       + Use Spline36ResizeMT if avaible.
 
    21/07/2016  v0.9.4.24
 
@@ -509,12 +511,12 @@ CHANGE LIST:
 
    30/05/2016  v0.9.4.22
 
-       + Fix for MT version of avisynth.
+       * Fix for MT version of avisynth.
 
    17/04/2016  v0.9.4.21
 
        * Update to asmlib 3.26.
-       + Fix XP build with VS2015.
+       * Fix XP build with VS2015.
 
    05/09/2015  v0.9.4.20
 
@@ -558,12 +560,12 @@ CHANGE LIST:
 
    06/08/2015  v0.9.4.12
 
-       * More checks on use of FTurn.
+       + More checks on use of FTurn.
        * Fix regression on YUY2 introduced in previous release.
 
    31/07/2015  v0.9.4.11
 
-       + Correction of chroma shift value for 4:2:x color modes.
+       * Correction of chroma shift value for 4:2:x color modes.
        + Add YV411 support.
 
    25/05/2015  v0.9.4.10

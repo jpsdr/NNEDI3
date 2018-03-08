@@ -1282,7 +1282,7 @@ uc2s48_AVX proc public frame
 uc2s48_AVX endp
 
 
-;processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
+;processLine0_SSE2_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
 ; tempu = rcx
 ; width_ = edx
 ; dstp = r8
@@ -1291,8 +1291,7 @@ uc2s48_AVX endp
 processLine0_SSE2_ASM proc public frame
 
 src_pitch equ dword ptr[rbp+48]
-val_min equ word ptr[rbp+56]
-val_max equ word ptr[rbp+64]
+val_min_max equ qword ptr[rbp+56]
 
 	push rbp
 	.pushreg rbp
@@ -1305,43 +1304,23 @@ val_max equ word ptr[rbp+64]
 	.pushreg rdi
 	sub rsp,128
 	.allocstack 128
-	movdqu oword ptr[rsp],xmm6
+	movdqu XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqu XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	movdqu oword ptr[rsp+32],xmm8
+	movdqu XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	movdqu oword ptr[rsp+48],xmm9
+	movdqu XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	movdqu oword ptr[rsp+64],xmm10
+	movdqu XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	movdqu oword ptr[rsp+80],xmm11
+	movdqu XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	movdqu oword ptr[rsp+96],xmm12
+	movdqu XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	movdqu oword ptr[rsp+112],xmm13
+	movdqu XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
-
-		movzx eax,val_max
-		pinsrw xmm12,eax,0
-		pinsrw xmm12,eax,1
-		pinsrw xmm12,eax,2
-		pinsrw xmm12,eax,3
-		pinsrw xmm12,eax,4
-		pinsrw xmm12,eax,5
-		pinsrw xmm12,eax,6
-		pinsrw xmm12,eax,7
-	
-		movzx eax,val_min
-		pinsrw xmm13,eax,0
-		pinsrw xmm13,eax,1
-		pinsrw xmm13,eax,2
-		pinsrw xmm13,eax,3
-		pinsrw xmm13,eax,4
-		pinsrw xmm13,eax,5
-		pinsrw xmm13,eax,6
-		pinsrw xmm13,eax,7
 	
 		mov rax,rcx
 		mov rbx,r9
@@ -1350,17 +1329,21 @@ val_max equ word ptr[rbp+64]
 		movsxd rdx,src_pitch
 		mov rsi,r8
 		mov r8,16
+		mov r10,val_min_max
 		
 		lea rdi,[rbx+rdx*4]
 		pxor xmm6,xmm6
 		pxor xmm7,xmm7
-		movdqa xmm8,oword ptr w_19
-		movdqa xmm9,oword ptr w_3
-		movdqa xmm10,oword ptr ub_1
-		movdqa xmm11,oword ptr uw_16
+		movdqa xmm8,XMMWORD ptr w_19
+		movdqa xmm9,XMMWORD ptr w_3
+		movdqa xmm10,XMMWORD ptr ub_1
+		movdqa xmm11,XMMWORD ptr uw_16
+		movdqa xmm13,XMMWORD ptr[r10]
+		movdqa xmm12,XMMWORD ptr[r10+64]
+		
 xloop:
-		movdqa xmm0,[rbx+rdx*2]
-		movdqa xmm1,[rdi]
+		movdqa xmm0,XMMWORD ptr [rbx+rdx*2]
+		movdqa xmm1,XMMWORD ptr [rdi]
 		movdqa xmm2,xmm0
 		movdqa xmm3,xmm1
 		punpcklbw xmm0,xmm7
@@ -1371,8 +1354,8 @@ xloop:
 		paddw xmm2,xmm3
 		pmullw xmm0,xmm8
 		pmullw xmm2,xmm8
-		movdqa xmm1,[rbx]
-		movdqa xmm3,[rdi+rdx*2]
+		movdqa xmm1,XMMWORD ptr [rbx]
+		movdqa xmm3,XMMWORD ptr [rdi+rdx*2]
 		movdqa xmm4,xmm1
 		movdqa xmm5,xmm3
 		punpcklbw xmm1,xmm7
@@ -1383,7 +1366,7 @@ xloop:
 		paddw xmm4,xmm5
 		pmullw xmm1,xmm9
 		pmullw xmm4,xmm9
-		movdqa xmm5,[rax]
+		movdqa xmm5,XMMWORD ptr [rax]
 		psubusw xmm0,xmm1
 		psubusw xmm2,xmm4
 		pxor xmm5,xmm10
@@ -1400,7 +1383,7 @@ xloop:
 		pmaxsw xmm2,xmm13
 		paddusw xmm5,xmm3
 		packuswb xmm0,xmm2
-		movdqa [rsi],xmm0
+		movdqa XMMWORD ptr [rsi],xmm0
 		paddusw xmm6,xmm5
 		add rbx,r8
 		add rdi,r8
@@ -1412,14 +1395,14 @@ xloop:
 		xor  rax,rax
 		movd eax,xmm6
 		
-	movdqu xmm13,oword ptr[rsp+112]
-	movdqu xmm12,oword ptr[rsp+96]
-	movdqu xmm11,oword ptr[rsp+80]
-	movdqu xmm10,oword ptr[rsp+64]
-	movdqu xmm9,oword ptr[rsp+48]
-	movdqu xmm8,oword ptr[rsp+32]
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
+	movdqu xmm13,XMMWORD ptr[rsp+112]
+	movdqu xmm12,XMMWORD ptr[rsp+96]
+	movdqu xmm11,XMMWORD ptr[rsp+80]
+	movdqu xmm10,XMMWORD ptr[rsp+64]
+	movdqu xmm9,XMMWORD ptr[rsp+48]
+	movdqu xmm8,XMMWORD ptr[rsp+32]
+	movdqu xmm7,XMMWORD ptr[rsp+16]
+	movdqu xmm6,XMMWORD ptr[rsp]	
 	add rsp,128
 	pop rdi
 	pop rsi
@@ -1431,7 +1414,7 @@ xloop:
 processLine0_SSE2_ASM endp
 
 
-;processLine0_AVX_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
+;processLine0_AVX_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
 ; tempu = rcx
 ; width_ = edx
 ; dstp = r8
@@ -1440,8 +1423,7 @@ processLine0_SSE2_ASM endp
 processLine0_AVX_ASM proc public frame
 
 src_pitch equ dword ptr[rbp+48]
-val_min equ word ptr[rbp+56]
-val_max equ word ptr[rbp+64]
+val_min_max equ qword ptr[rbp+56]
 
 	push rbp
 	.pushreg rbp
@@ -1471,26 +1453,6 @@ val_max equ word ptr[rbp+64]
 	vmovdqu XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
-
-		movzx eax,val_max
-		vpinsrw xmm12,xmm12,eax,0
-		vpinsrw xmm12,xmm12,eax,1
-		vpinsrw xmm12,xmm12,eax,2
-		vpinsrw xmm12,xmm12,eax,3
-		vpinsrw xmm12,xmm12,eax,4
-		vpinsrw xmm12,xmm12,eax,5
-		vpinsrw xmm12,xmm12,eax,6
-		vpinsrw xmm12,xmm12,eax,7
-	
-		movzx eax,val_min
-		vpinsrw xmm13,xmm13,eax,0
-		vpinsrw xmm13,xmm13,eax,1
-		vpinsrw xmm13,xmm13,eax,2
-		vpinsrw xmm13,xmm13,eax,3
-		vpinsrw xmm13,xmm13,eax,4
-		vpinsrw xmm13,xmm13,eax,5
-		vpinsrw xmm13,xmm13,eax,6
-		vpinsrw xmm13,xmm13,eax,7
 	
 		mov rax,rcx
 		mov rbx,r9
@@ -1499,6 +1461,7 @@ val_max equ word ptr[rbp+64]
 		movsxd rdx,src_pitch
 		mov rsi,r8
 		mov r8,16
+		mov r10,val_min_max
 		
 		lea rdi,[rbx+rdx*4]
 		vpxor xmm6,xmm6,xmm6
@@ -1507,6 +1470,8 @@ val_max equ word ptr[rbp+64]
 		vmovdqa xmm9,XMMWORD ptr w_3
 		vmovdqa xmm10,XMMWORD ptr ub_1
 		vmovdqa xmm11,XMMWORD ptr uw_16
+		vmovdqa xmm13,XMMWORD ptr[r10]
+		vmovdqa xmm12,XMMWORD ptr[r10+64]
 xloop_AVX:
 		vmovdqa xmm0,XMMWORD ptr [rbx+rdx*2]
 		vmovdqa xmm1,XMMWORD ptr [rdi]
@@ -1578,7 +1543,7 @@ xloop_AVX:
 processLine0_AVX_ASM endp
 
 
-;processLine0_SSE2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
+;processLine0_SSE2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
 ; tempu = rcx
 ; width_ = edx
 ; dstp = r8
@@ -1587,8 +1552,7 @@ processLine0_AVX_ASM endp
 processLine0_SSE2_ASM_16 proc public frame
 
 src_pitch equ dword ptr[rbp+48]
-val_min equ word ptr[rbp+56]
-val_max equ word ptr[rbp+64]
+val_min_max equ qword ptr[rbp+56]
 
 	push rbp
 	.pushreg rbp
@@ -1601,43 +1565,23 @@ val_max equ word ptr[rbp+64]
 	.pushreg rdi
 	sub rsp,128
 	.allocstack 128
-	movdqu oword ptr[rsp],xmm6
+	movdqu XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqu XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	movdqu oword ptr[rsp+32],xmm8
+	movdqu XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	movdqu oword ptr[rsp+48],xmm9
+	movdqu XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	movdqu oword ptr[rsp+64],xmm10
+	movdqu XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	movdqu oword ptr[rsp+80],xmm11
+	movdqu XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	movdqu oword ptr[rsp+96],xmm12
+	movdqu XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	movdqu oword ptr[rsp+112],xmm13
+	movdqu XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
-
-		movzx eax,val_max
-		pinsrw xmm12,eax,0
-		pinsrw xmm12,eax,1
-		pinsrw xmm12,eax,2
-		pinsrw xmm12,eax,3
-		pinsrw xmm12,eax,4
-		pinsrw xmm12,eax,5
-		pinsrw xmm12,eax,6
-		pinsrw xmm12,eax,7
-		
-		movzx eax,val_min
-		pinsrw xmm13,eax,0
-		pinsrw xmm13,eax,1
-		pinsrw xmm13,eax,2
-		pinsrw xmm13,eax,3
-		pinsrw xmm13,eax,4
-		pinsrw xmm13,eax,5
-		pinsrw xmm13,eax,6
-		pinsrw xmm13,eax,7		
 	
 		mov rax,rcx
 		mov rbx,r9
@@ -1647,18 +1591,21 @@ val_max equ word ptr[rbp+64]
 		mov rsi,r8
 		mov r8,16
 		mov r9,8
+		mov r10,val_min_max
 		
 		lea rdi,[rbx+rdx*4]
 		pxor xmm6,xmm6
 		pxor xmm7,xmm7
-		movdqa xmm8,oword ptr d_19
-		movdqa xmm9,oword ptr d_3
-		movdqa xmm10,oword ptr uw_1
-		movdqa xmm11,oword ptr ud_16
+		movdqa xmm8,XMMWORD ptr d_19
+		movdqa xmm9,XMMWORD ptr d_3
+		movdqa xmm10,XMMWORD ptr uw_1
+		movdqa xmm11,XMMWORD ptr ud_16
+		movdqa xmm13,XMMWORD ptr[r10]
+		movdqa xmm12,XMMWORD ptr[r10+64]
 		
 xloop_16:
-		movdqa xmm0,[rbx+rdx*2]
-		movdqa xmm1,[rdi]
+		movdqa xmm0,XMMWORD ptr[rbx+rdx*2]
+		movdqa xmm1,XMMWORD ptr[rdi]
 		movdqa xmm2,xmm0
 		movdqa xmm3,xmm1
 		punpcklwd xmm0,xmm7
@@ -1669,8 +1616,8 @@ xloop_16:
 		paddd xmm2,xmm3
 		pmulld xmm0,xmm8
 		pmulld xmm2,xmm8
-		movdqa xmm1,[rbx]
-		movdqa xmm3,[rdi+rdx*2]
+		movdqa xmm1,XMMWORD ptr[rbx]
+		movdqa xmm3,XMMWORD ptr[rdi+rdx*2]
 		movdqa xmm4,xmm1
 		movdqa xmm5,xmm3
 		punpcklwd xmm1,xmm7
@@ -1697,7 +1644,7 @@ xloop_16:
 		pminuw xmm0,xmm12
 		pmaxuw xmm0,xmm13
 		paddusw xmm5,xmm3
-		movdqa [rsi],xmm0
+		movdqa XMMWORD ptr[rsi],xmm0
 		paddusw xmm6,xmm5
 		add rbx,r8
 		add rdi,r8
@@ -1709,14 +1656,14 @@ xloop_16:
 		xor  rax,rax
 		movd eax,xmm6
 		
-	movdqu xmm13,oword ptr[rsp+112]
-	movdqu xmm12,oword ptr[rsp+96]
-	movdqu xmm11,oword ptr[rsp+80]
-	movdqu xmm10,oword ptr[rsp+64]
-	movdqu xmm9,oword ptr[rsp+48]
-	movdqu xmm8,oword ptr[rsp+32]
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
+	movdqu xmm13,XMMWORD ptr[rsp+112]
+	movdqu xmm12,XMMWORD ptr[rsp+96]
+	movdqu xmm11,XMMWORD ptr[rsp+80]
+	movdqu xmm10,XMMWORD ptr[rsp+64]
+	movdqu xmm9,XMMWORD ptr[rsp+48]
+	movdqu xmm8,XMMWORD ptr[rsp+32]
+	movdqu xmm7,XMMWORD ptr[rsp+16]
+	movdqu xmm6,XMMWORD ptr[rsp]	
 	add rsp,128
 	pop rdi
 	pop rsi
@@ -1728,7 +1675,7 @@ xloop_16:
 processLine0_SSE2_ASM_16 endp
 
 
-;processLine0_AVX_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min:word,val_max:word
+;processLine0_AVX_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
 ; tempu = rcx
 ; width_ = edx
 ; dstp = r8
@@ -1737,8 +1684,7 @@ processLine0_SSE2_ASM_16 endp
 processLine0_AVX_ASM_16 proc public frame
 
 src_pitch equ dword ptr[rbp+48]
-val_min equ word ptr[rbp+56]
-val_max equ word ptr[rbp+64]
+val_min_max equ qword ptr[rbp+56]
 
 	push rbp
 	.pushreg rbp
@@ -1768,26 +1714,6 @@ val_max equ word ptr[rbp+64]
 	vmovdqu XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
-
-		movzx eax,val_max
-		vpinsrw xmm12,xmm12,eax,0
-		vpinsrw xmm12,xmm12,eax,1
-		vpinsrw xmm12,xmm12,eax,2
-		vpinsrw xmm12,xmm12,eax,3
-		vpinsrw xmm12,xmm12,eax,4
-		vpinsrw xmm12,xmm12,eax,5
-		vpinsrw xmm12,xmm12,eax,6
-		vpinsrw xmm12,xmm12,eax,7
-		
-		movzx eax,val_min
-		vpinsrw xmm13,xmm13,eax,0
-		vpinsrw xmm13,xmm13,eax,1
-		vpinsrw xmm13,xmm13,eax,2
-		vpinsrw xmm13,xmm13,eax,3
-		vpinsrw xmm13,xmm13,eax,4
-		vpinsrw xmm13,xmm13,eax,5
-		vpinsrw xmm13,xmm13,eax,6
-		vpinsrw xmm13,xmm13,eax,7		
 	
 		mov rax,rcx
 		mov rbx,r9
@@ -1797,6 +1723,7 @@ val_max equ word ptr[rbp+64]
 		mov rsi,r8
 		mov r8,16
 		mov r9,8
+		mov r10,val_min_max
 		
 		lea rdi,[rbx+rdx*4]
 		vpxor xmm6,xmm6,xmm6
@@ -1805,6 +1732,8 @@ val_max equ word ptr[rbp+64]
 		vmovdqa xmm9,XMMWORD ptr d_3
 		vmovdqa xmm10,XMMWORD ptr uw_1
 		vmovdqa xmm11,XMMWORD ptr ud_16
+		vmovdqa xmm13,XMMWORD ptr[r10]
+		vmovdqa xmm12,XMMWORD ptr[r10+64]
 		
 xloop_16_AVX:
 		vmovdqa xmm0,XMMWORD ptr [rbx+rdx*2]
