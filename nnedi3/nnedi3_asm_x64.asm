@@ -12,7 +12,6 @@ w_19 sword 8 dup(19)
 w_3 sword 8 dup(3)
 ub_1 byte 16 dup(1)
 uw_16 word 8 dup(16)
-w_254 sword 8 dup(254)
 
 d_19 sdword 4 dup(19)
 d_3 sdword 4 dup(3)

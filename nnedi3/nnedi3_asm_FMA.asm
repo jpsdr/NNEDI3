@@ -56,8 +56,6 @@ exp_q3 real4 8 dup(2.0)
 w_19 sword 16 dup(19)
 w_3 sword 16 dup(3)
 uw_16 word 16 dup(16)
-w_254 sword 16 dup(254)
-w_16 sword 16 dup(16)
 ub_1 byte 32 dup(1)
 
 d_19 sdword 8 dup(19)
