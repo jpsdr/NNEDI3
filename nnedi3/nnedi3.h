@@ -78,7 +78,6 @@ protected:
 	PlanarFrame *srcPF,*dstPF;
 	PS_INFO pssInfo[MAX_MT_THREADS];
 	float *weights0,*weights1[2];
-	HANDLE ghMutex;
 	uint8_t threads,threads_number;
 	bool sleep;
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];

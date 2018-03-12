@@ -128,7 +128,6 @@ extern "C" void computeNetwork0new_AVX(const float *datai,const float *weights,u
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 #define myfree(ptr) if (ptr!=NULL) { free(ptr); ptr=NULL;}
-#define myCloseHandle(ptr) if (ptr!=NULL) { CloseHandle(ptr); ptr=NULL;}
 #define myalignedfree(ptr) if (ptr!=NULL) { _aligned_free(ptr); ptr=NULL;}
 #define mydelete(ptr) if (ptr!=NULL) { delete ptr; ptr=NULL;}
 
@@ -311,7 +310,6 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		pssInfo[i].temp=NULL;
 		pssInfo[i].val_min_max=NULL;
 	}
-	ghMutex=NULL;
 	UserId=0;
 
 	if (vi.height<32) threads_number=1;
@@ -917,14 +915,6 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		hremain[i] = height%(int)threads_number;
 	}
 
-	ghMutex=CreateMutex(NULL,FALSE,NULL);
-	if (ghMutex==NULL)
-	{
-		if (threads>1) poolInterface->DeAllocateAllThreads(true);
-		FreeData();
-		env->ThrowError("nnedi3: Unable to create Mutex!");
-	}
-
 	int NNPixels_pitch[PLANE_MAX];
 	size_t NNPixels_Size[PLANE_MAX];
 
@@ -1029,7 +1019,6 @@ void nnedi3::FreeData(void)
 	}
 	for (int8_t i=PLANE_MAX-1; i>=0; i--)
 		myalignedfree(NNPixels[i]);
-	myCloseHandle(ghMutex);
 	for (int8_t i=PLANE_MAX-1; i>=0; i--)
 		myalignedfree(lcount[i]);
 	for (int8_t i=1; i>=0; i--)
@@ -1120,10 +1109,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	if (threads_number>1)
 	{
 		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
-		{
-			ReleaseMutex(ghMutex);
 			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
-		}
 
 		for (uint8_t b=0; b<PlaneMax; b++)
 		{
@@ -1211,8 +1197,6 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	
 	if (!vi.IsPlanar()) dstPF->copyTo(dst, vi);
 
-	ReleaseMutex(ghMutex);
-
 	return dst;
 }
 
@@ -1221,8 +1205,6 @@ void nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 {
 	const int off = 1-fn;
 	PVideoFrame src = child->GetFrame(n, env);
-	
-	WaitForSingleObject(ghMutex,INFINITE);
 	
 	const uint8_t PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
