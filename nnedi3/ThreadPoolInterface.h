@@ -5,7 +5,7 @@
 
 #include "ThreadPoolDef.h"
 
-#define THREADPOOLINTERFACE_VERSION "ThreadPoolInterface 1.7.3"
+#define THREADPOOLINTERFACE_VERSION "ThreadPoolInterface 1.7.4"
 
 typedef struct _UserData
 {

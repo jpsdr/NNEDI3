@@ -15,6 +15,7 @@ typedef struct _Public_MT_Data_Thread
 	ThreadPoolFunction pFunc;
 	void *pClass;
 	uint8_t f_process,thread_Id;
+	void *pData;
 } Public_MT_Data_Thread;
 
 
