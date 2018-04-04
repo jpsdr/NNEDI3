@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.49 (08/03/2018)                                         |
+                                     v0.9.4.50 (04/04/2018)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -232,6 +232,7 @@ PARAMETERS (nnedi3):
 
       If this parameter is set to true, the pool of threads will set each thread to a specific core,
       according the status of previous parameters. If set to false, it's leaved to the OS.
+      If prefecth>number of physical cores, it's automaticaly set to false.
 
       Default: true (bool)
 
@@ -397,6 +398,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   04/04/2018  v0.9.4.50
+       + Optimized CPU placement if SetAffinity=true for prefetch>1
+         and prefetch<=number of physical cores.
+
    08/03/2018  v0.9.4.49
        * Fix AVX2 path code.
        * Fix some potential issue with range modes.

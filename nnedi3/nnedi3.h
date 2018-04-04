@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.49 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.50 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -22,10 +22,8 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <tchar.h>
-#include <process.h>
 #include <float.h>
 #include <stdio.h>
-#include <stdint.h>
 #include "avisynth.h"
 #include "PlanarFrame.h"
 #include "ThreadPoolInterface.h"
