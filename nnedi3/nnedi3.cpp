@@ -3899,7 +3899,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	const int threads=args[11].AsInt(0);
 	const bool LogicalCores=args[14].AsBool(true);
 	const bool MaxPhysCores=args[15].AsBool(true);
-	const bool SetAffinity=args[16].AsBool(true);
+	const bool SetAffinity=args[16].AsBool(false);
 	const bool sleep = args[18].AsBool(false);
 	int prefetch = args[19].AsInt(0);
 
@@ -4038,11 +4038,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const bool mpeg2_chroma = args[16].AsBool(true);
 	const bool LogicalCores = args[17].AsBool(true);
 	const bool MaxPhysCores = args[18].AsBool(true);
-	const bool SetAffinity = args[19].AsBool(true);
+	const bool SetAffinity = args[19].AsBool(false);
 	const int threads_rs = args[20].AsInt(0);
 	const bool LogicalCores_rs = args[21].AsBool(true);
 	const bool MaxPhysCores_rs = args[22].AsBool(true);
-	const bool SetAffinity_rs = args[23].AsBool(true);
+	const bool SetAffinity_rs = args[23].AsBool(false);
 	const bool sleep = args[24].AsBool(false);
 	int prefetch = args[25].AsInt(0);
 	int range_mode = args[26].AsInt(1);
