@@ -174,7 +174,7 @@ suite1_2:
 		and ecx,r15d
 		jz short suite2_2
 
-	movdqa xmm0,XMMWORD ptr[rsi+4*rax]   ;V4Y8U4Y7V3Y6U3Y5 V2Y4U2Y3V1Y2U1Y1
+	movdqa xmm0,XMMWORD ptr[rdi+4*rax]   ;V4Y8U4Y7V3Y6U3Y5 V2Y4U2Y3V1Y2U1Y1
 	movhlps xmm1,xmm0                    ;V4Y8U4Y7V3Y6U3Y5 V4Y8U4Y7V3Y6U3Y5
 	punpcklbw xmm0,xmm1                  ;V4V2Y8Y4U4U2Y7Y3 V3V1Y6Y2U3U1Y5Y1
 	movhlps xmm1,xmm0                    ;V4V2Y8Y4U4U2Y7Y3 V4V2Y8Y4U4U2Y7Y3
@@ -287,7 +287,7 @@ suite1_2_AVX:
 		and ecx,r15d
 		jz short suite2_2_AVX
 
-	vmovdqa xmm0,XMMWORD ptr[rsi+4*rax]   ;V4Y8U4Y7V3Y6U3Y5 V2Y4U2Y3V1Y2U1Y1
+	vmovdqa xmm0,XMMWORD ptr[rdi+4*rax]   ;V4Y8U4Y7V3Y6U3Y5 V2Y4U2Y3V1Y2U1Y1
 	vmovhlps xmm1,xmm1,xmm0               ;V4Y8U4Y7V3Y6U3Y5 V4Y8U4Y7V3Y6U3Y5
 	vpunpcklbw xmm0,xmm0,xmm1             ;V4V2Y8Y4U4U2Y7Y3 V3V1Y6Y2U3U1Y5Y1
 	vmovhlps xmm1,xmm1,xmm0               ;V4V2Y8Y4U4U2Y7Y3 V4V2Y8Y4U4U2Y7Y3

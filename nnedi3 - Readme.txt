@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.50 (05/04/2018)                                         |
+                                     v0.9.4.51 (27/05/2018)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -398,6 +398,9 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   27/05/2018  v0.9.4.51
+       * Fix bug in asm PlanarFrame YUY2to422.
+
    05/04/2018  v0.9.4.50
        + Optimized CPU placement if SetAffinity=true for prefetch>1
          and prefetch<=number of physical cores.
