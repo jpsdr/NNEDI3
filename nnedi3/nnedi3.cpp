@@ -324,8 +324,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	{
 		if (!srcPF->createPlanar(vi.height+12,(vi.height>>1)+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 		{
-			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 		}
 	}
@@ -335,8 +335,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		{
 			if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>2)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 			{
-				if (threads>1) poolInterface->DeAllocateAllThreads(true);
 				FreeData();
+				if (threads>1) poolInterface->DeAllocateAllThreads(true);
 				env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 			}
 		}
@@ -346,8 +346,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			{
 				if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,(vi.width>>1)+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 				{
-					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					FreeData();
+					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 				}
 			}
@@ -357,8 +357,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				{
 					if (!srcPF->createPlanar(vi.height+12,vi.height+12,vi.width+64,vi.width+64,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 					{
-						if (threads>1) poolInterface->DeAllocateAllThreads(true);
 						FreeData();
+						if (threads>1) poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 					}
 				}
@@ -368,8 +368,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 					{
 						if (!srcPF->createPlanar(vi.height+12,0,vi.width+64,0,isRGBPfamily,isAlphaChannel,pixelsize,bits_per_pixel))
 						{
-							if (threads>1) poolInterface->DeAllocateAllThreads(true);
 							FreeData();
+							if (threads>1) poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("nnedi3: Error while creating planar for srcPF!");
 						}
 						U = false;
@@ -384,14 +384,14 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	dstPF = new PlanarFrame(vi);
 	if (dstPF==NULL)
 	{
-		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		FreeData();
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("nnedi3: Error while creating dstPF!");
 	}
 	if (!dstPF->GetAllocStatus())
 	{
-		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		FreeData();
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("nnedi3: Error while allocating planar dstPF!");
 	}
 
@@ -445,8 +445,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	weights0 = (float *)_aligned_malloc(max(dims0,dims0new)*sizeof(float),64);
 	if (weights0==NULL)
 	{
-		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		FreeData();
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("nnedi3: Error while allocating weights0!");
 	}
 	for (uint8_t i=0; i<2; i++)
@@ -454,8 +454,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		weights1[i] = (float *)_aligned_malloc(dims1*sizeof(float),64);
 		if (weights1[i]==NULL)
 		{
-			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("nnedi3: Error while allocating weights1[%d]!",i);
 		}
 	}
@@ -464,8 +464,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		lcount[i] = (int *)_aligned_malloc(dstPF->GetHeight(i)*sizeof(int),64);
 		if (lcount[i]==NULL)
 		{
-			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("nnedi3: Error while allocating lcount[%d]!",i);
 		}
 	}
@@ -474,8 +474,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	HMODULE hmod = GetModuleHandle(nbuf);
 	if (hmod==NULL)
 	{
-		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		FreeData();
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("nnedi3: unable to get module handle!");
 	}
 	HRSRC hrsrc = FindResource(hmod,MAKEINTRESOURCE(101),_T("BINARY"));
@@ -484,8 +484,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	DWORD dwSize = SizeofResource(hmod,hrsrc);
 	if ((hmod==NULL) || (hrsrc==NULL) || (hglob==NULL) || (lplock==NULL) || (dwSize!=(dims0+dims0new*3+dims1tsize*2)*sizeof(float)))
 	{
-		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		FreeData();
+		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("nnedi3: error loading resource (%x,%x,%x,%x,%d,%d)!",hmod,hrsrc,hglob,lplock,dwSize,
 		(dims0+dims0new*3+dims1tsize*2)*sizeof(float));
 	}
@@ -623,8 +623,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 				if (rs==NULL)
 				{
-					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					FreeData();
+					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("nnedi3: Error while allocating rs!");
 				}
 				int j_b=0;
@@ -679,8 +679,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				float *rf = (float*)malloc(dims0*sizeof(float));
 				if (rf==NULL)
 				{
-					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					FreeData();
+					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("nnedi3: Error while allocating rf!");
 				}
 				int j_b=0;
@@ -724,8 +724,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		double *mean = (double *)calloc(asize+1+nnst2,sizeof(double));
 		if (mean==NULL)
 		{
-			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("nnedi3: Error while allocating mean!");
 		}
 
@@ -807,9 +807,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				int16_t *rs = (int16_t *)malloc(nnst2*asize*sizeof(int16_t));
 				if (rs==NULL)
 				{
-					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					free(mean);
 					FreeData();
+					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("nnedi3: Error while allocating rs!");
 				}
 
@@ -928,8 +928,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	{
 		if (NNPixels[i]==NULL)
 		{
-			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("nnedi3: Unable to create NNPixels[%d]!",i);
 		}
 	}
@@ -943,8 +943,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		pssInfo[i].val_min_max=(uint16_t *)_aligned_malloc(64*sizeof(uint16_t),64);
 		if ((pssInfo[i].input==NULL) || (pssInfo[i].temp==NULL) || (pssInfo[i].val_min_max==NULL))
 		{
-			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			FreeData();
+			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("nnedi3: Error while allocating pssInfo[%d]!",i);
 		}
 		pssInfo[i].weights0 = weights0;
@@ -988,8 +988,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	{
 		if (!poolInterface->GetUserId(UserId))
 		{
-			poolInterface->DeAllocateAllThreads(true);
 			FreeData();
+			poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("nnedi3: Error with the TheadPool while getting UserId!");
 		}
 	}
@@ -1031,8 +1031,8 @@ void nnedi3::FreeData(void)
 nnedi3::~nnedi3()
 {
 	if (threads_number>1) poolInterface->RemoveUserId(UserId);
-	if (threads>1) poolInterface->DeAllocateAllThreads(true);
 	FreeData();
+	if (threads>1) poolInterface->DeAllocateAllThreads(true);
 }
 
 
