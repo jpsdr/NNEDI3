@@ -2,7 +2,7 @@
  *  Threadpool
  *
  *  Create and manage a threadpool.
- *  Copyright (C) 2017 JPSDR
+ *  Copyright (C) 2016 JPSDR
  *	
  *  Threadpool is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 
 #include "ThreadPoolDef.h"
 
-#define THREADPOOL_VERSION "ThreadPool 1.3.4"
+#define THREADPOOL_VERSION "ThreadPool 1.4.0"
 
 typedef struct _MT_Data_Thread
 {
@@ -59,10 +59,12 @@ class ThreadPool
 	public :
 
 	uint8_t GetThreadNumber(uint8_t thread_number,bool logical);
-	bool AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep);
-	bool ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep);
+	bool AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,
+		bool SetAffinity,bool sleep,ThreadLevelName priority);
 	bool DeAllocateThreads(void);
-	bool RequestThreadPool(uint8_t thread_number,Public_MT_Data_Thread *Data);
+	bool ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity);
+	bool ChangeThreadsLevel(ThreadLevelName priority);
+	bool RequestThreadPool(uint8_t thread_number,Public_MT_Data_Thread *Data,ThreadLevelName priority);
 	bool ReleaseThreadPool(bool sleep);
 	bool StartThreads(void);
 	bool WaitThreadsEnd(void);
@@ -80,13 +82,15 @@ class ThreadPool
 	DWORD tids[MAX_MT_THREADS];
 	ULONG_PTR ThreadMask[MAX_MT_THREADS];
 	volatile bool ThreadSleep[MAX_MT_THREADS];
+	volatile ThreadLevelName nPriority;
 
 	volatile bool Status_Ok;
 	volatile uint8_t TotalThreadsRequested,CurrentThreadsAllocated,CurrentThreadsUsed;
 	
 	void FreeThreadPool(void);
 	void DestroyThreadPool(void);
-	void CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep);
+	void CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,
+		bool sleep,ThreadLevelName priority);
 
 	private :
 

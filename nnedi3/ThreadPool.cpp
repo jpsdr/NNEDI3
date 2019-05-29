@@ -2,7 +2,7 @@
  *  Threadpool
  *
  *  Create and manage a threadpool.
- *  Copyright (C) 2017 JPSDR
+ *  Copyright (C) 2016 JPSDR
  *	
  *  Threadpool is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
  *
  */
 
-// ThreadPoolInterface.cpp : Define the exported functions for using with the threadpool.
+// ThreadPoolDLL.cpp : Define the exported functions for using with the threadpool.
 // Kind of API.
 
 #include "ThreadPool.h"
@@ -28,6 +28,9 @@
 #define myfree(ptr) if (ptr!=NULL) { free(ptr); ptr=NULL;}
 #define myCloseHandle(ptr) if (ptr!=NULL) { CloseHandle(ptr); ptr=NULL;}
 
+static const int TabThreadLevel[8]={THREAD_PRIORITY_NORMAL,THREAD_PRIORITY_IDLE,THREAD_PRIORITY_LOWEST,
+	THREAD_PRIORITY_BELOW_NORMAL,THREAD_PRIORITY_NORMAL,THREAD_PRIORITY_ABOVE_NORMAL,
+	THREAD_PRIORITY_HIGHEST,THREAD_PRIORITY_TIME_CRITICAL};
 
 // Helper function to count set bits in the processor mask.
 static uint8_t CountSetBits(ULONG_PTR bitMask)
@@ -226,7 +229,6 @@ DWORD WINAPI ThreadPool::StaticThreadpool(LPVOID lpParam )
 }
 
 
-
 ThreadPool::ThreadPool(void): Status_Ok(true)
 {
 	int16_t i;
@@ -243,12 +245,13 @@ ThreadPool::ThreadPool(void): Status_Ok(true)
 		thds[i]=NULL;
 		ThreadSleep[i]=true;
 	}
+	nPriority=NormalThreadLevel;
 	TotalThreadsRequested=0;
 	CurrentThreadsAllocated=0;
 	CurrentThreadsUsed=0;
 
 	Get_CPU_Info(CPU);
-	if ((CPU.NbLogicCPU==0) || (CPU.NbPhysCore==0)) Status_Ok=false;
+	Status_Ok=!(((CPU.NbLogicCPU==0) || (CPU.NbPhysCore==0)));
 }
 
 
@@ -259,10 +262,13 @@ void ThreadPool::FreeThreadPool(void)
 
 	if (TotalThreadsRequested>0)
 	{
+		const int nPr=TabThreadLevel[AboveThreadLevel];
+
 		for (i=TotalThreadsRequested-1; i>=0; i--)
 		{
 			if (thds[i]!=NULL)
 			{
+				SetThreadPriority(thds[i],nPr);
 				if (ThreadSleep[i]) ResumeThread(thds[i]);
 				MT_Thread[i].f_process=255;
 				SetEvent(nextJob[i]);
@@ -283,6 +289,7 @@ void ThreadPool::FreeThreadPool(void)
 		}
 	}
 
+	nPriority=NormalThreadLevel;
 	TotalThreadsRequested=0;
 	CurrentThreadsAllocated=0;
 	CurrentThreadsUsed=0;
@@ -335,32 +342,24 @@ uint8_t ThreadPool::GetThreadNumber(uint8_t thread_number,bool logical)
 {
 	const uint8_t nCPU=(logical) ? CPU.NbLogicCPU:CPU.NbPhysCore;
 
-	if (thread_number==0) return((nCPU>MAX_MT_THREADS) ? MAX_MT_THREADS:nCPU);
-	else return(thread_number);
+	return((thread_number==0) ? ((nCPU>MAX_MT_THREADS) ? MAX_MT_THREADS:nCPU):thread_number);
 }
 
 
-bool ThreadPool::AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep)
+bool ThreadPool::AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,
+	bool SetAffinity,bool sleep,ThreadLevelName priority)
 {
 	if ((!Status_Ok) || (thread_number==0)) return(false);
 
 	if (thread_number>CurrentThreadsAllocated)
 	{
 		TotalThreadsRequested=thread_number;
-		CreateThreadPool(offset_core,offset_ht,UseMaxPhysCore,SetAffinity,sleep);
+		CreateThreadPool(offset_core,offset_ht,UseMaxPhysCore,SetAffinity,sleep,priority);
 	}
 
 	return(Status_Ok);
 }
 
-bool ThreadPool::ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep)
-{
-	if ((!Status_Ok) || (CurrentThreadsAllocated==0)) return(false);
-
-	CreateThreadPool(offset_core,offset_ht,UseMaxPhysCore,SetAffinity,sleep);
-
-	return(Status_Ok);
-}
 
 bool ThreadPool::DeAllocateThreads(void)
 {
@@ -372,34 +371,74 @@ bool ThreadPool::DeAllocateThreads(void)
 }
 
 
-
-void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity,bool sleep)
+bool ThreadPool::ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity)
 {
-	int16_t i;
-
-	for(i=0; i<CurrentThreadsAllocated; i++)
-	{
-		SuspendThread(thds[i]);
-		ThreadSleep[i]=true;
-	}
+	if ((!Status_Ok) || (CurrentThreadsAllocated==0)) return(false);
 
 	CreateThreadsMasks(CPU,ThreadMask,TotalThreadsRequested,offset_core,offset_ht,UseMaxPhysCore);
 
-	for(i=0; i<CurrentThreadsAllocated; i++)
+	for(uint8_t i=0; i<CurrentThreadsAllocated; i++)
+		SetThreadAffinityMask(thds[i],SetAffinity?ThreadMask[i]:CPU.FullMask);
+
+	return(true);
+}
+
+
+bool ThreadPool::ChangeThreadsLevel(ThreadLevelName priority)
+{
+	if ((!Status_Ok) || (CurrentThreadsAllocated==0)) return(false);
+
+	if (priority!=NoneThreadLevel)
 	{
-		if (SetAffinity) SetThreadAffinityMask(thds[i],ThreadMask[i]);
-		else SetThreadAffinityMask(thds[i],CPU.FullMask);
-		if (!sleep)
+		const int nPr=TabThreadLevel[priority];
+
+		nPriority=priority;
+		for(int16_t i=0; i<(int16_t)CurrentThreadsUsed; i++)
+			SetThreadPriority(thds[i],nPr);
+	}
+
+	return(true);
+}
+
+
+void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,
+	bool SetAffinity,bool sleep,ThreadLevelName priority)
+{
+	int16_t i;
+
+	CreateThreadsMasks(CPU,ThreadMask,TotalThreadsRequested,offset_core,offset_ht,UseMaxPhysCore);
+
+	if (sleep)
+	{
+		for(i=0; i<(int16_t)CurrentThreadsAllocated; i++)
 		{
-			ResumeThread(thds[i]);
-			ThreadSleep[i]=false;
+			SetThreadAffinityMask(thds[i],SetAffinity?ThreadMask[i]:CPU.FullMask);
+			if (!ThreadSleep[i])
+			{
+				SuspendThread(thds[i]);
+				ThreadSleep[i]=true;
+			}
+		}
+	}
+	else
+	{
+		for(i=0; i<(int16_t)CurrentThreadsAllocated; i++)
+		{
+			SetThreadAffinityMask(thds[i],SetAffinity?ThreadMask[i]:CPU.FullMask);
+			if (ThreadSleep[i])
+			{
+				ResumeThread(thds[i]);
+				ThreadSleep[i]=false;
+			}
 		}
 	}
 
+	if (priority!=NoneThreadLevel) nPriority=priority;
+
 	if (CurrentThreadsAllocated==TotalThreadsRequested) return;
 
-	i=CurrentThreadsAllocated;
-	while ((i<TotalThreadsRequested) && Status_Ok)
+	i=(int16_t)CurrentThreadsAllocated;
+	while ((i<(int16_t)TotalThreadsRequested) && Status_Ok)
 	{
 		jobFinished[i]=CreateEvent(NULL,TRUE,TRUE,NULL);
 		nextJob[i]=CreateEvent(NULL,TRUE,FALSE,NULL);
@@ -414,15 +453,17 @@ void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool Use
 		return;
 	}
 
-	i=CurrentThreadsAllocated;
-	while ((i<TotalThreadsRequested) && Status_Ok)
+	const int nPr=TabThreadLevel[IdleThreadLevel];
+
+	i=(int16_t)CurrentThreadsAllocated;
+	while ((i<(int16_t)TotalThreadsRequested) && Status_Ok)
 	{
 		thds[i]=CreateThread(NULL,0,(LPTHREAD_START_ROUTINE)StaticThreadpool,&MT_Thread[i],CREATE_SUSPENDED,&tids[i]);
 		Status_Ok=Status_Ok && (thds[i]!=NULL);
 		if (Status_Ok)
 		{
-			if (SetAffinity) SetThreadAffinityMask(thds[i],ThreadMask[i]);
-			else SetThreadAffinityMask(thds[i],CPU.FullMask);
+			SetThreadAffinityMask(thds[i],SetAffinity?ThreadMask[i]:CPU.FullMask);
+			SetThreadPriority(thds[i],nPr);
 			if (!sleep)
 			{
 				ResumeThread(thds[i]);
@@ -437,14 +478,16 @@ void ThreadPool::CreateThreadPool(uint8_t offset_core,uint8_t offset_ht,bool Use
 }
 
 
-
-bool ThreadPool::RequestThreadPool(uint8_t thread_number,Public_MT_Data_Thread *Data)
+bool ThreadPool::RequestThreadPool(uint8_t thread_number,Public_MT_Data_Thread *Data,ThreadLevelName priority)
 {
 	if ((!Status_Ok) || (thread_number>CurrentThreadsAllocated)) return(false);
 	
+	const int nPr=TabThreadLevel[(priority!=NoneThreadLevel)?priority:nPriority];
+
 	for(uint8_t i=0; i<thread_number; i++)
 	{
 		MT_Thread[i].MTData=Data+i;
+		SetThreadPriority(thds[i],nPr);
 		if (ThreadSleep[i])
 		{
 			ResumeThread(thds[i]);
@@ -462,16 +505,22 @@ bool ThreadPool::ReleaseThreadPool(bool sleep)
 {
 	if (!Status_Ok) return(false);
 
-	for(uint8_t i=0; i<CurrentThreadsUsed; i++)
+	if (CurrentThreadsUsed>0)
 	{
-		if (sleep)
+		const int nPr=TabThreadLevel[IdleThreadLevel];
+
+		for(uint8_t i=0; i<CurrentThreadsUsed; i++)
 		{
-			SuspendThread(thds[i]);
-			ThreadSleep[i]=true;
+			if (sleep)
+			{
+				SuspendThread(thds[i]);
+				ThreadSleep[i]=true;
+			}
+			SetThreadPriority(thds[i],nPr);
+			MT_Thread[i].MTData=NULL;
 		}
-		MT_Thread[i].MTData=NULL;
+		CurrentThreadsUsed=0;
 	}
-	CurrentThreadsUsed=0;
 
 	return(true);
 }
@@ -503,4 +552,3 @@ bool ThreadPool::WaitThreadsEnd(void)
 
 	return(true);
 }
-

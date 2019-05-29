@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.51 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.52 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1107,7 +1107,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	
 	if (threads_number>1)
 	{
-		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
+		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,NoneThreadLevel,-1,false))
 			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
 
 		for (uint8_t b=0; b<PlaneMax; b++)
@@ -3902,12 +3902,15 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	const bool SetAffinity=args[16].AsBool(false);
 	const bool sleep = args[18].AsBool(false);
 	int prefetch = args[19].AsInt(0);
+	int thread_level=args[20].AsInt(6);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("nnedi3: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
 
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("nnedi3: [ThreadLevel] must be between 1 and 7.");
 			
 	const bool dh = args[2].AsBool(false);
 	if (((vi.height&1)!=0) && !dh)
@@ -3917,6 +3920,9 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -3933,7 +3939,8 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
@@ -3943,7 +3950,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
@@ -3952,7 +3959,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("nnedi3: Error with the TheadPool while allocating threadpool!");
@@ -4046,6 +4053,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 	const bool sleep = args[24].AsBool(false);
 	int prefetch = args[25].AsInt(0);
 	int range_mode = args[26].AsInt(1);
+	int thread_level=args[27].AsInt(6);
+	int thread_level_rs=args[28].AsInt(6);
 
 	if ((rfactor<2) || (rfactor>1024)) env->ThrowError("nnedi3_rpow2: 2 <= rfactor <= 1024, and rfactor be a power of 2!\n");
 	int rf=1,ct=0;
@@ -4077,11 +4086,18 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 	if (prefetch==0) prefetch=1;
 	if ((prefetch<0) || (prefetch>MAX_THREAD_POOL)) env->ThrowError("nnedi3_rpow2: [prefetch] must be between 0 and %d.", MAX_THREAD_POOL);
+	if ((thread_level<1) || (thread_level>7))
+		env->ThrowError("nnedi3_rpow2: [ThreadLevel] must be between 1 and 7.");
+	if ((thread_level_rs<1) || (thread_level_rs>7))
+		env->ThrowError("nnedi3_rpow2: [ThreadLevel_rs] must be between 1 and 7.");
 
 	uint8_t threads_number=1;
 
 	if (threads!=1)
 	{
+		const ThreadLevelName TabLevel[8]={NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,
+			BelowThreadLevel,NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
+
 		if (!poolInterface->CreatePool(prefetch)) env->ThrowError("nnedi3_rpow2: Unable to create ThreadPool!");
 
 		threads_number=poolInterface->GetThreadNumber(threads,LogicalCores);
@@ -4098,7 +4114,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 					for(uint8_t i=0; i<prefetch; i++)
 					{
-						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,true,true,i))
+						if (!poolInterface->AllocateThreads(threads_number,(uint8_t)ceil(Offset),0,MaxPhysCores,
+							true,true,TabLevel[thread_level],i))
 						{
 							poolInterface->DeAllocateAllThreads(true);
 							env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
@@ -4108,7 +4125,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				}
 				else
 				{
-					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,-1))
+					if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,false,true,TabLevel[thread_level],-1))
 					{
 						poolInterface->DeAllocateAllThreads(true);
 						env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
@@ -4117,7 +4134,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else
 			{
-				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,-1))
+				if (!poolInterface->AllocateThreads(threads_number,0,0,MaxPhysCores,SetAffinity,true,TabLevel[thread_level],-1))
 				{
 					poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("nnedi3_rpow2: Error with the TheadPool while allocating threadpool!");
@@ -4352,11 +4369,12 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			if ((type==0) || ((type!=3) && (ep0==-FLT_MAX)) ||
 				((type==3) && (ep0==-FLT_MAX) && (ep1==-FLT_MAX)))
 			{
-				AVSValue sargs[14] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+				AVSValue sargs[15] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor,threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,sleep,
-					prefetch,range_mode };
-				const char *nargs[14] = { 0, 0, 0, "src_left", "src_top", 
-					"src_width", "src_height","threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range" };
+					prefetch,range_mode,thread_level_rs };
+				const char *nargs[15] = { 0, 0, 0, "src_left", "src_top", 
+					"src_width", "src_height","threads","logicalCores","MaxPhysCore","SetAffinity","sleep",
+					"prefetch","range","ThreadLevel" };
 				const uint8_t nbarg=(use_rs_mt) ? 14:7;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
@@ -4432,12 +4450,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else if ((type!=3) || (min(ep0,ep1)==-FLT_MAX))
 			{
-				AVSValue sargs[15] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+				AVSValue sargs[16] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor, type==1?AVSValue((int)(ep0+0.5f)):
-					(type==2?ep0:max(ep0,ep1)),threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,sleep,prefetch,range_mode };
-				const char *nargs[15] = { 0, 0, 0, "src_left", "src_top", 
+					(type==2?ep0:max(ep0,ep1)),threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,
+					sleep,prefetch,range_mode,thread_level_rs };
+				const char *nargs[16] = { 0, 0, 0, "src_left", "src_top", 
 					"src_width", "src_height", type==1?"taps":(type==2?"p":(max(ep0,ep1)==ep0?"b":"c")),
-					"threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range" };
+					"threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range","ThreadLevel" };
 				const uint8_t nbarg=(use_rs_mt) ? 15:8;
 
 				v=env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
@@ -4513,12 +4532,12 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			}
 			else
 			{
-				AVSValue sargs[16] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
+				AVSValue sargs[17] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor, ep0, ep1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,
-					SetAffinity_rs,sleep,prefetch,range_mode };
-				const char *nargs[16] = { 0, 0, 0, "src_left", "src_top", 
+					SetAffinity_rs,sleep,prefetch,range_mode,thread_level_rs };
+				const char *nargs[17] = { 0, 0, 0, "src_left", "src_top", 
 					"src_width", "src_height", "b", "c", "threads","logicalCores","MaxPhysCore","SetAffinity",
-					"sleep","prefetch","range" };
+					"sleep","prefetch","range","ThreadLevel" };
 				const uint8_t nbarg=(use_rs_mt) ? 16:9;
 
 				v = env->Invoke(cshift,AVSValue(sargs,nbarg),nargs).AsClip();
@@ -4599,11 +4618,11 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 			{
 				if (vi.Is420())
 				{
-					AVSValue sargs[14]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
+					AVSValue sargs[15]={vu,(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,0.0,-0.25,
 						(vi.width*rfactor)>>1,(vi.height*rfactor)>>1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,
-						SetAffinity_rs,sleep,prefetch,plane_range[1]};
-					const char *nargs[14]={0,0,0,"src_left","src_top","src_width","src_height","threads",
-					"logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range" };
+						SetAffinity_rs,sleep,prefetch,plane_range[1],thread_level_rs};
+					const char *nargs[15]={0,0,0,"src_left","src_top","src_width","src_height","threads",
+					"logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range","ThreadLevel" };
 					const uint8_t nbarg=(SplineMT) ? 14:7;
 
 					vu = env->Invoke(Spline36,AVSValue(sargs,nbarg),nargs).AsClip();
@@ -4663,10 +4682,12 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 	if (!poolInterface->GetThreadPoolInterfaceStatus()) env->ThrowError("nnedi3: Error with the TheadPool status!");
 
 	env->AddFunction("nnedi3", "c[field]i[dh]b[Y]b[U]b[V]b[nsize]i[nns]i[qual]i[etype]i[pscrn]i" \
-		"[threads]i[opt]i[fapprox]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[A]b[sleep]b[prefetch]i[range]i", Create_nnedi3, 0);
+		"[threads]i[opt]i[fapprox]i[logicalCores]b[MaxPhysCore]b[SetAffinity]b[A]b[sleep]b[prefetch]i" \
+		"[range]i[ThreadLevel]i", Create_nnedi3, 0);
 	env->AddFunction("nnedi3_rpow2", "c[rfactor]i[nsize]i[nns]i[qual]i[etype]i[pscrn]i[cshift]s[fwidth]i" \
 		"[fheight]i[ep0]f[ep1]f[threads]i[opt]i[fapprox]i[csresize]b[mpeg2]b[logicalCores]b[MaxPhysCore]b" \
-		"[SetAffinity]b[threads_rs]i[logicalCores_rs]b[MaxPhysCore_rs]b[SetAffinity_rs]b[sleep]b[prefetch]i[range]i", Create_nnedi3_rpow2, 0);
+		"[SetAffinity]b[threads_rs]i[logicalCores_rs]b[MaxPhysCore_rs]b[SetAffinity_rs]b[sleep]b" \
+		"[prefetch]i[range]i[ThreadLevel]i[ThreadLevel_rs]i", Create_nnedi3_rpow2, 0);
 
 	return "NNEDI3 plugin";
 	

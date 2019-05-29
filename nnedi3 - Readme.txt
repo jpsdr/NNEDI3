@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.51 (27/05/2018)                                         |
+                                     v0.9.4.52 (30/05/2019)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -21,13 +21,13 @@ INFO:
 
     nnedi3(int field, bool dh, bool Y, bool U, bool V, int nsize, int nns, int qual, int etype,
            int pscrn, int threads, int opt, int fapprox, bool logicalCores, bool MaxPhysCore, bool SetAffinity,
-           bool A, bool sleep, int prefetch, int range)
+           bool A, bool sleep, int prefetch, int range,int ThreadLevel)
 
     nnedi3_rpow2(int rfactor, int nsize, int nns, int qual, int etype, int pscrn, string cshift,
                  int fwidth, int fheight, float ep0, float ep1, int threads, int opt, int fapprox,
                  bool csresize, bool mpeg2,bool logicalCores, bool MaxPhysCore, bool SetAffinity,
                  int threads_rs,bool logicalCores_rs, bool MaxPhysCore_rs, bool SetAffinity_rs,
-                 bool sleep, int prefetch, int range)
+                 bool sleep, int prefetch, int range,int ThreadLevel)
 
 
 
@@ -272,6 +272,18 @@ PARAMETERS (nnedi3):
 
       Default: 1
 
+  ThreadLevel -
+      This parameter will set the priority level of the threads created for the processing (internal
+      multithreading). No effect if threads=1.
+      1 : Idle level.
+      2 : Lowest level.
+      3 : Below level.
+      4 : Normal level.
+      5 : Above level.
+      6 : Highest level.
+      7 : Time critical level (WARNING !!! use this level at your own risk)
+
+      Default : 6
 
 The logicalCores, MaxPhysCore, SetAffinity and sleep are parameters to specify how the pool of thread
 will be created and handled, allowing if necessary each people to tune according his configuration.

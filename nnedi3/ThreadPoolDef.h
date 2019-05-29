@@ -2,7 +2,7 @@
  *  Threadpool
  *
  *  Create and manage a threadpool.
- *  Copyright (C) 2017 JPSDR
+ *  Copyright (C) 2016 JPSDR
  *	
  *  Threadpool is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,6 +31,8 @@
 
 typedef void (*ThreadPoolFunction)(void *ptr);
 
+enum ThreadLevelName {NoneThreadLevel,IdleThreadLevel,LowestThreadLevel,BelowThreadLevel,
+	NormalThreadLevel,AboveThreadLevel,HighestThreadLevel,CriticalThreadLevel};
 
 typedef struct _Public_MT_Data_Thread
 {
