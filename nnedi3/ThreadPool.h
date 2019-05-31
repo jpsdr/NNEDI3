@@ -27,7 +27,7 @@
 
 #include "ThreadPoolDef.h"
 
-#define THREADPOOL_VERSION "ThreadPool 1.4.0"
+#define THREADPOOL_VERSION "ThreadPool 1.4.1"
 
 typedef struct _MT_Data_Thread
 {
@@ -61,10 +61,15 @@ class ThreadPool
 	uint8_t GetThreadNumber(uint8_t thread_number,bool logical);
 	bool AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,
 		bool SetAffinity,bool sleep,ThreadLevelName priority);
+	bool AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,
+		bool SetAffinity,bool sleep)
+		{return(AllocateThreads(thread_number,offset_core,offset_ht,UseMaxPhysCore,SetAffinity,sleep,NormalThreadLevel));}
 	bool DeAllocateThreads(void);
 	bool ChangeThreadsAffinity(uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,bool SetAffinity);
 	bool ChangeThreadsLevel(ThreadLevelName priority);
 	bool RequestThreadPool(uint8_t thread_number,Public_MT_Data_Thread *Data,ThreadLevelName priority);
+	bool RequestThreadPool(uint8_t thread_number,Public_MT_Data_Thread *Data)
+		{return(RequestThreadPool(thread_number,Data,NoneThreadLevel));}
 	bool ReleaseThreadPool(bool sleep);
 	bool StartThreads(void);
 	bool WaitThreadsEnd(void);

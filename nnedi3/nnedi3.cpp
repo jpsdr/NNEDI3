@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.52 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.53 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -1107,7 +1107,7 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	
 	if (threads_number>1)
 	{
-		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,NoneThreadLevel,-1,false))
+		if (!poolInterface->RequestThreadPool(UserId,threads_number,MT_Thread,-1,false))
 			env->ThrowError("nnedi3: Error with the TheadPool while requesting threadpool !");
 
 		for (uint8_t b=0; b<PlaneMax; b++)
