@@ -410,10 +410,10 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
-   31/05/2018  v0.9.4.53
+   31/05/2019  v0.9.4.53
        * Minor code change for threadpool update.
 
-   30/05/2018  v0.9.4.52
+   30/05/2019  v0.9.4.52
        + Update in the threadpool, add ThreadLevel parameter.
 
    27/05/2018  v0.9.4.51
