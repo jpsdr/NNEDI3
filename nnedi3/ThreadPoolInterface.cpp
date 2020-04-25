@@ -1548,10 +1548,6 @@ bool ThreadPoolInterface::WaitThreadsEndCore(uint16_t UserId,int8_t nPool)
 	bool out=ptr->WaitThreadsEnd();
 	EnterCriticalSection(&CriticalSection);
 
-	ThreadWaitEnd[nPool]=false;
-
-	int8_t nPool2=-1;
-
 	int16_t index=GetUserIdIndex(UserId);
 
 	if ((!Status_Ok) || (index==-1))
@@ -1559,6 +1555,16 @@ bool ThreadPoolInterface::WaitThreadsEndCore(uint16_t UserId,int8_t nPool)
 		LeaveCriticalSection(&CriticalSection);
 		return(false);
 	}
+
+	nPool=TabId[index].nPool;
+
+	if ((nPool<0) || (nPool>=(int8_t)NbrePool))
+	{
+		LeaveCriticalSection(&CriticalSection);
+		return(false);
+	}
+
+	ThreadWaitEnd[nPool]=false;
 
 	if (out)
 	{
