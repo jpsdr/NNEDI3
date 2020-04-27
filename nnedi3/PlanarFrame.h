@@ -27,8 +27,8 @@
 #include <windows.h>
 #include <malloc.h>
 #include <stdint.h>
-#include "internal.h"
-#include ".\avs\cpuid.h"
+#include "./internal.h"
+#include "./avs/cpuid.h"
 
 #define MIN_PAD 10
 #define MIN_ALIGNMENT 64

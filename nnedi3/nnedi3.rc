@@ -1,6 +1,6 @@
 // Microsoft Visual C++ generated resource script.
 //
-#include "resource.h"
+#include "./resource.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////
@@ -23,7 +23,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // BINARY
 //
 
-IDR_BINARY1             BINARY                  "binary1.bin"
+IDR_BINARY1             BINARY                  "./binary1.bin"
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////

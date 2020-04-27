@@ -20,7 +20,7 @@
 **   Modified by JPSDR
 */
 
-#include "nnedi3.h"
+#include "./nnedi3.h"
 
 #if _MSC_VER >= 1900
 #define AVX2_BUILD_POSSIBLE
@@ -1674,7 +1674,6 @@ void evalFunc_1(void *ps)
 	const float *weights0 = pss->weights0;
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
-	const int fapprox = pss->fapprox;
 	const bool int16_prescreener = pss->int16_prescreener;
 	void (*uc2s)(const uint8_t*,const int,float*);
 	void (*computeNetwork0)(const float*,const float*,uint8_t*);
@@ -2132,7 +2131,6 @@ void evalFunc_1_16(void *ps)
 	const float *weights0 = pss->weights0;
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
-	const int fapprox = pss->fapprox;
 	const bool int16_prescreener = pss->int16_prescreener;
 	const uint8_t bits_per_pixel = pss->bits_per_pixel;
 	void(*uc2s)(const uint8_t*, const int, float*);
@@ -2382,7 +2380,6 @@ int processLine0_C_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 	const float *src4 = (float *)(src3p + (src_pitch << 2));
 	const float *src6 = (float *)(src3p + (src_pitch * 6));
 	float *dst0 = (float *)dstp;
-	uint32_t *dst = (uint32_t *)dstp;
 
 	for (int x=0; x<width; x++)
 	{
@@ -2452,7 +2449,6 @@ void evalFunc_1_32(void *ps)
 	const float *weights0 = pss->weights0;
 	const int opt = pss->opt;
 	const int pscrn = pss->pscrn;
-	const int fapprox = pss->fapprox;
 	void(*uc2s)(const uint8_t*, const int, float*);
 	void(*computeNetwork0)(const float*, const float*, uint8_t*);
 	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int);
@@ -3900,7 +3896,6 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	const bool LogicalCores=args[14].AsBool(true);
 	const bool MaxPhysCores=args[15].AsBool(true);
 	const bool SetAffinity=args[16].AsBool(false);
-	const bool sleep = args[18].AsBool(false);
 	int prefetch = args[19].AsInt(0);
 	int thread_level=args[20].AsInt(6);
 

@@ -24,9 +24,9 @@
 #include <tchar.h>
 #include <float.h>
 #include <stdio.h>
-#include "avisynth.h"
-#include "PlanarFrame.h"
-#include "ThreadPoolInterface.h"
+#include "./avisynth.h"
+#include "./PlanarFrame.h"
+#include "./ThreadPoolInterface.h"
 
 #define NUM_NSIZE 7
 #define NUM_NNS 5

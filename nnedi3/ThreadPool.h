@@ -25,7 +25,7 @@
 
 #include <Windows.h>
 
-#include "ThreadPoolDef.h"
+#include "./ThreadPoolDef.h"
 
 #define THREADPOOL_VERSION "ThreadPool 1.4.1"
 

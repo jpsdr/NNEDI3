@@ -23,7 +23,7 @@
 // ThreadPoolDLL.cpp : Define the exported functions for using with the threadpool.
 // Kind of API.
 
-#include "ThreadPool.h"
+#include "./ThreadPool.h"
 
 #define myfree(ptr) if (ptr!=NULL) { free(ptr); ptr=NULL;}
 #define myCloseHandle(ptr) if (ptr!=NULL) { CloseHandle(ptr); ptr=NULL;}

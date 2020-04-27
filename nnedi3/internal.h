@@ -46,7 +46,7 @@
 #define MC_ReturnVideoFrameBuffer 0xFFFF0001
 
 
-#include "avisynth.h"
+#include "./avisynth.h"
 
 
 

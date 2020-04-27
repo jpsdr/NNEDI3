@@ -20,8 +20,8 @@
  *
  */
 
-#include "ThreadPoolInterface.h"
-#include "ThreadPool.h"
+#include "./ThreadPoolInterface.h"
+#include "./ThreadPool.h"
 
 #define myfree(ptr) if (ptr!=NULL) { free(ptr); ptr=NULL;}
 #define myCloseHandle(ptr) if (ptr!=NULL) { CloseHandle(ptr); ptr=NULL;}

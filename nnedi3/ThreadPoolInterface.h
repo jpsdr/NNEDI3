@@ -25,7 +25,7 @@
 
 #include <Windows.h>
 
-#include "ThreadPoolDef.h"
+#include "./ThreadPoolDef.h"
 
 #define THREADPOOLINTERFACE_VERSION "ThreadPoolInterface 1.9.2"
 
