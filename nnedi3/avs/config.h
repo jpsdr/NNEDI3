@@ -52,19 +52,83 @@
 #   error Unsupported CPU architecture.
 #endif
 
-#if   defined(_MSC_VER)
+//            VC++  LLVM-Clang-cl   MinGW-Gnu
+// MSVC        x          x
+// MSVC_PURE   x
+// CLANG                  x
+// GCC                                  x
+
+#if defined(__clang__)
+// Check clang first. clang-cl also defines __MSC_VER
+// We set MSVC because they are mostly compatible
+#   define CLANG
+#if defined(_MSC_VER)
 #   define MSVC
+#   define AVS_FORCEINLINE __attribute__((always_inline))
+#else
+#   define AVS_FORCEINLINE __attribute__((always_inline)) inline
+#endif
+#elif   defined(_MSC_VER)
+#   define MSVC
+#   define MSVC_PURE
+#   define AVS_FORCEINLINE __forceinline
 #elif defined(__GNUC__)
 #   define GCC
-#elif defined(__clang__)
-#   define CLANG
+#   define AVS_FORCEINLINE __attribute__((always_inline)) inline
 #else
 #   error Unsupported compiler.
-#endif
-
-#if   defined(GCC)
+#   define AVS_FORCEINLINE inline
 #   undef __forceinline
 #   define __forceinline inline
+#endif
+
+#if defined(_WIN32)
+#   define AVS_WINDOWS
+#elif defined(__linux__)
+#   define AVS_LINUX
+#   define AVS_POSIX
+#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+#   define AVS_BSD
+#   define AVS_POSIX
+#elif defined(__APPLE__)
+#   define AVS_MACOS
+#   define AVS_POSIX
+#else
+#   error Operating system unsupported.
+#endif
+
+// useful warnings disabler macros for supported compilers
+
+#if defined(_MSC_VER)
+#define DISABLE_WARNING_PUSH           __pragma(warning( push ))
+#define DISABLE_WARNING_POP            __pragma(warning( pop ))
+#define DISABLE_WARNING(warningNumber) __pragma(warning( disable : warningNumber ))
+
+#define DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE      DISABLE_WARNING(4101)
+#define DISABLE_WARNING_UNREFERENCED_FUNCTION            DISABLE_WARNING(4505)
+// other warnings you want to deactivate...
+
+#elif defined(__GNUC__) || defined(__clang__)
+#define DO_PRAGMA(X) _Pragma(#X)
+#define DISABLE_WARNING_PUSH           DO_PRAGMA(GCC diagnostic push)
+#define DISABLE_WARNING_POP            DO_PRAGMA(GCC diagnostic pop)
+#define DISABLE_WARNING(warningName)   DO_PRAGMA(GCC diagnostic ignored #warningName)
+
+#define DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE      DISABLE_WARNING(-Wunused-variable)
+#define DISABLE_WARNING_UNREFERENCED_FUNCTION            DISABLE_WARNING(-Wunused-function)
+// other warnings you want to deactivate...
+
+#else
+#define DISABLE_WARNING_PUSH
+#define DISABLE_WARNING_POP
+#define DISABLE_WARNING_UNREFERENCED_LOCAL_VARIABLE
+#define DISABLE_WARNING_UNREFERENCED_FUNCTION
+// other warnings you want to deactivate...
+
+#endif
+
+#if defined(AVS_POSIX)
+#define NEW_AVSVALUE
 #endif
 
 #endif //AVS_CONFIG_H

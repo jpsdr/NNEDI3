@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.53 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.54 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -82,12 +82,12 @@ protected:
 	uint16_t UserId;
 	uint8_t *NNPixels[PLANE_MAX];
 	
-	bool grey,avsp,isRGBPfamily,isAlphaChannel;
+	bool grey,avsp,isRGBPfamily,isAlphaChannel,has_at_least_v8;
 	uint8_t pixelsize; // AVS16
 	uint8_t bits_per_pixel;
 
 	void calcStartEnd2(PVideoFrame dst);
-	void copyPad(int n,int fn,IScriptEnvironment *env);
+	void copyPad(const PVideoFrame &src,int n,int fn,IScriptEnvironment *env);
 
 	ThreadPoolFunction StaticThreadpoolF;
 
