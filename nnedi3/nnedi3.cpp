@@ -3902,7 +3902,7 @@ AVSValue __cdecl Create_nnedi3(AVSValue args, void* user_data, IScriptEnvironmen
 	const bool MaxPhysCores=args[15].AsBool(true);
 	const bool SetAffinity=args[16].AsBool(false);
 	int prefetch = args[19].AsInt(0);
-	int thread_level=args[20].AsInt(6);
+	int thread_level=args[21].AsInt(6);
 
 	if ((threads<0) || (threads>MAX_MT_THREADS))
 		env->ThrowError("nnedi3: [threads] must be between 0 and %ld.",MAX_MT_THREADS);
