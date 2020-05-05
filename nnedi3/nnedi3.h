@@ -87,7 +87,7 @@ protected:
 	uint8_t bits_per_pixel;
 
 	void calcStartEnd2(void);
-	PVideoFrame copyPad(int n,int fn,IScriptEnvironment *env);
+	void copyPad(PVideoFrame &src,int fn,IScriptEnvironment *env);
 
 	ThreadPoolFunction StaticThreadpoolF;
 

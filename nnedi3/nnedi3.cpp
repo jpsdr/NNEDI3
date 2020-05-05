@@ -1058,7 +1058,10 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 	}
 	else field_n = field;
 
-	PVideoFrame src = copyPad(field>1?(n>>1):n,field_n,env);
+	const int x = (field>1)?(n>>1):n;
+	PVideoFrame src = child->GetFrame(x,env);
+
+	copyPad(src,field_n,env);
 	
 	const uint8_t PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
@@ -1204,10 +1207,9 @@ PVideoFrame __stdcall nnedi3::GetFrame(int n, IScriptEnvironment *env)
 }
 
 
-PVideoFrame nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
+void nnedi3::copyPad(PVideoFrame &src, int fn, IScriptEnvironment *env)
 {
 	const int off = 1-fn;
-	PVideoFrame src = child->GetFrame(n,env);
 	
 	const uint8_t PlaneMax=(grey) ? 1:(isAlphaChannel) ? 4:3;
 	int plane[4];
@@ -1382,7 +1384,6 @@ PVideoFrame nnedi3::copyPad(int n, int fn, IScriptEnvironment *env)
 			off2-=dst_pitch2;
 		}
 	}
-	return(src);
 }
 
 
