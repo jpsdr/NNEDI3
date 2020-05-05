@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.54 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.55 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -86,8 +86,8 @@ protected:
 	uint8_t pixelsize; // AVS16
 	uint8_t bits_per_pixel;
 
-	void calcStartEnd2(PVideoFrame dst);
-	void copyPad(const PVideoFrame &src,int n,int fn,IScriptEnvironment *env);
+	void calcStartEnd2(void);
+	PVideoFrame copyPad(int n,int fn,IScriptEnvironment *env);
 
 	ThreadPoolFunction StaticThreadpoolF;
 
