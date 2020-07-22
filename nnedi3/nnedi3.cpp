@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.56 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.57 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -4362,7 +4362,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				|| (_strnicmp(cshift,"lanczos4resizemt",16)==0) || (_strnicmp(cshift,"blackmanresizemt",16)==0)
 				|| (_strnicmp(cshift,"spline16resizemt",16)==0) || (_strnicmp(cshift,"spline36resizemt",16)==0)
 				|| (_strnicmp(cshift,"spline64resizemt",16)==0) || (_strnicmp(cshift,"gaussresizemt",13)==0)
-				|| (_strnicmp(cshift,"sincresizemt",12)==0));
+				|| (_strnicmp(cshift,"sincresizemt",12)==0) || (_strnicmp(cshift,"sinpowresizemt",14)==0));
 
 			int type = 0;
 			
@@ -4370,7 +4370,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				|| (_strnicmp(cshift,"sincresize",10)==0)) type=1;
 			else
 			{
-				if (_strnicmp(cshift,"gaussresize",11)==0) type=2;
+				if ((_strnicmp(cshift,"gaussresize",11)==0) || (_strnicmp(cshift,"sinpowresize",12)==0)) type=2;
 				else
 				{
 					if (_strnicmp(cshift,"bicubicresize",13)==0) type=3;
