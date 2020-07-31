@@ -4362,12 +4362,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				|| (_strnicmp(cshift,"lanczos4resizemt",16)==0) || (_strnicmp(cshift,"blackmanresizemt",16)==0)
 				|| (_strnicmp(cshift,"spline16resizemt",16)==0) || (_strnicmp(cshift,"spline36resizemt",16)==0)
 				|| (_strnicmp(cshift,"spline64resizemt",16)==0) || (_strnicmp(cshift,"gaussresizemt",13)==0)
-				|| (_strnicmp(cshift,"sincresizemt",12)==0) || (_strnicmp(cshift,"sinpowresizemt",14)==0));
+				|| (_strnicmp(cshift,"sincresizemt",12)==0) || (_strnicmp(cshift,"sinpowresizemt",14)==0)
+				|| (_strnicmp(cshift,"sinclin2resizemt",16)==0));
 
 			int type = 0;
 			
 			if ((_strnicmp(cshift,"blackmanresize",14)==0) || (_strnicmp(cshift,"lanczosresize",13)==0)
-				|| (_strnicmp(cshift,"sincresize",10)==0)) type=1;
+				|| (_strnicmp(cshift,"sincresize",10)==0) || (_strnicmp(cshift,"sinclin2resize",14)==0)) type=1;
 			else
 			{
 				if ((_strnicmp(cshift,"gaussresize",11)==0) || (_strnicmp(cshift,"sinpowresize",12)==0)) type=2;
