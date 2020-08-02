@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.57 (22/07/2020)                                         |
+                                     v0.9.4.57 (02/08/2020)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -410,8 +410,8 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
-   22/07/2020  v0.9.4.57
-       + Add SinPowResizeMT in nnedi3_rpow2 internal resizers.
+   02/08/2020  v0.9.4.57
+       + Add new resamplers in nnedi3_rpow2 internal resizers.
 
    17/07/2020  v0.9.4.56
        * Fix issue in 4:2:0 when dh=false and height not mod 4.
