@@ -27,13 +27,13 @@
 
 #include "./ThreadPoolDef.h"
 
-#define THREADPOOLINTERFACE_VERSION "ThreadPoolInterface 1.9.3"
+#define THREADPOOLINTERFACE_VERSION "ThreadPoolInterface 1.9.4"
 
 typedef struct _UserData
 {
-	volatile uint16_t UserId;
-	volatile int8_t nPool;
-	volatile bool nPollTab[MAX_THREAD_POOL];
+	uint16_t UserId;
+	int8_t nPool;
+	bool nPollTab[MAX_THREAD_POOL];
 } UserData;
 
 
@@ -86,8 +86,8 @@ class ThreadPoolInterface
 	
 	protected :
 	
-	volatile bool Status_Ok;
-	volatile uint8_t NbrePool;
+	bool Status_Ok;
+	uint8_t NbrePool;
 	
 	public :
 
@@ -103,16 +103,16 @@ class ThreadPoolInterface
 	BOOL CSectionOk;
 	HANDLE JobsEnded[MAX_THREAD_POOL],ThreadPoolFree[MAX_THREAD_POOL];
 	UserData TabId[MAX_USERS];
-	volatile uint16_t NbreUsers;
+	uint16_t NbreUsers;
 	HANDLE EndExclusive;
-	volatile bool Error_Occured;
+	bool Error_Occured;
 
-	volatile bool ThreadPoolRequested[MAX_THREAD_POOL],JobsRunning[MAX_THREAD_POOL];
-	volatile bool ThreadPoolReleased[MAX_THREAD_POOL],ThreadWaitEnd[MAX_THREAD_POOL];
-	volatile bool ThreadPoolWaitFree[MAX_THREAD_POOL];
-	volatile uint16_t ThreadPoolUserId[MAX_THREAD_POOL];
-	volatile bool ExclusiveMode;
-	volatile uint8_t NbrePoolEvent;
+	bool ThreadPoolRequested[MAX_THREAD_POOL],JobsRunning[MAX_THREAD_POOL];
+	bool ThreadPoolReleased[MAX_THREAD_POOL],ThreadWaitEnd[MAX_THREAD_POOL];
+	bool ThreadPoolWaitFree[MAX_THREAD_POOL];
+	uint16_t ThreadPoolUserId[MAX_THREAD_POOL];
+	bool ExclusiveMode;
+	uint8_t NbrePoolEvent;
 
 	bool CreatePoolEvent(uint8_t num);
 	void FreeData(void);
@@ -136,4 +136,3 @@ class ThreadPoolInterface
 };
 
 #endif // __ThreadPoolInterface_H__
-
