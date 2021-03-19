@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.57 (02/08/2020)                                         |
+                                     v0.9.4.58 (19/03/2021)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -410,6 +410,9 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   19/03/2021  v0.9.4.58
+       + Add new resampler in nnedi3_rpow2 internal resizers.
+
    02/08/2020  v0.9.4.57
        + Add new resamplers in nnedi3_rpow2 internal resizers.
 
