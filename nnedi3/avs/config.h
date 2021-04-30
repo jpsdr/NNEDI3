@@ -48,6 +48,15 @@
 #   define X86_64
 #elif defined(_M_IX86) || defined(__i386__)
 #   define X86_32
+// VS2017 introduced _M_ARM64
+#elif defined(_M_ARM64) || defined(__aarch64__)
+#   define ARM64
+#elif defined(_M_ARM) || defined(__arm__)
+#   define ARM32
+#elif defined(__PPC64__)
+#   define PPC64
+#elif defined(_M_PPC) || defined(__PPC__) || defined(__POWERPC__)
+#   define PPC32
 #else
 #   error Unsupported CPU architecture.
 #endif
@@ -93,6 +102,9 @@
 #elif defined(__APPLE__)
 #   define AVS_MACOS
 #   define AVS_POSIX
+#elif defined(__HAIKU__)
+#   define AVS_HAIKU
+#   define AVS_POSIX
 #else
 #   error Operating system unsupported.
 #endif
@@ -129,6 +141,15 @@
 
 #if defined(AVS_POSIX)
 #define NEW_AVSVALUE
+#else
+#define NEW_AVSVALUE
+#endif
+
+#if defined(AVS_WINDOWS)
+// Windows XP does not have proper initialization for
+// thread local variables.
+// Use workaround instead __declspec(thread)
+#define XP_TLS
 #endif
 
 #endif //AVS_CONFIG_H
