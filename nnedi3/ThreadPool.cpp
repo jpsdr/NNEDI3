@@ -88,7 +88,7 @@ static void Get_CPU_Info(Arch_CPU& cpu)
 
     ptr=buffer;
 
-    while ((byteOffset+sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION))<=returnLength) 
+    while ((processorCoreCount<MAX_PHYSICAL_CORES) && ((byteOffset+sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION))<=returnLength))
     {
         switch (ptr->Relationship) 
         {

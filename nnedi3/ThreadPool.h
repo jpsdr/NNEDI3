@@ -27,7 +27,9 @@
 
 #include "./ThreadPoolDef.h"
 
-#define THREADPOOL_VERSION "ThreadPool 1.4.2"
+#define THREADPOOL_VERSION "ThreadPool 1.4.3"
+
+#define MAX_PHYSICAL_CORES 64
 
 typedef struct _MT_Data_Thread
 {
@@ -40,8 +42,8 @@ typedef struct _MT_Data_Thread
 typedef struct _Arch_CPU
 {
 	uint8_t NbPhysCore,NbLogicCPU;
-	uint8_t NbHT[64];
-	ULONG_PTR ProcMask[64];
+	uint8_t NbHT[MAX_PHYSICAL_CORES];
+	ULONG_PTR ProcMask[MAX_PHYSICAL_CORES];
 	ULONG_PTR FullMask;
 } Arch_CPU;
 
