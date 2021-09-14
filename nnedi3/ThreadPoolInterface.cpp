@@ -260,6 +260,7 @@ ThreadPoolInterface::ThreadPoolInterface(void):CSectionOk(FALSE),Status_Ok(false
 
 	EndExclusive=NULL;
 	ExclusiveMode=false;
+	NbreUsers=0;
 
 	for (uint8_t i=0; i<MAX_THREAD_POOL; i++)
 	{

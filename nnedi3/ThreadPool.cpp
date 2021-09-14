@@ -243,6 +243,8 @@ ThreadPool::ThreadPool(void): Status_Ok(true)
 		MT_Thread[i].jobFinished=NULL;
 		MT_Thread[i].nextJob=NULL;
 		thds[i]=NULL;
+		tids[i]=0;
+		ThreadMask[i]=0;
 		ThreadSleep[i]=true;
 	}
 	nPriority=NormalThreadLevel;

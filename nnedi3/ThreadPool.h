@@ -27,7 +27,7 @@
 
 #include "./ThreadPoolDef.h"
 
-#define THREADPOOL_VERSION "ThreadPool 1.4.3"
+#define THREADPOOL_VERSION "ThreadPool 1.4.4"
 
 #define MAX_PHYSICAL_CORES 64
 
