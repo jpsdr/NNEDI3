@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.59 (30/06/2021)                                         |
+                                     v0.9.4.60 (06/02/2022)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -410,6 +410,9 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   06/02/2022  v0.9.4.60
+       * Fix in threadpool when using prefetch.
+
    30/06/2021  v0.9.4.59
        * Fix in threadpool if you have too much cores.
 

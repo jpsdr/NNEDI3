@@ -27,13 +27,16 @@
 
 #include "./ThreadPoolDef.h"
 
-#define THREADPOOLINTERFACE_VERSION "ThreadPoolInterface 1.9.6"
+#define THREADPOOLINTERFACE_VERSION "ThreadPoolInterface 1.10.0"
+
 
 typedef struct _UserData
 {
 	uint16_t UserId;
-	int8_t nPool;
-	bool nPollTab[MAX_THREAD_POOL];
+	bool AllowSeveral;
+	bool AllowWaiting;
+	int8_t NbrePool;
+	int8_t UsedPool[MAX_THREAD_POOL];
 } UserData;
 
 
@@ -48,7 +51,7 @@ class ThreadPoolInterface
 	int16_t AddPool(uint8_t num);
 	bool CreatePool(uint8_t num);
 	bool DeletePool(uint8_t num);
-	bool RemovePool(uint8_t num);
+	bool RemovePool(uint8_t num);	
 	bool AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,
 		bool SetAffinity,bool sleep,ThreadLevelName priority,int8_t nPool);
 	bool AllocateThreads(uint8_t thread_number,uint8_t offset_core,uint8_t offset_ht,bool UseMaxPhysCore,
@@ -64,23 +67,36 @@ class ThreadPoolInterface
 	bool DeAllocateAllThreads(bool check);
 	bool RequestThreadPool(uint16_t UserId,uint8_t thread_number,Public_MT_Data_Thread *Data,
 		ThreadLevelName priority,int8_t nPool,bool Exclusive);
-	bool RequestThreadPool(uint16_t UserId,uint8_t thread_number,Public_MT_Data_Thread *Data,
-		ThreadLevelName priority,int8_t &nPool,bool Exclusive,bool AllowSeveral);
+	bool RequestThreadPool(uint16_t UserId,int8_t &idxPool,uint8_t thread_number,Public_MT_Data_Thread *Data,
+		ThreadLevelName priority,int8_t &nPool,bool Exclusive);
+	bool RequestThreadPool(uint16_t UserId,int8_t &idxPool,uint8_t thread_number,Public_MT_Data_Thread *Data);
+	bool RequestThreadPool(uint16_t UserId,int8_t &idxPool,uint8_t thread_number,Public_MT_Data_Thread *Data,
+		ThreadLevelName priority);
 	bool RequestThreadPool(uint16_t UserId,uint8_t thread_number,Public_MT_Data_Thread *Data,
 		int8_t nPool,bool Exclusive)
 		{return(RequestThreadPool(UserId,thread_number,Data,NoneThreadLevel,nPool,Exclusive));}
+	bool RequestThreadPool(uint16_t UserId,uint8_t thread_number,Public_MT_Data_Thread *Data)
+		{return(RequestThreadPool(UserId,thread_number,Data,NoneThreadLevel,-1,false));}
 	bool RequestThreadPool(uint16_t UserId,uint8_t thread_number,Public_MT_Data_Thread *Data,
-		int8_t &nPool,bool Exclusive,bool AllowSeveral)
-		{return(RequestThreadPool(UserId,thread_number,Data,NoneThreadLevel,nPool,Exclusive,AllowSeveral));}
+		ThreadLevelName priority)
+		{return(RequestThreadPool(UserId,thread_number,Data,priority,-1,false));}
 	bool ReleaseThreadPool(uint16_t UserId,bool sleep);
-	bool ReleaseThreadPool(uint16_t UserId,bool sleep,int8_t nPool);
+	bool ReleaseThreadPool(uint16_t UserId,bool sleep,int8_t idxPool);
 	bool StartThreads(uint16_t UserId);
-	bool StartThreads(uint16_t UserId,int8_t nPool);
+	bool StartThreads(uint16_t UserId,int8_t idxPool);
 	bool WaitThreadsEnd(uint16_t UserId);
-	bool WaitThreadsEnd(uint16_t UserId,int8_t nPool);
-	bool GetThreadPoolStatus(uint16_t UserId,int8_t nPool);
-	uint8_t GetCurrentThreadAllocated(uint16_t UserId,int8_t nPool);
-	uint8_t GetCurrentThreadUsed(uint16_t UserId,int8_t nPool);
+	bool WaitThreadsEnd(uint16_t UserId,int8_t idxPool);
+	bool GetThreadPoolStatus(uint16_t UserId,int8_t idxPool,int8_t nPool);
+	uint8_t GetCurrentThreadAllocated(uint16_t UserId,int8_t idxPool,int8_t nPool);
+	uint8_t GetCurrentThreadUsed(uint16_t UserId,int8_t idxPool,int8_t nPool);
+	bool EnableAllowSeveral(uint16_t UserId);
+	bool DisableAllowSeveral(uint16_t UserId);
+	bool IsAllowedSeveral(uint16_t UserId);
+	bool EnableWaitonRequest(uint16_t UserId);
+	bool DisableWaitonRequest(uint16_t UserId);
+	int8_t GetPoolAllocated(uint16_t UserId);
+	int8_t GetPoolNumber(uint16_t UserId,int8_t idxPool);
+	int8_t GetPoolIndex(uint16_t UserId,int8_t nPool);
 	uint8_t GetLogicalCPUNumber(void);
 	uint8_t GetPhysicalCoreNumber(void);
 	
@@ -123,9 +139,9 @@ class ThreadPoolInterface
 	bool GetMutex(void);
 	void FreeMutex(void);
 	int16_t GetUserIdIndex(uint16_t UserId);
-	bool ReleaseThreadPoolCore(uint16_t UserId,int16_t index,bool sleep,int8_t nPool);
+	bool ReleaseThreadPoolCore(uint16_t UserId,int16_t index,bool sleep,int8_t nPool,int8_t idxPool);
 	bool StartThreadsCore(int8_t nPool);
-	bool WaitThreadsEndCore(uint16_t UserId,int8_t nPool);
+	bool WaitThreadsEndCore(uint16_t UserId,int8_t nPool,int8_t idxPool);
 	
 	private :
 

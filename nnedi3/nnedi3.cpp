@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.59 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.60 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -399,6 +399,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	{
 		const int CPUF=env->GetCPUFlags();
 
+#ifdef AVX2_BUILD_POSSIBLE
 		if (((CPUF & CPUF_FMA4)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=7;
 		else
 		{
@@ -408,6 +409,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				if ((CPUF & CPUF_AVX2)!=0) opt=5;
 				else
 				{
+#endif
 					if ((CPUF & CPUF_AVX)!= 0) opt = 4;
 					else
 					{
@@ -418,9 +420,11 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 							else opt=1;
 						}
 					}
+#ifdef AVX2_BUILD_POSSIBLE
 				}
 			}
 		}
+#endif
 
 		char buf[512];
 		sprintf_s(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,CPUF);
