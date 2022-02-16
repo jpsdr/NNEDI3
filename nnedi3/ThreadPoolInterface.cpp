@@ -1222,7 +1222,12 @@ bool ThreadPoolInterface::RequestThreadPool(uint16_t UserId,int8_t &idxPool,uint
 
 	if (!AllowWaiting)
 	{
-		if (TabId[userindex].NbrePool==(int8_t)NbrePool)
+		uint8_t NbUsed=0;
+
+		for (uint8_t i=0; i<NbrePool; i++)
+			if (ThreadPoolRequested[i]) NbUsed++;
+
+		if (NbUsed==NbrePool)
 		{
 			LeaveCriticalSection(&CriticalSection);
 			ReleaseMutex(ghMutexResources);
@@ -1796,11 +1801,7 @@ bool ThreadPoolInterface::DisableAllowSeveral(uint16_t UserId)
 	bool ok=true;
 	int16_t i=GetUserIdIndex(UserId);
 
-	if (i!=-1)
-	{
-		TabId[i].AllowSeveral=false;
-		TabId[i].AllowWaiting=true;
-	}
+	if (i!=-1) TabId[i].AllowSeveral=false;
 	else ok=false;
 
 	LeaveCriticalSection(&CriticalSection);
@@ -1859,11 +1860,7 @@ bool ThreadPoolInterface::DisableWaitonRequest(uint16_t UserId)
 	bool ok=true;
 	int16_t i=GetUserIdIndex(UserId);
 
-	if (i!=-1)
-	{
-		if (TabId[i].AllowSeveral) TabId[i].AllowWaiting=false;
-		else ok=false;
-	}
+	if (i!=-1) TabId[i].AllowWaiting=false;
 	else ok=false;
 
 	LeaveCriticalSection(&CriticalSection);
