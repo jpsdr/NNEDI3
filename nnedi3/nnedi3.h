@@ -97,7 +97,7 @@ protected:
 
 public:
 	nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,
-		int _pscrn,uint8_t _threads,int _opt,int _fapprox,bool _sleep,int range_mode,bool _asvp,IScriptEnvironment *env);
+		int _pscrn,uint8_t _threads,int _opt,int _fapprox,bool _sleep,int range_mode, bool negativePrefetch,bool _asvp,IScriptEnvironment *env);
 	virtual ~nnedi3();
 	PVideoFrame __stdcall nnedi3::GetFrame(int n,IScriptEnvironment *env);
 
