@@ -244,7 +244,7 @@ PARAMETERS (nnedi3):
 
       Default: false (bool)
 
-  prefetch -
+  prefetch - (added negative trim feature)
       This parameter will allow to create more than one threadpool, to avoid mutual resources acces
       if "prefetch" is used in the avs script.
       0 : Will set automaticaly to the prefetch value use in the script. Well... that's what i wanted
