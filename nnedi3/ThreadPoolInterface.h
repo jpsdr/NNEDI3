@@ -27,7 +27,7 @@
 
 #include "./ThreadPoolDef.h"
 
-#define THREADPOOLINTERFACE_VERSION "ThreadPoolInterface 1.10.0"
+#define THREADPOOLINTERFACE_VERSION "ThreadPoolInterface 1.11.0"
 
 
 typedef struct _UserData
@@ -35,6 +35,10 @@ typedef struct _UserData
 	uint16_t UserId;
 	bool AllowSeveral;
 	bool AllowWaiting;
+	bool AllowTimeOut;
+	bool AllowRetryMax;
+	DWORD TimeOut;
+	uint8_t RetryMax;
 	int8_t NbrePool;
 	int8_t UsedPool[MAX_THREAD_POOL];
 } UserData;
@@ -94,6 +98,12 @@ class ThreadPoolInterface
 	bool IsAllowedSeveral(uint16_t UserId);
 	bool EnableWaitonRequest(uint16_t UserId);
 	bool DisableWaitonRequest(uint16_t UserId);
+	bool EnableTimeOutonRequest(uint16_t UserId);
+	bool DisableTimeOutonRequest(uint16_t UserId);
+	bool EnableRetryMaxonRequest(uint16_t UserId);
+	bool DisableRetryMaxonRequest(uint16_t UserId);
+	bool ConfigureTimeOutValue(uint16_t UserId, DWORD dwMilliseconds);
+	bool ConfigureRetryMaxValue(uint16_t UserId, uint8_t NbreMax);
 	int8_t GetPoolAllocated(uint16_t UserId);
 	int8_t GetPoolNumber(uint16_t UserId,int8_t idxPool);
 	int8_t GetPoolIndex(uint16_t UserId,int8_t nPool);
@@ -150,5 +160,6 @@ class ThreadPoolInterface
 	bool operator == (const ThreadPoolInterface &other) const;
 	bool operator != (const ThreadPoolInterface &other) const;
 };
+
 
 #endif // __ThreadPoolInterface_H__
