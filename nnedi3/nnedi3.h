@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.60 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.61 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -79,7 +79,7 @@ protected:
 	uint8_t threads,threads_number;
 	bool sleep;
 	Public_MT_Data_Thread MT_Thread[MAX_MT_THREADS];
-	uint16_t UserId;
+	uint32_t UserId;
 	uint8_t *NNPixels[PLANE_MAX];
 	
 	bool grey,avsp,isRGBPfamily,isAlphaChannel,has_at_least_v8;

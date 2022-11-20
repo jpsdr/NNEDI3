@@ -27,7 +27,6 @@
 
 #define MAX_MT_THREADS 128  // Maximum possible 255
 #define MAX_THREAD_POOL 64  // Maximum possible 127
-#define MAX_USERS 2000      // Maximum possible 65535
 
 typedef void (*ThreadPoolFunction)(void *ptr);
 
