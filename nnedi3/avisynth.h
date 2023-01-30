@@ -123,7 +123,7 @@ enum {
   #define _RPT4(a,b,c,d,e,f) ((void)0)
   #define _RPT5(a,b,c,d,e,f,g) ((void)0)
 
-  #include <cassert>
+  #include <assert.h>
   #undef _ASSERTE
   #undef _ASSERT
   #define _ASSERTE(x) assert(x)

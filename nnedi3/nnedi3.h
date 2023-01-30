@@ -28,6 +28,13 @@
 #include "./PlanarFrame.h"
 #include "./ThreadPoolInterface.h"
 
+#include <stdlib.h>
+
+using namespace std;
+ 
+#define _aligned_malloc(size, alignment) aligned_alloc(alignment, size)
+#define _aligned_free(ptr) free(ptr)
+
 #define NUM_NSIZE 7
 #define NUM_NNS 5
 const int xdiaTable[NUM_NSIZE] = {8,16,32,48,8,16,32};
@@ -99,7 +106,7 @@ public:
 	nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,
 		int _pscrn,uint8_t _threads,int _opt,int _fapprox,bool _sleep,int range_mode, bool negativePrefetch,bool _asvp,IScriptEnvironment *env);
 	virtual ~nnedi3();
-	PVideoFrame __stdcall nnedi3::GetFrame(int n,IScriptEnvironment *env);
+	PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment *env);
 
 	int __stdcall SetCacheHints(int cachehints, int frame_range);
 };

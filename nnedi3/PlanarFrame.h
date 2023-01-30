@@ -90,7 +90,7 @@ public:
 	int GetPitch(uint8_t plane);
 	int getCPUFlags(void) {return cpu;}
 	inline void BitBlt(uint8_t *dstp,int dst_pitch,const uint8_t *srcp,int src_pitch,int row_size,int height);
-	PlanarFrame& PlanarFrame::operator=(PlanarFrame &ob2);
+	PlanarFrame& operator=(PlanarFrame &ob2);
 	void convYUY2to422(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8_t *pv,int pitch1,int pitch2Y,int pitch2UV,
 		int width,int height);
 	void convRGB24to444(const uint8_t *src,uint8_t *py,uint8_t *pu,uint8_t *pv,int pitch1,int pitch2Y,int pitch2UV,
