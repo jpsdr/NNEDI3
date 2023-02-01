@@ -4708,8 +4708,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 const AVS_Linkage *AVS_linkage = nullptr;
 
+#ifdef _MSC_VER
+#define EXPORT extern "C" __declspec(dllexport)
+#else
+#define EXPORT extern "C" __stdcall
+#endif
 
-extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
+EXPORT const char* AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
 	AVS_linkage = vectors;
 
