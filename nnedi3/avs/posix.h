@@ -51,11 +51,7 @@
 #define lstrcmp strcmp
 #define lstrcmpi strcasecmp
 #define _stricmp strcasecmp
-#ifdef _WINDLL
 #define _strnicmp strncasecmp
-#else
-#define _strnicmp strnicmp
-#endif
 #define _strdup strdup
 #define SetCurrentDirectory(x) chdir(x)
 #define SetCurrentDirectoryW(x) chdir(x)
