@@ -4381,24 +4381,24 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 		if (cshift[0]!=0)
 		{
-			const bool use_rs_mt=((strncasecmp(cshift,"pointresizemt",13)==0) || (strncasecmp(cshift,"bilinearresizemt",16)==0)
-				|| (strncasecmp(cshift,"bicubicresizemt",15)==0) || (strncasecmp(cshift,"lanczosresizemt",15)==0)
-				|| (strncasecmp(cshift,"lanczos4resizemt",16)==0) || (strncasecmp(cshift,"blackmanresizemt",16)==0)
-				|| (strncasecmp(cshift,"spline16resizemt",16)==0) || (strncasecmp(cshift,"spline36resizemt",16)==0)
-				|| (strncasecmp(cshift,"spline64resizemt",16)==0) || (strncasecmp(cshift,"gaussresizemt",13)==0)
-				|| (strncasecmp(cshift,"sincresizemt",12)==0) || (strncasecmp(cshift,"sinpowresizemt",14)==0)
-				|| (strncasecmp(cshift,"sinclin2resizemt",16)==0) || (strncasecmp(cshift,"userdefined2resizemt",20)==0));
+			const bool use_rs_mt=((_strnicmp(cshift,"pointresizemt",13)==0) || (_strnicmp(cshift,"bilinearresizemt",16)==0)
+				|| (_strnicmp(cshift,"bicubicresizemt",15)==0) || (_strnicmp(cshift,"lanczosresizemt",15)==0)
+				|| (_strnicmp(cshift,"lanczos4resizemt",16)==0) || (_strnicmp(cshift,"blackmanresizemt",16)==0)
+				|| (_strnicmp(cshift,"spline16resizemt",16)==0) || (_strnicmp(cshift,"spline36resizemt",16)==0)
+				|| (_strnicmp(cshift,"spline64resizemt",16)==0) || (_strnicmp(cshift,"gaussresizemt",13)==0)
+				|| (_strnicmp(cshift,"sincresizemt",12)==0) || (_strnicmp(cshift,"sinpowresizemt",14)==0)
+				|| (_strnicmp(cshift,"sinclin2resizemt",16)==0) || (_strnicmp(cshift,"userdefined2resizemt",20)==0));
 
 			int type = 0;
 			
-			if ((strncasecmp(cshift,"blackmanresize",14)==0) || (strncasecmp(cshift,"lanczosresize",13)==0)
-				|| (strncasecmp(cshift,"sincresize",10)==0) || (strncasecmp(cshift,"sinclin2resize",14)==0)) type=1;
+			if ((_strnicmp(cshift,"blackmanresize",14)==0) || (_strnicmp(cshift,"lanczosresize",13)==0)
+				|| (_strnicmp(cshift,"sincresize",10)==0) || (_strnicmp(cshift,"sinclin2resize",14)==0)) type=1;
 			else
 			{
-				if ((strncasecmp(cshift,"gaussresize",11)==0) || (strncasecmp(cshift,"sinpowresize",12)==0)) type=2;
+				if ((_strnicmp(cshift,"gaussresize",11)==0) || (_strnicmp(cshift,"sinpowresize",12)==0)) type=2;
 				else
 				{
-					if ((strncasecmp(cshift,"bicubicresize",13)==0) || (strncasecmp(cshift,"userdefined2resize",18)==0)) type=3;
+					if ((_strnicmp(cshift,"bicubicresize",13)==0) || (_strnicmp(cshift,"userdefined2resize",18)==0)) type=3;
 				}
 			}
 			

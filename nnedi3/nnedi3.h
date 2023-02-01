@@ -27,6 +27,9 @@
 #include "./avisynth.h"
 #include "./PlanarFrame.h"
 #include "./ThreadPoolInterface.h"
+#ifndef _MSC_VER
+#define _strnicmp strncasecmp
+#endif
 
 #include <stdlib.h>
 
