@@ -35,10 +35,7 @@
 
 // Define all types necessary for interfacing with avisynth.dll
 #include <stdint.h>
-#if defined(MSVC) && _MSC_VER<1800
-#else
-#include <stdbool.h>
-#endif
+//#include <stdbool.h>
 #ifdef __cplusplus
   #include <cstddef>
   #include <cstdarg>

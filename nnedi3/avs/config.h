@@ -61,6 +61,8 @@
 #   define RISCV
 #elif defined(__sparc_v9__)
 #   define SPARC
+#elif defined(__mips__)
+#   define MIPS
 #else
 #   error Unsupported CPU architecture.
 #endif

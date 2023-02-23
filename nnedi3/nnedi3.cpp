@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.61 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.62 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -554,7 +554,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		}
 
 		// 16 bit pixels will be shifted by 1 for the prescreener.
-		const int prescreener_bits = min(bits_per_pixel,15);
+		const int prescreener_bits = min((int)bits_per_pixel,15);
 		const double half = (((int)1 << prescreener_bits)-1)/2.0;
 
 		// Factor mean removal and 1.0/half scaling
@@ -598,7 +598,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			float *wf = (float *)&ws[4*48];
 
 			// 16 bit pixels will be shifted by 1 for the prescreener.
-			const int prescreener_bits = min(bits_per_pixel,15);
+			const int prescreener_bits = min((int)bits_per_pixel,15);
 			const double half = (((int)1 << prescreener_bits)-1)/2.0;
 
 			// Factor mean removal and 1.0/half scaling

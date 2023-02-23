@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.61 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.62 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -99,7 +99,7 @@ public:
 	nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,int _nsize,int _nns,int _qual,int _etype,
 		int _pscrn,uint8_t _threads,int _opt,int _fapprox,bool _sleep,int range_mode, bool negativePrefetch,bool _asvp,IScriptEnvironment *env);
 	virtual ~nnedi3();
-	PVideoFrame __stdcall nnedi3::GetFrame(int n,IScriptEnvironment *env);
+	PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment *env);
 
 	int __stdcall SetCacheHints(int cachehints, int frame_range);
 };

@@ -23,7 +23,7 @@
 #ifndef __ThreadPool_H__
 #define __ThreadPool_H__
 
-#include <Windows.h>
+#include <windows.h>
 
 #include "./ThreadPoolDef.h"
 
