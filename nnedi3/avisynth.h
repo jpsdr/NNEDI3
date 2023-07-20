@@ -32,6 +32,10 @@
 //           Introduce pixel_type to VideoFrame struct
 //           VideoFrame::GetPixelType,VideoFrame::AmendPixelType
 //           AVSValue::GetType
+//           Add enum AvsChannelMask::MASK_SPEAKER_xxx, AvsImageTypeFlags::IT_SPEAKER_xxx
+//           Audio channel mask support for VideoInfo: 
+//           Use 20 bits in VideoInfo::image_type for channel mask mapping
+//           IsChannelMaskKnown, SetChannelMask, GetChannelMask in VideoInfo
 
 // http://www.avisynth.org
 
@@ -442,9 +446,14 @@ struct AVS_Linkage {
   void          (VideoFrameBuffer::*VideoFrameBuffer_DESTRUCTOR)();
   AvsValueType  (AVSValue::*AVSValue_GetType)() const;
 
+  // V10.1
+  bool          (VideoInfo::* IsChannelMaskKnown)() const;
+  void          (VideoInfo::* SetChannelMask)(bool isChannelMaskKnown, unsigned int dwChannelMask);
+  unsigned int  (VideoInfo::* GetChannelMask)() const;
+
   /**********************************************************************/
   // Reserve pointer space for Avisynth+
-  void          (VideoInfo::* reserved2[64 - 28])();
+  void          (VideoInfo::* reserved2[64 - 31])();
   /**********************************************************************/
 
   // AviSynth Neo additions
@@ -523,6 +532,37 @@ public:
   void DESTRUCTOR();
 #endif
 };
+
+// Unshifted channel mask constants like in WAVEFORMATEXTENSIBLE
+// in AvsImageTypeFlags they are shifted by 4 bits
+enum AvsChannelMask {
+  MASK_SPEAKER_FRONT_LEFT = 0x1,
+  MASK_SPEAKER_FRONT_RIGHT = 0x2,
+  MASK_SPEAKER_FRONT_CENTER = 0x4,
+  MASK_SPEAKER_LOW_FREQUENCY = 0x8,
+  MASK_SPEAKER_BACK_LEFT = 0x10,
+  MASK_SPEAKER_BACK_RIGHT = 0x20,
+  MASK_SPEAKER_FRONT_LEFT_OF_CENTER = 0x40,
+  MASK_SPEAKER_FRONT_RIGHT_OF_CENTER = 0x80,
+  MASK_SPEAKER_BACK_CENTER = 0x100,
+  MASK_SPEAKER_SIDE_LEFT = 0x200,
+  MASK_SPEAKER_SIDE_RIGHT = 0x400,
+  MASK_SPEAKER_TOP_CENTER = 0x800,
+  MASK_SPEAKER_TOP_FRONT_LEFT = 0x1000,
+  MASK_SPEAKER_TOP_FRONT_CENTER = 0x2000,
+  MASK_SPEAKER_TOP_FRONT_RIGHT = 0x4000,
+  MASK_SPEAKER_TOP_BACK_LEFT = 0x8000,
+  MASK_SPEAKER_TOP_BACK_CENTER = 0x10000,
+  MASK_SPEAKER_TOP_BACK_RIGHT = 0x20000,
+  // Bit mask locations used up for the above positions
+  MASK_SPEAKER_DEFINED = 0x0003FFFF,
+  // Bit mask locations reserved for future use
+  MASK_SPEAKER_RESERVED = 0x7FFC0000,
+  // Used to specify that any possible permutation of speaker configurations
+  // Due to lack of available bits this one is put differently into image_type
+  MASK_SPEAKER_ALL = 0x80000000
+};
+
 struct VideoInfo {
   int width, height;    // width 0 means no video
   unsigned fps_numerator, fps_denominator;
@@ -763,12 +803,43 @@ struct VideoInfo {
   int64_t num_audio_samples;      // changed as of 2.5
   int nchannels;                  // as of 2.5
 
+  // BFF, TFF, FIELDBASED. Also used for storing Channel Mask
   int image_type;
 
   enum AvsImageTypeFlags {
-    IT_BFF        = 1 << 0,
-    IT_TFF        = 1 << 1,
-    IT_FIELDBASED = 1 << 2
+    IT_BFF = 1 << 0,
+    IT_TFF = 1 << 1,
+    IT_FIELDBASED = 1 << 2,
+
+    // Audio channel mask support
+    IT_HAS_CHANNELMASK = 1 << 3,
+    // shifted by 4 bits compared to WAVEFORMATEXTENSIBLE dwChannelMask
+    // otherwise same as AvsChannelMask
+    IT_SPEAKER_FRONT_LEFT = 0x1 << 4,
+    IT_SPEAKER_FRONT_RIGHT = 0x2 << 4,
+    IT_SPEAKER_FRONT_CENTER = 0x4 << 4,
+    IT_SPEAKER_LOW_FREQUENCY = 0x8 << 4,
+    IT_SPEAKER_BACK_LEFT = 0x10 << 4,
+    IT_SPEAKER_BACK_RIGHT = 0x20 << 4,
+    IT_SPEAKER_FRONT_LEFT_OF_CENTER = 0x40 << 4,
+    IT_SPEAKER_FRONT_RIGHT_OF_CENTER = 0x80 << 4,
+    IT_SPEAKER_BACK_CENTER = 0x100 << 4,
+    IT_SPEAKER_SIDE_LEFT = 0x200 << 4,
+    IT_SPEAKER_SIDE_RIGHT = 0x400 << 4,
+    IT_SPEAKER_TOP_CENTER = 0x800 << 4,
+    IT_SPEAKER_TOP_FRONT_LEFT = 0x1000 << 4,
+    IT_SPEAKER_TOP_FRONT_CENTER = 0x2000 << 4,
+    IT_SPEAKER_TOP_FRONT_RIGHT = 0x4000 << 4,
+    IT_SPEAKER_TOP_BACK_LEFT = 0x8000 << 4,
+    IT_SPEAKER_TOP_BACK_CENTER = 0x10000 << 4,
+    IT_SPEAKER_TOP_BACK_RIGHT = 0x20000 << 4,
+    // End of officially defined speaker bits
+    // The next one is special, since cannot shift SPEAKER_ALL 0x80000000 further.
+    // Set mask and get mask handles it.
+    IT_SPEAKER_ALL = 0x40000 << 4,
+    // Mask for the defined 18 bits + SPEAKER_ALL
+    IT_SPEAKER_BITS_MASK = (AvsChannelMask::MASK_SPEAKER_DEFINED << 4) | IT_SPEAKER_ALL,
+    IT_NEXT_AVAILABLE = 1 << 23
   };
 
   // Chroma placement bits 20 -> 23  ::FIXME:: Really want a Class to support this
@@ -886,6 +957,12 @@ struct VideoInfo {
 
   // Planar RGBA?
   bool IsPlanarRGBA() const AVS_BakedCode( return AVS_LinkCallOptDefault(IsPlanarRGBA, false) )
+
+  // v10.1 interface: audio channel masks
+  bool IsChannelMaskKnown() const AVS_BakedCode(return AVS_LinkCallOptDefault(IsChannelMaskKnown, false) )
+  void SetChannelMask(bool isChannelMaskKnown, unsigned int dwChannelMask) AVS_BakedCode(AVS_LinkCall_Void(SetChannelMask)(isChannelMaskKnown, dwChannelMask))
+  unsigned int GetChannelMask() const AVS_BakedCode(return AVS_LinkCallOptDefault(GetChannelMask, 0) )
+
 }; // end struct VideoInfo
 
 
@@ -1070,46 +1147,53 @@ enum CachePolicyHint {
   CACHE_GET_WINDOW = 31, // Get the current window h_span.
   CACHE_GET_RANGE = 32, // Get the current generic frame range.
 
+  // Set Audio cache mode and answers to CACHE_GETCHILD_AUDIO_MODE
   CACHE_AUDIO = 50, // Explicitly cache audio, X byte cache.
   CACHE_AUDIO_NOTHING = 51, // Explicitly do not cache audio.
-  CACHE_AUDIO_NONE = 52, // Audio cache off (auto mode), X byte intial cache.
-  CACHE_AUDIO_AUTO = 53, // Audio cache on (auto mode), X byte intial cache.
+  CACHE_AUDIO_NONE = 52, // Audio cache off (auto mode), X byte initial cache.
+  CACHE_AUDIO_AUTO_START_OFF = 52, // synonym
+  CACHE_AUDIO_AUTO = 53, // Audio cache on (auto mode), X byte initial cache.
+  CACHE_AUDIO_AUTO_START_ON = 53, // synonym
 
+  // These just returns actual value if clip is cached
   CACHE_GET_AUDIO_POLICY = 70, // Get the current audio policy.
   CACHE_GET_AUDIO_SIZE = 71, // Get the current audio cache size.
 
-  CACHE_PREFETCH_FRAME = 100, // Queue request to prefetch frame N.
-  CACHE_PREFETCH_GO = 101, // Action video prefetches.
+  CACHE_PREFETCH_FRAME = 100, // n/a Queue request to prefetch frame N.
+  CACHE_PREFETCH_GO = 101, // n/a Action video prefetches.
 
-  CACHE_PREFETCH_AUDIO_BEGIN = 120, // Begin queue request transaction to prefetch audio (take critical section).
-  CACHE_PREFETCH_AUDIO_STARTLO = 121, // Set low 32 bits of start.
-  CACHE_PREFETCH_AUDIO_STARTHI = 122, // Set high 32 bits of start.
-  CACHE_PREFETCH_AUDIO_COUNT = 123, // Set low 32 bits of length.
-  CACHE_PREFETCH_AUDIO_COMMIT = 124, // Enqueue request transaction to prefetch audio (release critical section).
-  CACHE_PREFETCH_AUDIO_GO = 125, // Action audio prefetches.
+  CACHE_PREFETCH_AUDIO_BEGIN = 120, // n/a Begin queue request transaction to prefetch audio (take critical section).
+  CACHE_PREFETCH_AUDIO_STARTLO = 121, // n/a Set low 32 bits of start.
+  CACHE_PREFETCH_AUDIO_STARTHI = 122, // n/a Set high 32 bits of start.
+  CACHE_PREFETCH_AUDIO_COUNT = 123, // n/a Set low 32 bits of length.
+  CACHE_PREFETCH_AUDIO_COMMIT = 124, // n/a Enqueue request transaction to prefetch audio (release critical section).
+  CACHE_PREFETCH_AUDIO_GO = 125, // n/a Action audio prefetches.
 
-  CACHE_GETCHILD_CACHE_MODE = 200, // Cache ask Child for desired video cache mode.
-  CACHE_GETCHILD_CACHE_SIZE = 201, // Cache ask Child for desired video cache size.
+  CACHE_GETCHILD_CACHE_MODE = 200, // n/a Cache ask Child for desired video cache mode.
+  CACHE_GETCHILD_CACHE_SIZE = 201, // n/a Cache ask Child for desired video cache size.
+
+  // Filters are queried about their desired audio cache mode.
+  // Child can answer them with CACHE_AUDIO_xxx
   CACHE_GETCHILD_AUDIO_MODE = 202, // Cache ask Child for desired audio cache mode.
   CACHE_GETCHILD_AUDIO_SIZE = 203, // Cache ask Child for desired audio cache size.
 
-  CACHE_GETCHILD_COST = 220, // Cache ask Child for estimated processing cost.
-    CACHE_COST_ZERO = 221, // Child response of zero cost (ptr arithmetic only).
-    CACHE_COST_UNIT = 222, // Child response of unit cost (less than or equal 1 full frame blit).
-    CACHE_COST_LOW = 223, // Child response of light cost. (Fast)
-    CACHE_COST_MED = 224, // Child response of medium cost. (Real time)
-    CACHE_COST_HI = 225, // Child response of heavy cost. (Slow)
+  CACHE_GETCHILD_COST = 220, // n/a Cache ask Child for estimated processing cost.
+    CACHE_COST_ZERO = 221, // n/a Child response of zero cost (ptr arithmetic only).
+    CACHE_COST_UNIT = 222, // n/a Child response of unit cost (less than or equal 1 full frame blit).
+    CACHE_COST_LOW = 223, // n/a Child response of light cost. (Fast)
+    CACHE_COST_MED = 224, // n/a Child response of medium cost. (Real time)
+    CACHE_COST_HI = 225, // n/a Child response of heavy cost. (Slow)
 
-  CACHE_GETCHILD_THREAD_MODE = 240, // Cache ask Child for thread safetyness.
-    CACHE_THREAD_UNSAFE = 241, // Only 1 thread allowed for all instances. 2.5 filters default!
-    CACHE_THREAD_CLASS = 242, // Only 1 thread allowed for each instance. 2.6 filters default!
-    CACHE_THREAD_SAFE = 243, //  Allow all threads in any instance.
-    CACHE_THREAD_OWN = 244, // Safe but limit to 1 thread, internally threaded.
+  CACHE_GETCHILD_THREAD_MODE = 240, // n/a Cache ask Child for thread safetyness.
+    CACHE_THREAD_UNSAFE = 241, // n/a Only 1 thread allowed for all instances. 2.5 filters default!
+    CACHE_THREAD_CLASS = 242, // n/a Only 1 thread allowed for each instance. 2.6 filters default!
+    CACHE_THREAD_SAFE = 243, // n/a Allow all threads in any instance.
+    CACHE_THREAD_OWN = 244, // n/a Safe but limit to 1 thread, internally threaded.
 
-  CACHE_GETCHILD_ACCESS_COST = 260, // Cache ask Child for preferred access pattern.
-    CACHE_ACCESS_RAND = 261, // Filter is access order agnostic.
-    CACHE_ACCESS_SEQ0 = 262, // Filter prefers sequential access (low cost)
-    CACHE_ACCESS_SEQ1 = 263, // Filter needs sequential access (high cost)
+  CACHE_GETCHILD_ACCESS_COST = 260, // n/a Cache ask Child for preferred access pattern.
+    CACHE_ACCESS_RAND = 261, // n/a Filter is access order agnostic.
+    CACHE_ACCESS_SEQ0 = 262, // n/a Filter prefers sequential access (low cost)
+    CACHE_ACCESS_SEQ1 = 263, // n/a Filter needs sequential access (high cost)
 
   CACHE_AVSPLUS_CONSTANTS = 500,    // Smaller values are reserved for classic Avisynth
 
@@ -1121,17 +1205,19 @@ enum CachePolicyHint {
   CACHE_GET_SIZE,
   CACHE_GET_REQUESTED_CAP,
   CACHE_GET_CAPACITY,
-  CACHE_GET_MTMODE,
+  CACHE_GET_MTMODE,                 // Filters specify their desired MT mode, see enum MtMode
 
+  // By returning IS_CACHE_ANS to IS_CACHE_REQ, we tell the caller we are a cache
   CACHE_IS_CACHE_REQ,
   CACHE_IS_CACHE_ANS,
+  // By returning IS_MTGUARD_ANS to IS_MTGUARD_REQ, we tell the caller we are an mt guard
   CACHE_IS_MTGUARD_REQ,
   CACHE_IS_MTGUARD_ANS,
 
   CACHE_AVSPLUS_CUDA_CONSTANTS = 600,
 
-  CACHE_GET_DEV_TYPE,           // Device types a filter can return
-  CACHE_GET_CHILD_DEV_TYPE,    // Device types a fitler can receive
+  CACHE_GET_DEV_TYPE,          // Device types a filter can return
+  CACHE_GET_CHILD_DEV_TYPE,    // Device types a filter can receive
 
   CACHE_USER_CONSTANTS = 1000       // Smaller values are reserved for the core
 };
