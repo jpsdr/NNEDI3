@@ -36,6 +36,23 @@
 //           Audio channel mask support for VideoInfo: 
 //           Use 20 bits in VideoInfo::image_type for channel mask mapping
 //           IsChannelMaskKnown, SetChannelMask, GetChannelMask in VideoInfo
+// 202502xx  V11
+//           64 bit data types in AVSValue: double and long (int64_t), also for 32 bit Avisynth!
+//           changed: AVSValue::IsFloat true for any 32/64 bit floating point or integer types
+//           changed: AVSValue::IsInt true for any 32/64 bit integer types
+//           new: AVSValue::IsFloatf: true if AVSValue is 32 bit float or 32/64 bit integer type; same as former IsFloat
+//           new: AVSValue::IsLong  : returns true only if AVSValue is strictly 64 bit integer
+//           new: AVSValue::AsLong  : returns int64_t
+//           new: AVSValue::AsLong(int64_t def)
+//           (AsFloat returned double --> no AsDouble needed)
+//           new AVSValue constructors for 64 bit types
+//           Simplify this header, remove internally used IScriptEnvironment_Avs25 from here
+//           Frame property changes backported from VapourSynth API4
+//           - New propGetIntSaturated and propGetFloatSaturated
+//           - New enum: AVSPropDataTypeHint (VSAPI4: VSDataTypeHint)
+//           - New propGetDataTypeHint (VSAPI4: mapGetDataTypeHint)
+//           - New propSetDataH, like propSetData but with optional data type hint (byte/string)
+//             (VSAPI4: mapSetData, our propSetData became VSAPI4: mapSetData3)
 
 // http://www.avisynth.org
 
@@ -72,8 +89,8 @@
 // graphical user interfaces.
 
 
-#ifndef __AVISYNTH_10_H__
-#define __AVISYNTH_10_H__
+#ifndef __AVISYNTH_11_H__
+#define __AVISYNTH_11_H__
 
 #include "avs/config.h"
 #include "avs/capi.h"
@@ -106,7 +123,7 @@ enum AvsVersion {
   AVISYNTH_CLASSIC_INTERFACE_VERSION_25 = 3,
   AVISYNTH_CLASSIC_INTERFACE_VERSION_26BETA = 5,
   AVISYNTH_CLASSIC_INTERFACE_VERSION = 6,
-  AVISYNTH_INTERFACE_VERSION = 10,
+  AVISYNTH_INTERFACE_VERSION = 11,
   AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION = 0 // reset to zero whenever the normal interface version bumps
 };
 
@@ -228,7 +245,7 @@ class IFunction;
 class SINGLE_INHERITANCE PFunction;
 class Device;
 class SINGLE_INHERITANCE PDevice;
-class AVSMap;
+struct AVSMap;
 
 
 
@@ -376,18 +393,24 @@ struct AVS_Linkage {
   bool            (AVSValue::*AsBool1)() const;
   int             (AVSValue::*AsInt1)() const;
   const char*     (AVSValue::*AsString1)() const;
-  double          (AVSValue::*AsFloat1)() const;
+  double          (AVSValue::*AsFloat1)() const; // AsDouble1
   bool            (AVSValue::*AsBool2)(bool def) const;
   int             (AVSValue::*AsInt2)(int def) const;
-  double          (AVSValue::*AsDblDef)(double def) const;
+  double          (AVSValue::*AsDblDef)(double def) const; // AsDouble2
   double          (AVSValue::*AsFloat2)(float def) const;
   const char*     (AVSValue::*AsString2)(const char* def) const;
   int             (AVSValue::*ArraySize)() const;
+  // v11
+  bool            (AVSValue::*IsLong)() const;
+  bool            (AVSValue::*IsFloatf)() const;
+  int64_t         (AVSValue::*AsLong1)() const;
+  int64_t         (AVSValue::*AsLong2)(int64_t def) const;
+  void            (AVSValue::*AVSValue_CONSTRUCTOR12)(int64_t l);
 // end class AVSValue
 
 /**********************************************************************/
-  // Reserve pointer space so that we can keep compatibility with Avs "classic" even if it adds functions on its own
-  void    (VideoInfo::*reserved[32])();
+  // Reserve pointer space, once used to keep compatibility with Avs "classic" even if it adds functions on its own
+  void    (VideoInfo::*reserved[27])();
 /**********************************************************************/
   // AviSynth+ additions
   int     (VideoInfo::*NumComponents)() const;
@@ -1134,6 +1157,7 @@ private:
 }; // end class VideoFrame
 
 enum CachePolicyHint {
+  CACHE_25_NOTHING_26_UNUSED_0 = 0,
   // Values 0 to 5 are reserved for old 2.5 plugins
   // do not use them in new plugins
 
@@ -1282,10 +1306,9 @@ public:
 #endif
 }; // end class PClip
 
-// enums for frame property functions
 enum AVSPropTypes {
   PROPTYPE_UNSET = 'u', // ptUnset
-  PROPTYPE_INT = 'i', // peType
+  PROPTYPE_INT = 'i', // ptInt
   PROPTYPE_FLOAT = 'f', // ptFloat
   PROPTYPE_DATA = 's', // ptData
   PROPTYPE_CLIP = 'c', // ptClip
@@ -1294,8 +1317,10 @@ enum AVSPropTypes {
 };
 
 enum AVSGetPropErrors {
+  GETPROPERROR_SUCCESS = 0,
   GETPROPERROR_UNSET = 1, // peUnset
   GETPROPERROR_TYPE = 2, // peType
+  GETPROPERROR_ERROR = 3, // map has error state set
   GETPROPERROR_INDEX = 4 // peIndex
 };
 
@@ -1305,6 +1330,11 @@ enum AVSPropAppendMode {
   PROPAPPENDMODE_TOUCH = 2 // paTouch
 };
 
+enum AVSPropDataTypeHint {
+  PROPDATATYPEHINT_UNKNOWN = -1, // dtUnknown = -1,
+  PROPDATATYPEHINT_BINARY = 0, // dtBinary = 0,
+  PROPDATATYPEHINT_UTF8 = 1 // dtUtf8 = 1
+};
 
 class AVSValue {
 public:
@@ -1314,7 +1344,6 @@ public:
   AVSValue(const PClip& c) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR2)(c) )
   AVSValue(bool b) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR3)(b) )
   AVSValue(int i) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR4)(i) )
-//  AVSValue(int64_t l);
   AVSValue(float f) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR5)(f) )
   AVSValue(double f) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR6)(f) )
   AVSValue(const char* s) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR7)(s) )
@@ -1322,19 +1351,22 @@ public:
   AVSValue(const AVSValue& a, int size) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR8)(&a, size) )
   AVSValue(const AVSValue& v) AVS_BakedCode( AVS_LinkCall_Void(AVSValue_CONSTRUCTOR9)(v) )
   AVSValue(const PFunction& n) AVS_BakedCode(AVS_LinkCall_Void(AVSValue_CONSTRUCTOR11)(n))
+  AVSValue(int64_t l) AVS_BakedCode(AVS_LinkCall_Void(AVSValue_CONSTRUCTOR12)(l))
 
   ~AVSValue() AVS_BakedCode( AVS_LinkCall_Void(AVSValue_DESTRUCTOR)() )
   AVSValue& operator=(const AVSValue& v) AVS_BakedCode( return AVS_LinkCallV(AVSValue_OPERATOR_ASSIGN)(v) )
 
-  // Note that we transparently allow 'int' to be treated as 'float'.
+  // Transparently allow 'long' (v11) and 'int' to be treated as 'float'.
+  // v11: Transparently allow 'long', 'int' and 'float' to be treated as 'double'.
   // There are no int<->bool conversions, though.
 
   bool Defined() const AVS_BakedCode( return AVS_LinkCall(Defined)() )
   bool IsClip() const AVS_BakedCode( return AVS_LinkCall(IsClip)() )
   bool IsBool() const AVS_BakedCode( return AVS_LinkCall(IsBool)() )
   bool IsInt() const AVS_BakedCode( return AVS_LinkCall(IsInt)() )
-//  bool IsLong() const;
+  bool IsLong() const AVS_BakedCode(return AVS_LinkCall(IsLong)()) // v11
   bool IsFloat() const AVS_BakedCode( return AVS_LinkCall(IsFloat)() )
+  bool IsFloatf() const AVS_BakedCode( return AVS_LinkCall(IsFloatf)() ) // v11
   bool IsString() const AVS_BakedCode( return AVS_LinkCall(IsString)() )
   bool IsArray() const AVS_BakedCode( return AVS_LinkCall(IsArray)() )
   bool IsFunction() const AVS_BakedCode( return AVS_LinkCall(IsFunction)() )
@@ -1342,14 +1374,15 @@ public:
   PClip AsClip() const AVS_BakedCode( return AVS_LinkCall(AsClip)() )
   bool AsBool() const AVS_BakedCode( return AVS_LinkCall(AsBool1)() )
   int AsInt() const AVS_BakedCode( return AVS_LinkCall(AsInt1)() )
-//  int AsLong() const;
+  int64_t AsLong() const AVS_BakedCode(return AVS_LinkCall(AsLong1)()) // v11
   const char* AsString() const AVS_BakedCode( return AVS_LinkCall(AsString1)() )
   double AsFloat() const AVS_BakedCode( return AVS_LinkCall(AsFloat1)() )
   float AsFloatf() const AVS_BakedCode( return float( AVS_LinkCall(AsFloat1)() ) )
 
   bool AsBool(bool def) const AVS_BakedCode( return AVS_LinkCall(AsBool2)(def) )
   int AsInt(int def) const AVS_BakedCode( return AVS_LinkCall(AsInt2)(def) )
-  double AsDblDef(double def) const AVS_BakedCode( return AVS_LinkCall(AsDblDef)(def) ) // Value is still a float
+  int64_t AsLong(int64_t def) const AVS_BakedCode( return AVS_LinkCall(AsLong2)(def) ) // v11
+  double AsDblDef(double def) const AVS_BakedCode( return AVS_LinkCall(AsDblDef)(def) )
   double AsFloat(float def) const AVS_BakedCode( return AVS_LinkCall(AsFloat2)(def) )
   float AsFloatf(float def) const AVS_BakedCode( return float( AVS_LinkCall(AsFloat2)(def) ) )
   const char* AsString(const char* def) const AVS_BakedCode( return AVS_LinkCall(AsString2)(def) )
@@ -1361,7 +1394,7 @@ public:
 
 private:
 
-  short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, fu'n'ction, or RFU: 'l'ong ('d'ouble)
+  short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, fu'n'ction, 'l'ong, 'd'ouble
   short array_size;
   union {
     IClip* clip;
@@ -1372,9 +1405,12 @@ private:
     const AVSValue* array;
     IFunction* function;
     #ifdef X86_64
-    // if ever, only x64 will support. It breaks struct size on 32 bit
     int64_t longlong; // 8 bytes
     double double_pt; // 8 bytes
+    #else
+    // 32 bit support trick, pointers dont't break struct size on 32 bit
+    int64_t* longlong_ptr;
+    double* double_pt_ptr;
     #endif
   };
 
@@ -1396,6 +1432,7 @@ public:
   void            CONSTRUCTOR8(const AVSValue* a, int size);
   void            CONSTRUCTOR9(const AVSValue& v);
   void            CONSTRUCTOR11(const PFunction& n);
+  void            CONSTRUCTOR12(int64_t l);
   void            DESTRUCTOR();
   AVSValue&       OPERATOR_ASSIGN(const AVSValue& v);
   const AVSValue& OPERATOR_INDEX(int index) const;
@@ -1403,14 +1440,16 @@ public:
   bool            AsBool1() const;
   int             AsInt1() const;
   const char*     AsString1() const;
-  double          AsFloat1() const;
+  double          AsFloat1() const; // AsDouble1
+  int64_t         AsLong1() const; // v11
 
   bool            AsBool2(bool def) const;
   int             AsInt2(int def) const;
   double          AsFloat2(float def) const;
   const char*     AsString2(const char* def) const;
+  int64_t         AsLong2(int64_t def) const; // v11
 
-  void            MarkArrayAsC(); // for C interface, no deep-copy and deep-free
+  void            MarkArrayAsNonDeepCopy(); // for Avs25 compatibility interface, no deep-copy and deep-free
   void            CONSTRUCTOR10(const AVSValue& v, bool c_arrays);
   AVSValue(const AVSValue& v, bool c_arrays);
   void            Assign2(const AVSValue* src, bool init, bool c_arrays);
@@ -1651,7 +1690,7 @@ public:
   virtual int  __stdcall GetVarInt(const char* name, int def) const = 0;
   virtual double  __stdcall GetVarDouble(const char* name, double def) const = 0;
   virtual const char* __stdcall GetVarString(const char* name, const char* def) const = 0;
-  // brand new in v8 - though no real int64 support yet
+  // brand new in v8 - v11: real int64 support
   virtual int64_t __stdcall GetVarLong(const char* name, int64_t def) const = 0;
 
   // 'Invoke' functions moved here from internal ScriptEnvironments are renamed in order to keep vtable order
@@ -1668,89 +1707,17 @@ public:
   // V9
   virtual bool __stdcall MakePropertyWritable(PVideoFrame* pvf) = 0;
 
+  // V11
+  virtual int __stdcall propGetIntSaturated(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual float __stdcall propGetFloatSaturated(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual int __stdcall propGetDataTypeHint(const AVSMap* map, const char* key, int index, int* error) = 0; // returns AVSPropDataTypeHint
+  virtual int __stdcall propSetDataH(AVSMap* map, const char* key, const char* d, int length, int type, int append) = 0;
+
 }; // end class IScriptEnvironment. Order is important. Avoid overloads with the same name.
 
-// used internally
-class IScriptEnvironment_Avs25 {
-public:
-  virtual ~IScriptEnvironment_Avs25() {}
-
-  virtual /*static*/ int __stdcall GetCPUFlags() = 0;
-
-  virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
-  virtual char* Sprintf(const char* fmt, ...) = 0;
-  virtual char* __stdcall VSprintf(const char* fmt, va_list val) = 0;
-
-#ifdef AVS_WINDOWS
-  __declspec(noreturn) virtual void ThrowError(const char* fmt, ...) = 0;
-#else
-  virtual void ThrowError(const char* fmt, ...) = 0;
-#endif
-
-  class NotFound /*exception*/ {};  // thrown by Invoke and GetVar
-
-  typedef AVSValue(__cdecl* ApplyFunc)(AVSValue args, void* user_data, IScriptEnvironment* env);
-
-  virtual void __stdcall AddFunction25(const char* name, const char* params, ApplyFunc apply, void* user_data) = 0;
-  virtual bool __stdcall FunctionExists(const char* name) = 0;
-  virtual AVSValue __stdcall Invoke25(const char* name, const AVSValue args, const char* const* arg_names = 0) = 0;
-
-  virtual AVSValue __stdcall GetVar(const char* name) = 0;
-  virtual bool __stdcall SetVar(const char* name, const AVSValue& val) = 0;
-  virtual bool __stdcall SetGlobalVar(const char* name, const AVSValue& val) = 0;
-
-  virtual void __stdcall PushContext(int level = 0) = 0;
-  virtual void __stdcall PopContext() = 0;
-
-  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align = FRAME_ALIGN) = 0;
-
-  virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
-
-  virtual void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) = 0;
-
-  typedef void(__cdecl* ShutdownFunc)(void* user_data, IScriptEnvironment* env);
-  virtual void __stdcall AtExit(ShutdownFunc function, void* user_data) = 0;
-
-  virtual void __stdcall CheckVersion(int version = AVISYNTH_CLASSIC_INTERFACE_VERSION_25) = 0;
-
-  virtual PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) = 0;
-
-  virtual int __stdcall SetMemoryMax(int mem) = 0;
-
-  virtual int __stdcall SetWorkingDir(const char* newdir) = 0;
-
-  // specially returns 1 for key MC_QueryAvs25 to check if called from AVS2.5 interface
-  virtual void* __stdcall ManageCache25(int key, void* data) = 0;
-
-  enum PlanarChromaAlignmentMode {
-    PlanarChromaAlignmentOff,
-    PlanarChromaAlignmentOn,
-    PlanarChromaAlignmentTest
-  };
-
-  virtual bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key) = 0;
-
-  virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
-    int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
-
-  // Despite the name, we provide entries up to V6 in case someone requests
-  // a V3 interface and still wants to use V5-V6 functions
-
-  // **** AVISYNTH_INTERFACE_VERSION 5 **** defined since classic Avisynth 2.6 beta
-  virtual void __stdcall DeleteScriptEnvironment() = 0;
-
-  virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
-    int textcolor, int halocolor, int bgcolor) = 0;
-
-  virtual const AVS_Linkage* __stdcall GetAVSLinkage() = 0;
-
-  // **** AVISYNTH_INTERFACE_VERSION 6 **** defined since classic Avisynth 2.6
-  // noThrow version of GetVar
-  virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue()) = 0;
-
-}; // end class IScriptEnvironment_Avs25. Order is important.
 
 
+// Multithreading behaviour. IClip SetCacheHints can return them on CACHE_GET_MTMODE query
 enum MtMode {
   MT_INVALID = 0,
   MT_NICE_FILTER = 1,
@@ -1774,6 +1741,8 @@ public:
 };
 
 class IScriptEnvironment2;
+class IScriptEnvironment_Avs25;
+class IScriptEnvironment_AvsPreV11C;
 class Prefetcher;
 typedef AVSValue (*ThreadWorkerFuncPtr)(IScriptEnvironment2* env, void* data);
 
@@ -1789,8 +1758,6 @@ typedef AVSValue (*ThreadWorkerFuncPtr)(IScriptEnvironment2* env, void* data);
 class IScriptEnvironment2 : public IScriptEnvironment{
 public:
   virtual ~IScriptEnvironment2() {}
-
-  // V8: SubframePlanarA, GetEnvProperty, GetVar versions, Allocate, Free, no-throw Invoke moved to IScriptEnvironment
 
   // Plugin functions
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
@@ -1819,6 +1786,9 @@ public:
 // is exactly identical and there is no limitation to switch interfaces.
 // You can use any interface you like.
 // Note to plugin authors : The interface is not stable, see comments in IScriptEnvironment2
+
+// The order of functions are arbitrary, no need to keep the VMT table compatibility and match 
+// with the strict IScriptEnvironment order.
 class INeoEnv {
 public:
   virtual ~INeoEnv() {}
@@ -1835,6 +1805,8 @@ public:
   virtual IScriptEnvironment2* __stdcall GetEnv2() = 0;
   // Get compatibility interface for AVS CPP 2.5 plugins
   virtual IScriptEnvironment_Avs25* __stdcall GetEnv25() = 0;
+  // Get compatibility interface for older AVS C plugins
+  virtual IScriptEnvironment_AvsPreV11C* __stdcall GetEnvPreV11C() = 0;
 
   // Generic system to ask for various properties
   virtual size_t  __stdcall GetEnvProperty(AvsEnvProperty prop) = 0;
@@ -1844,6 +1816,7 @@ public:
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
   virtual void __stdcall ClearAutoloadDirs() = 0;
+  virtual char* __stdcall ListAutoloadDirs() = 0;
   virtual void __stdcall AutoloadPlugins() = 0;
 
   virtual void __stdcall AddFunction(
@@ -2016,9 +1989,11 @@ struct PNeoEnv {
 #ifdef BUILDING_AVSCORE
   inline operator IScriptEnvironment2*();
   inline operator IScriptEnvironment_Avs25* ();
+  inline operator IScriptEnvironment_AvsPreV11C* ();
 #else
   operator IScriptEnvironment2*() { return p->GetEnv2(); }
   operator IScriptEnvironment_Avs25* () { return p->GetEnv25(); }
+  operator IScriptEnvironment_AvsPreV11C* () { return p->GetEnvPreV11C(); }
 #endif
 };
 
@@ -2050,4 +2025,4 @@ AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version = AVISYNTH_
 
 #pragma pack(pop)
 
-#endif //__AVISYNTH_10_H__
+#endif //__AVISYNTH_11_H__
