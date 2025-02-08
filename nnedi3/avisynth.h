@@ -1925,6 +1925,11 @@ public:
   virtual int __stdcall propSetIntArray(AVSMap* map, const char* key, const int64_t* i, int size) = 0;
   virtual int __stdcall propSetFloatArray(AVSMap* map, const char* key, const double* d, int size) = 0;
 
+  virtual int __stdcall propGetIntSaturated(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual float __stdcall propGetFloatSaturated(const AVSMap* map, const char* key, int index, int* error) = 0;
+  virtual int __stdcall propGetDataTypeHint(const AVSMap* map, const char* key, int index, int* error) = 0; /* returns AVSPropDataTypeHint */
+  virtual int __stdcall propSetDataH(AVSMap* map, const char* key, const char* d, int length, int type, int append) = 0;
+
   virtual AVSMap* __stdcall createMap() = 0;
   virtual void __stdcall freeMap(AVSMap* map) = 0;
   virtual void __stdcall clearMap(AVSMap* map) = 0;
