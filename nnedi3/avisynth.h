@@ -36,12 +36,12 @@
 //           Audio channel mask support for VideoInfo: 
 //           Use 20 bits in VideoInfo::image_type for channel mask mapping
 //           IsChannelMaskKnown, SetChannelMask, GetChannelMask in VideoInfo
-// 202502xx  V11
+// 20250214  V11
 //           64 bit data types in AVSValue: double and long (int64_t), also for 32 bit Avisynth!
 //           changed: AVSValue::IsFloat true for any 32/64 bit floating point or integer types
 //           changed: AVSValue::IsInt true for any 32/64 bit integer types
-//           new: AVSValue::IsFloatf: true if AVSValue is 32 bit float or 32/64 bit integer type; same as former IsFloat
-//           new: AVSValue::IsLong  : returns true only if AVSValue is strictly 64 bit integer
+//           new: AVSValue::IsFloatfStrict: returns true only if AVSValue is strictly 32 bit float
+//           new: AVSValue::IsLongStrict : returns true only if AVSValue is strictly 64 bit integer
 //           new: AVSValue::AsLong  : returns int64_t
 //           new: AVSValue::AsLong(int64_t def)
 //           (AsFloat returned double --> no AsDouble needed)
@@ -401,8 +401,8 @@ struct AVS_Linkage {
   const char*     (AVSValue::*AsString2)(const char* def) const;
   int             (AVSValue::*ArraySize)() const;
   // v11
-  bool            (AVSValue::*IsLong)() const;
-  bool            (AVSValue::*IsFloatf)() const;
+  bool            (AVSValue::*IsLongStrict)() const;
+  bool            (AVSValue::*IsFloatfStrict)() const;
   int64_t         (AVSValue::*AsLong1)() const;
   int64_t         (AVSValue::*AsLong2)(int64_t def) const;
   void            (AVSValue::*AVSValue_CONSTRUCTOR12)(int64_t l);
@@ -1364,9 +1364,9 @@ public:
   bool IsClip() const AVS_BakedCode( return AVS_LinkCall(IsClip)() )
   bool IsBool() const AVS_BakedCode( return AVS_LinkCall(IsBool)() )
   bool IsInt() const AVS_BakedCode( return AVS_LinkCall(IsInt)() )
-  bool IsLong() const AVS_BakedCode(return AVS_LinkCall(IsLong)()) // v11
+  bool IsLongStrict() const AVS_BakedCode(return AVS_LinkCall(IsLongStrict)()) // v11
   bool IsFloat() const AVS_BakedCode( return AVS_LinkCall(IsFloat)() )
-  bool IsFloatf() const AVS_BakedCode( return AVS_LinkCall(IsFloatf)() ) // v11
+  bool IsFloatfStrict() const AVS_BakedCode( return AVS_LinkCall(IsFloatfStrict)() ) // v11
   bool IsString() const AVS_BakedCode( return AVS_LinkCall(IsString)() )
   bool IsArray() const AVS_BakedCode( return AVS_LinkCall(IsArray)() )
   bool IsFunction() const AVS_BakedCode( return AVS_LinkCall(IsFunction)() )
@@ -1450,9 +1450,9 @@ public:
   int64_t         AsLong2(int64_t def) const; // v11
 
   void            MarkArrayAsNonDeepCopy(); // for Avs25 compatibility interface, no deep-copy and deep-free
-  void            CONSTRUCTOR10(const AVSValue& v, bool c_arrays);
-  AVSValue(const AVSValue& v, bool c_arrays);
-  void            Assign2(const AVSValue* src, bool init, bool c_arrays);
+  void            CONSTRUCTOR10(const AVSValue& v, bool no_deep_arrays);
+  AVSValue(const AVSValue& v, bool no_deep_arrays);
+  void            Assign2(const AVSValue* src, bool init, bool no_deep_arrays);
 
 #endif
 }; // end class AVSValue
