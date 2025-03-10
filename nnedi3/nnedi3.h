@@ -27,6 +27,19 @@
 #include "./avisynth.h"
 #include "./PlanarFrame.h"
 #include "./ThreadPoolInterface.h"
+#ifndef _MSC_VER
+#define _strnicmp strncasecmp
+#endif
+
+#include <stdlib.h>
+
+using namespace std;
+ 
+#ifndef _MSC_VER
+#define _aligned_malloc(size, alignment) aligned_alloc(size, alignment)
+// Note: This is safe on Unix. see `man 3 aligned_alloc`
+#define _aligned_free(m) free(m)
+#endif
 
 #define NUM_NSIZE 7
 #define NUM_NNS 5
