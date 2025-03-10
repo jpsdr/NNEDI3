@@ -54,7 +54,7 @@
 //           - New propSetDataH, like propSetData but with optional data type hint (byte/string)
 //             (VSAPI4: mapSetData, our propSetData became VSAPI4: mapSetData3)
 
-// http://www.avisynth.org
+// http://avisynth.nl
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
