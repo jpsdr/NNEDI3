@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.64 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.65 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **

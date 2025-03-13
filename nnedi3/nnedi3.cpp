@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.64 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.65 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -4395,15 +4395,19 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 				|| (_strnicmp(cshift,"sincresize",10)==0) || (_strnicmp(cshift,"sinclin2resize",14)==0)) type=1;
 			else
 			{
-				if ((_strnicmp(cshift,"gaussresize",11)==0) || (_strnicmp(cshift,"sinpowresize",12)==0)) type=2;
+				if (_strnicmp(cshift,"sinpowresize",12)==0) type=2;
 				else
 				{
 					if ((_strnicmp(cshift,"bicubicresize",13)==0) || (_strnicmp(cshift,"userdefined2resize",18)==0)) type=3;
+					else
+					{
+						if (_strnicmp(cshift,"gaussresize",11)==0) type=4;
+					}
 				}
 			}
 			
-			if ((type==0) || ((type!=3) && (ep0==-FLT_MAX)) ||
-				((type==3) && (ep0==-FLT_MAX) && (ep1==-FLT_MAX)))
+			if ((type==0) || (((type!=3) && (type!=4)) && (ep0==-FLT_MAX)) ||
+				(((type==3) || (type==4)) && (ep0==-FLT_MAX) && (ep1==-FLT_MAX)))
 			{
 				AVSValue sargs[15] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor,threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,sleep,
@@ -4484,14 +4488,14 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					if (RGB64) v=env->Invoke("ConvertToRGB64",v).AsClip();
 				}
 			}
-			else if ((type!=3) || (min(ep0,ep1)==-FLT_MAX))
+			else if (((type!=3) && (type!=4)) || (min(ep0,ep1)==-FLT_MAX))
 			{
 				AVSValue sargs[16] = { v, fwidth, fheight, Y_hshift, Y_vshift, 
 					vi.width*rfactor, vi.height*rfactor, type==1?AVSValue((int)(ep0+0.5f)):
 					(type==2?ep0:max(ep0,ep1)),threads_rs,LogicalCores_rs,MaxPhysCores_rs,SetAffinity_rs,
 					sleep,prefetch,range_mode,thread_level_rs };
 				const char *nargs[16] = { 0, 0, 0, "src_left", "src_top", 
-					"src_width", "src_height", type==1?"taps":(type==2?"p":(max(ep0,ep1)==ep0?"b":"c")),
+					"src_width", "src_height", type==1?"taps":(((type==2)||(type==4))?"p":(max(ep0,ep1)==ep0?"b":"c")),
 					"threads","logicalCores","MaxPhysCore","SetAffinity","sleep","prefetch","range","ThreadLevel" };
 				const uint8_t nbarg=(use_rs_mt) ? 15:8;
 
@@ -4572,7 +4576,7 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 					vi.width*rfactor, vi.height*rfactor, ep0, ep1,threads_rs,LogicalCores_rs,MaxPhysCores_rs,
 					SetAffinity_rs,sleep,prefetch,range_mode,thread_level_rs };
 				const char *nargs[17] = { 0, 0, 0, "src_left", "src_top", 
-					"src_width", "src_height", "b", "c", "threads","logicalCores","MaxPhysCore","SetAffinity",
+					"src_width", "src_height", type==4?"p":"b", type==4?"b":"c", "threads","logicalCores","MaxPhysCore","SetAffinity",
 					"sleep","prefetch","range","ThreadLevel" };
 				const uint8_t nbarg=(use_rs_mt) ? 16:9;
 
