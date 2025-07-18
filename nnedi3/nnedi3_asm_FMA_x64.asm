@@ -80,7 +80,7 @@ ub_1 byte 32 dup(1)
 
 d_19 sdword 8 dup(19)
 d_3 sdword 8 dup(3)
-ud_16 dword 16 dup(16)
+ud_16 dword 8 dup(16)
 uw_1 word 16 dup(1)
 
 f_19 real4 8 dup(0.59375)
@@ -233,7 +233,7 @@ computeNetwork0_AVX2 proc public frame
 		vmaxps xmm0,xmm0,xmm1
 		vpshuflw xmm1,xmm0,14
 		vcomiss xmm1,xmm0
-		jbe finish_1
+		jbe short finish_1
 		xor rax,rax
 finish_1:
 		mov BYTE PTR[rcx],al
@@ -362,7 +362,7 @@ computeNetwork0_i16_AVX2 proc public frame
 		vmaxps xmm0,xmm0,xmm1
 		vpshuflw xmm1,xmm0,14
 		vcomiss xmm1,xmm0
-		jbe finish_2
+		jbe short finish_2
 		xor rax,rax
 finish_2:
 		mov BYTE PTR[rcx],al
@@ -825,7 +825,7 @@ xloop_32:
 		add rax,r9
 		add rsi,r8
 		sub rcx,r9
-		jnz xloop_32
+		jnz short xloop_32
 				
 		xor  rax,rax
 		vmovd eax,xmm5
@@ -1274,7 +1274,7 @@ computeNetwork0_FMA3 proc public frame
 		vmaxps xmm0,xmm0,xmm1
 		vpshuflw xmm1,xmm0,14
 		vcomiss xmm1,xmm0
-		jbe finish_1a
+		jbe short finish_1a
 		xor rax,rax
 finish_1a:
 		mov BYTE PTR[rcx],al
@@ -1404,7 +1404,7 @@ computeNetwork0_FMA4 proc public frame
 		vmaxps xmm0,xmm0,xmm1
 		vpshuflw xmm1,xmm0,14
 		vcomiss xmm1,xmm0
-		jbe finish_1b
+		jbe short finish_1b
 		xor rax,rax
 finish_1b:
 		mov BYTE PTR[rcx],al
@@ -1472,7 +1472,7 @@ nloop_5:
 		vaddps ymm1,ymm1,ymm4
 		add rdi,r9
 		sub rcx,r9
-		jnz nloop_5
+		jnz short nloop_5
 		
 		vextractf128 xmm2,ymm0,1
 		vextractf128 xmm3,ymm1,1
@@ -1488,11 +1488,11 @@ nloop_5:
 		vaddss xmm0,xmm0,xmm2
 		vaddss xmm1,xmm1,xmm3
 		vcomiss xmm0,dword ptr min_weight_sum
-		jbe nodiv
+		jbe short nodiv
 		vmulss xmm1,xmm1,dword ptr five_f
 		vrcpss xmm0,xmm0,xmm0
 		vmulss xmm1,xmm1,xmm0
-		jmp finish_5
+		jmp short finish_5
 nodiv:
 		vxorps xmm1,xmm1,xmm1
 finish_5:
@@ -1563,7 +1563,7 @@ nloop_52:
 		
 		add rdi,r9
 		sub rcx,r9
-		jnz nloop_52
+		jnz short nloop_52
 		
 		vextractf128 xmm2,ymm0,1
 		vextractf128 xmm3,ymm1,1
@@ -1579,11 +1579,11 @@ nloop_52:
 		vaddss xmm0,xmm0,xmm2
 		vaddss xmm1,xmm1,xmm3
 		vcomiss xmm0,dword ptr min_weight_sum
-		jbe nodiv2
+		jbe short nodiv2
 		vmulss xmm1,xmm1,dword ptr five_f
 		vrcpss xmm0,xmm0,xmm0
 		vmulss xmm1,xmm1,xmm0
-		jmp finish_52
+		jmp short finish_52
 nodiv2:
 		vxorps xmm1,xmm1,xmm1
 finish_52:
@@ -1654,7 +1654,7 @@ nloop_53:
 		
 		add rdi,r9
 		sub rcx,r9
-		jnz nloop_53
+		jnz short nloop_53
 		
 		vextractf128 xmm2,ymm0,1
 		vextractf128 xmm3,ymm1,1
@@ -1670,11 +1670,11 @@ nloop_53:
 		vaddss xmm0,xmm0,xmm2
 		vaddss xmm1,xmm1,xmm3
 		vcomiss xmm0,dword ptr min_weight_sum
-		jbe nodiv3
+		jbe short nodiv3
 		vmulss xmm1,xmm1,dword ptr five_f
 		vrcpss xmm0,xmm0,xmm0
 		vmulss xmm1,xmm1,xmm0
-		jmp finish_53
+		jmp short finish_53
 nodiv3:
 		vxorps xmm1,xmm1,xmm1
 finish_53:

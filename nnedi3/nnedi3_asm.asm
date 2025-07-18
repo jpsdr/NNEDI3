@@ -40,7 +40,7 @@ uw_16 word 8 dup(16)
 
 d_19 sdword 4 dup(19)
 d_3 sdword 4 dup(3)
-ud_16 dword 8 dup(16)
+ud_16 dword 4 dup(16)
 uw_1 word 8 dup(1)
 
 f_19 real4 4 dup(0.59375)
@@ -316,7 +316,7 @@ computeNetwork0_SSE2 proc input:dword,weights:dword,ptr_d:dword
 		maxps xmm0,xmm1
 		pshuflw xmm1,xmm0,14
 		comiss xmm1,xmm0
-		jbe finish_1
+		jbe short finish_1
 		xor eax,eax
 finish_1:
 		mov BYTE PTR[ecx],al
@@ -514,7 +514,7 @@ computeNetwork0_AVX proc input:dword,weights:dword,ptr_d:dword
 		vmaxps xmm0,xmm0,xmm1
 		vpshuflw xmm1,xmm0,14
 		vcomiss xmm1,xmm0
-		jbe finish_1_AVX
+		jbe short finish_1_AVX
 		xor eax,eax
 finish_1_AVX:
 		mov BYTE PTR[ecx],al
@@ -673,7 +673,7 @@ computeNetwork0_i16_SSE2 proc inputf:dword,weightsf:dword,ptr_d:dword
 		maxps xmm0,xmm1
 		pshuflw xmm1,xmm0,14
 		comiss xmm1,xmm0
-		jbe finish_2
+		jbe short finish_2
 		xor eax,eax
 finish_2:
 		mov BYTE PTR[ecx],al
@@ -812,7 +812,7 @@ computeNetwork0_i16_AVX proc inputf:dword,weightsf:dword,ptr_d:dword
 		vmaxps xmm0,xmm0,xmm1
 		vpshuflw xmm1,xmm0,14
 		vcomiss xmm1,xmm0
-		jbe finish_2_AVX
+		jbe short finish_2_AVX
 		xor eax,eax
 finish_2_AVX:
 		mov BYTE PTR[ecx],al
@@ -1538,7 +1538,7 @@ xloop_32:
 		add eax,4
 		add esi,16
 		sub ecx,4
-		jnz xloop_32
+		jnz short xloop_32
 		
 		pop esi
 		pop edi
@@ -1592,7 +1592,7 @@ xloop_32_AVX:
 		add eax,4
 		add esi,16
 		sub ecx,4
-		jnz xloop_32_AVX
+		jnz short xloop_32_AVX
 		
 		pop esi
 		pop edi
@@ -1689,12 +1689,12 @@ xloop2:
 		mulss xmm5,xmm5
 		subss xmm6,xmm5
 		comiss xmm6,dword ptr flt_epsilon_sse
-		jbe novarjmp
+		jbe short novarjmp
 		rsqrtss xmm6,xmm6
 		rcpss xmm5,xmm6
 		movss dword ptr[eax+4],xmm5
 		movss dword ptr[eax+8],xmm6
-		jmp finish_3
+		jmp short finish_3
 novarjmp:
 		movss dword ptr[eax+4],xmm3
 		movss dword ptr[eax+8],xmm3
@@ -1792,12 +1792,12 @@ xloop2_AVX:
 		vmulss xmm5,xmm5,xmm5
 		vsubss xmm6,xmm6,xmm5
 		vcomiss xmm6,dword ptr flt_epsilon_sse
-		jbe novarjmp_AVX
+		jbe short novarjmp_AVX
 		vrsqrtss xmm6,xmm6,xmm6
 		vrcpss xmm5,xmm5,xmm6
 		vmovss dword ptr[eax+4],xmm5
 		vmovss dword ptr[eax+8],xmm6
-		jmp finish_3_AVX
+		jmp short finish_3_AVX
 novarjmp_AVX:
 		vmovss dword ptr[eax+4],xmm3
 		vmovss dword ptr[eax+8],xmm3
@@ -1899,12 +1899,12 @@ xloop2_16:
 		mulss xmm5,xmm5
 		subss xmm6,xmm5
 		comiss xmm6,dword ptr flt_epsilon_sse
-		jbe novarjmp_16
+		jbe short novarjmp_16
 		rsqrtss xmm6,xmm6
 		rcpss xmm5,xmm6
 		movss dword ptr[eax+4],xmm5
 		movss dword ptr[eax+8],xmm6
-		jmp finish_3_16
+		jmp short finish_3_16
 novarjmp_16:
 		movss dword ptr[eax+4],xmm3
 		movss dword ptr[eax+8],xmm3
@@ -2003,12 +2003,12 @@ xloop2_16_AVX:
 		vmulss xmm5,xmm5,xmm5
 		vsubss xmm6,xmm6,xmm5
 		vcomiss xmm6,dword ptr flt_epsilon_sse
-		jbe novarjmp_16_AVX
+		jbe short novarjmp_16_AVX
 		vrsqrtss xmm6,xmm6,xmm6
 		vrcpss xmm5,xmm5,xmm6
 		vmovss dword ptr[eax+4],xmm5
 		vmovss dword ptr[eax+8],xmm6
-		jmp finish_3_16_AVX
+		jmp short finish_3_16_AVX
 novarjmp_16_AVX:
 		vmovss dword ptr[eax+4],xmm3
 		vmovss dword ptr[eax+8],xmm3
@@ -2066,12 +2066,12 @@ xloop2_32:
 		add ecx,4
 		add esi,16
 		cmp ecx,edi
-		jl xloop2_32
+		jl short xloop2_32
 		lea eax,[eax+ebx*4]
 		lea edx,[edx+ebx*4]
 		lea esi,[esi+edi*4]
 		sub ydia_,2
-		jnz yloop2_32
+		jnz short yloop2_32
 		
 		mov eax,ydia
 		movhlps xmm0,xmm5
@@ -2092,12 +2092,12 @@ xloop2_32:
 		mulss xmm5,xmm5
 		subss xmm6,xmm5
 		comiss xmm6,dword ptr flt_epsilon_sse
-		jbe novarjmp_32
+		jbe short novarjmp_32
 		rsqrtss xmm6,xmm6
 		rcpss xmm5,xmm6
 		movss dword ptr[eax+4],xmm5
 		movss dword ptr[eax+8],xmm6
-		jmp finish_3_32
+		jmp short finish_3_32
 novarjmp_32:
 		movss dword ptr[eax+4],xmm3
 		movss dword ptr[eax+8],xmm3
@@ -2155,12 +2155,12 @@ xloop2_32_AVX:
 		add ecx,4
 		add esi,16
 		cmp ecx,edi
-		jl xloop2_32_AVX
+		jl short xloop2_32_AVX
 		lea eax,[eax+ebx*4]
 		lea edx,[edx+ebx*4]
 		lea esi,[esi+edi*4]
 		sub ydia_,2
-		jnz yloop2_32_AVX
+		jnz short yloop2_32_AVX
 		
 		mov eax,ydia
 		vmovhlps xmm0,xmm0,xmm5
@@ -2181,12 +2181,12 @@ xloop2_32_AVX:
 		vmulss xmm5,xmm5,xmm5
 		vsubss xmm6,xmm6,xmm5
 		vcomiss xmm6,dword ptr flt_epsilon_sse
-		jbe novarjmp_32_AVX
+		jbe short novarjmp_32_AVX
 		vrsqrtss xmm6,xmm6,xmm6
 		vrcpss xmm5,xmm5,xmm6
 		vmovss dword ptr[eax+4],xmm5
 		vmovss dword ptr[eax+8],xmm6
-		jmp finish_3_32_AVX
+		jmp short finish_3_32_AVX
 novarjmp_32_AVX:
 		vmovss dword ptr[eax+4],xmm3
 		vmovss dword ptr[eax+8],xmm3
@@ -2246,12 +2246,12 @@ xloop_2:
 		add ecx,8
 		add edx,16
 		cmp ecx,edi
-		jl xloop_2
+		jl short xloop_2
 		lea eax,[eax+ebx*4]
 		lea esi,[esi+ebx*4]
 		lea edx,[edx+edi*2]
 		sub ydia_,2
-		jnz yloop
+		jnz short yloop
 		
 		movhlps xmm1,xmm5
 		mov eax,ydia
@@ -2270,12 +2270,12 @@ xloop_2:
 		mulss xmm4,xmm4
 		subss xmm5,xmm4
 		comiss xmm5,dword ptr flt_epsilon_sse
-		jbe novarjmp_2
+		jbe short novarjmp_2
 		rsqrtss xmm5,xmm5
 		rcpss xmm4,xmm5
 		movss dword ptr[eax+4],xmm4
 		movss dword ptr[eax+8],xmm5
-		jmp finish_4
+		jmp short finish_4
 novarjmp_2:
 		movss dword ptr[eax+4],xmm6
 		movss dword ptr[eax+8],xmm6
@@ -2333,12 +2333,12 @@ xloop_2_AVX:
 		add ecx,8
 		add edx,16
 		cmp ecx,edi
-		jl xloop_2_AVX
+		jl short xloop_2_AVX
 		lea eax,[eax+ebx*4]
 		lea esi,[esi+ebx*4]
 		lea edx,[edx+edi*2]
 		sub ydia_,2
-		jnz yloop_AVX
+		jnz short yloop_AVX
 		
 		vmovhlps xmm1,xmm1,xmm5
 		mov eax,ydia
@@ -2357,12 +2357,12 @@ xloop_2_AVX:
 		vmulss xmm4,xmm4,xmm4
 		vsubss xmm5,xmm5,xmm4
 		vcomiss xmm5,dword ptr flt_epsilon_sse
-		jbe novarjmp_2_AVX
+		jbe short novarjmp_2_AVX
 		vrsqrtss xmm5,xmm5,xmm5
 		vrcpss xmm4,xmm4,xmm5
 		vmovss dword ptr[eax+4],xmm4
 		vmovss dword ptr[eax+8],xmm5
-		jmp finish_4_AVX
+		jmp short finish_4_AVX
 novarjmp_2_AVX:
 		vmovss dword ptr[eax+4],xmm6
 		vmovss dword ptr[eax+8],xmm6
@@ -2427,12 +2427,12 @@ xloop_2_16:
 		add ecx,8
 		add edx,16
 		cmp ecx,edi
-		jl xloop_2_16
+		jl short xloop_2_16
 		lea eax,[eax+ebx*4]
 		lea esi,[esi+ebx*4]
 		lea edx,[edx+edi*2]
 		sub ydia_,2
-		jnz yloop_16
+		jnz short yloop_16
 		
 		movhlps xmm1,xmm5
 		movhlps xmm2,xmm4
@@ -2459,12 +2459,12 @@ xloop_2_16:
 		mulss xmm4,xmm4
 		subss xmm5,xmm4
 		comiss xmm5,dword ptr flt_epsilon_sse
-		jbe novarjmp_2_16
+		jbe short novarjmp_2_16
 		rsqrtss xmm5,xmm5
 		rcpss xmm4,xmm5
 		movss dword ptr[eax+4],xmm4
 		movss dword ptr[eax+8],xmm5
-		jmp finish_4_16
+		jmp short finish_4_16
 novarjmp_2_16:
 		movss dword ptr[eax+4],xmm6
 		movss dword ptr[eax+8],xmm6
@@ -2526,12 +2526,12 @@ xloop_2_16_AVX:
 		add ecx,8
 		add edx,16
 		cmp ecx,edi
-		jl xloop_2_16_AVX
+		jl short xloop_2_16_AVX
 		lea eax,[eax+ebx*4]
 		lea esi,[esi+ebx*4]
 		lea edx,[edx+edi*2]
 		sub ydia_,2
-		jnz yloop_16_AVX
+		jnz short yloop_16_AVX
 		
 		vmovhlps xmm1,xmm1,xmm5
 		vmovhlps xmm2,xmm2,xmm4
@@ -2558,12 +2558,12 @@ xloop_2_16_AVX:
 		vmulss xmm4,xmm4,xmm4
 		vsubss xmm5,xmm5,xmm4
 		vcomiss xmm5,dword ptr flt_epsilon_sse
-		jbe novarjmp_2_16_AVX
+		jbe short novarjmp_2_16_AVX
 		vrsqrtss xmm5,xmm5,xmm5
 		vrcpss xmm4,xmm4,xmm5
 		vmovss dword ptr[eax+4],xmm4
 		vmovss dword ptr[eax+8],xmm5
-		jmp finish_4_16_AVX
+		jmp short finish_4_16_AVX
 novarjmp_2_16_AVX:
 		vmovss dword ptr[eax+4],xmm6
 		vmovss dword ptr[eax+8],xmm6
@@ -2925,7 +2925,7 @@ aloop:
 		movaps [eax+ecx*4+48],xmm3
 		add ecx,16
 		sub edx,16
-		jnz aloop
+		jnz short aloop
 		
 		pop ebx
 		pop esi
@@ -3078,7 +3078,7 @@ aloop_AVX:
 		vmovaps XMMWORD ptr [eax+ecx*4+48],xmm3
 		add ecx,16
 		sub edx,16
-		jnz aloop_AVX
+		jnz short aloop_AVX
 		
 		pop ebx
 		pop esi
@@ -3310,7 +3310,7 @@ aloop_2:
 		movaps [eax+ecx*4+48],xmm3
 		add ecx,16
 		sub edx,16
-		jnz aloop_2
+		jnz short aloop_2
 		
 		pop ebx
 		pop esi
@@ -3503,7 +3503,7 @@ aloop_2_AVX:
 		vmovaps XMMWORD ptr [eax+ecx*4+48],xmm3
 		add ecx,16
 		sub edx,16
-		jnz aloop_2_AVX
+		jnz short aloop_2_AVX
 		
 		pop ebx
 		pop esi
@@ -3639,7 +3639,7 @@ aloop_3:
 		movaps [eax+ecx*4+48],xmm3
 		add ecx,16
 		sub edx,16
-		jnz aloop_3
+		jnz short aloop_3
 		
 		pop ebx
 		pop esi
@@ -3922,7 +3922,7 @@ aloop_4:
 		movaps [eax+ecx*4+48],xmm3
 		add ecx,16
 		sub edx,16
-		jnz aloop_4
+		jnz short aloop_4
 		
 		pop ebx
 		pop esi
@@ -4461,11 +4461,11 @@ nloop_5:
 		addss xmm0,xmm2
 		addss xmm1,xmm3
 		comiss xmm0,dword ptr min_weight_sum
-		jbe nodiv
+		jbe short nodiv
 		mulss xmm1,dword ptr five_f
 		rcpss xmm0,xmm0
 		mulss xmm1,xmm0
-		jmp finish_5
+		jmp short finish_5
 nodiv:
 		xorps xmm1,xmm1
 finish_5:
@@ -4547,11 +4547,11 @@ nloop_5_AVX:
 		vaddss xmm0,xmm0,xmm2
 		vaddss xmm1,xmm1,xmm3
 		vcomiss xmm0,dword ptr min_weight_sum
-		jbe nodiv_AVX
+		jbe short nodiv_AVX
 		vmulss xmm1,xmm1,dword ptr five_f
 		vrcpss xmm0,xmm0,xmm0
 		vmulss xmm1,xmm1,xmm0
-		jmp finish_5_AVX
+		jmp short finish_5_AVX
 nodiv_AVX:
 		vxorps xmm1,xmm1,xmm1
 finish_5_AVX:

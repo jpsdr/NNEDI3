@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.65 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.66 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -22,8 +22,14 @@
 
 #include "./nnedi3.h"
 
+// VS 2015
 #if _MSC_VER >= 1900
 #define AVX2_BUILD_POSSIBLE
+#endif
+
+// VS 2019 v16.3
+#if _MSC_VER >= 1923
+#define AVX512_BUILD_POSSIBLE
 #endif
 
 #ifdef AVX2_BUILD_POSSIBLE
@@ -67,6 +73,17 @@ extern "C" void extract_m8_FMA4_16(const uint8_t *srcp, const int stride, const 
 extern "C" void extract_m8_AVX2_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
 extern "C" void extract_m8_FMA3_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
 extern "C" void extract_m8_FMA4_32(const uint8_t *srcp, const int stride, const int xdia, const int ydia, float *mstd, float *input);
+#endif
+
+#ifdef AVX512_BUILD_POSSIBLE
+extern "C" void computeNetwork0_AVX512(const float *input,const float *weights,uint8_t *d);
+extern "C" void computeNetwork0_i16_AVX512(const float *inputf,const float *weightsf,uint8_t *d);
+extern "C" void computeNetwork0new_AVX512(const float *datai,const float *weights,uint8_t *d);
+extern "C" void dotProd_m32_m16_AVX512(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
+extern "C" void dotProd_m48_m16_AVX512(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
+extern "C" void dotProd_m32_m16_i16_AVX512(const float *dataf,const float *weightsf,float *vals,const int n,const int len,const float *istd);
+extern "C" void dotProd_m64_m16_i16_AVX512(const float *dataf,const float *weightsf,float *vals,const int n,const int len,const float *istd);
+extern "C" void weightedAvgElliottMul5_m16_AVX512(const float *w,const int n,float *mstd);
 #endif
 
 extern "C" void computeNetwork0_SSE2(const float *input,const float *weights,uint8_t *d);
@@ -199,10 +216,10 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("nnedi3: qual must be set to 1 or 2!\n");
 	}
-	if ((opt<0) || (opt>7))
+	if ((opt<0) || (opt>8))
 	{
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
-		env->ThrowError("nnedi3: opt must be in [0,7]!");
+		env->ThrowError("nnedi3: opt must be in [0,8]!");
 	}
 	if ((fapprox<0) || (fapprox>15))
 	{
@@ -394,47 +411,68 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("nnedi3: Error while allocating planar dstPF!");
 	}
+	
+	AVX512=false;
 
 	if (opt==0)
 	{
 		const int CPUF=env->GetCPUFlags();
 
-#ifdef AVX2_BUILD_POSSIBLE
-		if (((CPUF & CPUF_FMA4)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=7;
-		else
+#ifdef AVX512_BUILD_POSSIBLE
+		if (((CPUF & CPUF_AVX512F)!=0) && ((CPUF & CPUF_AVX512DQ)!=0) && ((CPUF & CPUF_AVX512BW)!=0))
 		{
-			if (((CPUF & CPUF_FMA3)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=6;
+			AVX512=true;
+			opt=6;
+		}
+		else
+#endif
+		{
+#ifdef AVX2_BUILD_POSSIBLE
+			if (((CPUF & CPUF_FMA4)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=7;
 			else
 			{
-				if ((CPUF & CPUF_AVX2)!=0) opt=5;
+				if (((CPUF & CPUF_FMA3)!=0) && ((CPUF & CPUF_AVX2)!=0)) opt=6;
 				else
 				{
-#endif
-					if ((CPUF & CPUF_AVX)!= 0) opt = 4;
+					if ((CPUF & CPUF_AVX2)!=0) opt=5;
 					else
 					{
-						if ((CPUF & CPUF_SSE4_1)!=0) opt=3;
+#endif
+						if ((CPUF & CPUF_AVX)!= 0) opt = 4;
 						else
 						{
-							if ((CPUF & CPUF_SSE2)!=0) opt=2;
-							else opt=1;
+							if ((CPUF & CPUF_SSE4_1)!=0) opt=3;
+							else
+							{
+								if ((CPUF & CPUF_SSE2)!=0) opt=2;
+								else opt=1;
+							}
 						}
-					}
 #ifdef AVX2_BUILD_POSSIBLE
+					}
 				}
 			}
-		}
 #endif
+		}
 
 		char buf[512];
 		sprintf_s(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,CPUF);
 		OutputDebugString(buf);
+	}
+	else
+	{
+		if (opt==8)
+		{
+			AVX512=true;
+			opt=6;
+		}
 	}
 
 	const int dims0 = 49*4+5*4+9*4;
 	const int dims0new = 4*65+4*5;
 	const int dims1 = (xdiaTable[nsize]*ydiaTable[nsize]+1) << (nnsTablePow2[nns]+1);
 	int dims1tsize = 0, dims1offset;
+	size_t SizeAllocDim0,SizeAllocDim1;
 	for (int j=0; j<NUM_NNS; j++)
 	{
 		int j_a;
@@ -446,22 +484,28 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			dims1tsize+=(xdiaTable[i]*ydiaTable[i]+1) << j_a;
 		}
 	}
-	weights0 = (float *)_aligned_malloc(max(dims0,dims0new)*sizeof(float),64);
+	SizeAllocDim0 = max(dims0,dims0new)*sizeof(float);
+	SizeAllocDim0 = ((SizeAllocDim0+63)>>6)<<6;
+	weights0 = (float *)_aligned_malloc(SizeAllocDim0,64);
 	if (weights0==NULL)
 	{
 		FreeData();
 		if (threads>1) poolInterface->DeAllocateAllThreads(true);
 		env->ThrowError("nnedi3: Error while allocating weights0!");
 	}
+	std::fill_n(weights0,SizeAllocDim0>>2,0.0f);
+	SizeAllocDim1 = dims1*sizeof(float);
+	SizeAllocDim1 = ((SizeAllocDim1+63)>>6)<<6;
 	for (uint8_t i=0; i<2; i++)
 	{
-		weights1[i] = (float *)_aligned_malloc(dims1*sizeof(float),64);
+		weights1[i] = (float *)_aligned_malloc(SizeAllocDim1,64);
 		if (weights1[i]==NULL)
 		{
 			FreeData();
 			if (threads>1) poolInterface->DeAllocateAllThreads(true);
 			env->ThrowError("nnedi3: Error while allocating weights1[%d]!",i);
 		}
+		std::fill_n(weights1[i],SizeAllocDim1>>2,0.0f);
 	}
 	for (uint8_t i=0; i<PlaneMax; i++)
 	{
@@ -513,26 +557,41 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 
 		j_a=0,j_b=0;
-		if (opt>=5)
+		
+		if (AVX512)
 		{
 			for (int j=0; j<4; j++)
 			{
 				for (int k=0; k<64; k++)
-					offt2[j_a+k] = ((k>>4)<<6)+j_b+(k&15);
+					offt2[j_a+k] = ((k>>5)<<7)+j_b+(k&31);
 
 				j_a+=64;
-				j_b+=16;
+				j_b+=32;
 			}
 		}
 		else
 		{
-			for (int j=0; j<4; j++)
+			if (opt>=5)
 			{
-				for (int k=0; k<64; k++)
-					offt2[j_a+k] = ((k>>3)<<5)+j_b+(k&7);
+				for (int j=0; j<4; j++)
+				{
+					for (int k=0; k<64; k++)
+						offt2[j_a+k] = ((k>>4)<<6)+j_b+(k&15);
 
-				j_a+=64;
-				j_b+=8;
+					j_a+=64;
+					j_b+=16;
+				}
+			}
+			else
+			{
+				for (int j=0; j<4; j++)
+				{
+					for (int k=0; k<64; k++)
+						offt2[j_a+k] = ((k>>3)<<5)+j_b+(k&7);
+
+					j_a+=64;
+					j_b+=8;
+				}
 			}
 		}
 
@@ -580,7 +639,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 	else // using old prescreener
 	{
 		double mean[4] = {0.0,0.0,0.0,0.0};
-		int j_a=0;
+		int j_a=0,j_a2=0;
 
 		// Calculate mean weight of each first layer neuron
 		for (int j=0; j<4; j++)
@@ -595,11 +654,14 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		if (int16_prescreener) // use int16 dot products in first layer
 		{
 			int16_t *ws = (int16_t *)weights0;
-			float *wf = (float *)&ws[4*48];
+			float *wf = (AVX512)?(float *)&ws[4*64]:(float *)&ws[4*48];
+			int j_b=0;
 
 			// 16 bit pixels will be shifted by 1 for the prescreener.
 			const int prescreener_bits = min((int)bits_per_pixel,15);
 			const double half = (((int)1 << prescreener_bits)-1)/2.0;
+			
+			if (AVX512) memset(ws,0,(64*4)*sizeof(int16_t));
 
 			// Factor mean removal and 1.0/half scaling
 			// into first layer weights. scale to int16 range
@@ -614,10 +676,11 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				const double scale = 32767.0/mval;
 
 				for (int k=0; k<48; k++)
-					ws[j_a+k] = roundds(((bdata[j_a+k]-mean[j])/half)*scale);
+					ws[j_b+k] = roundds(((bdata[j_a+k]-mean[j])/half)*scale);
 
 				wf[j] = (float)(mval/32767.0);
 				j_a+=48;
+				j_b+=(AVX512)?64:48;
 			}
 			memcpy(wf+4,bdata+4*48,(dims0-4*48)*sizeof(float));
 
@@ -631,31 +694,48 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("nnedi3: Error while allocating rs!");
 				}
-				int j_b=0;
 
 				memcpy(rs,weights0,dims0*sizeof(float));
+
 				j_a=0;
-				if (opt>=5)
+				j_b=0;
+				if (AVX512)
 				{
+					memset(ws,0,(64*4)*sizeof(int16_t));
+
 					for (int j=0; j<4; j++)
 					{
 						for (int k=0; k<48; k++)
-							ws[((k >> 4) << 6)+j_b+(k&15)] = rs[j_a+k];
-						j_a+=48;
-						j_b+=16;
+							ws[((k >> 5) << 7)+j_b+(k&31)] = rs[j_a+k];
+						j_a+=64;
+						j_b+=32;
 					}
 				}
 				else
 				{
-					for (int j=0; j<4; j++)
+					if (opt>=5)
 					{
-						for (int k=0; k<48; k++)
-							ws[((k >> 3) << 5)+j_b+(k&7)] = rs[j_a+k];
-						j_a+=48;
-						j_b+=8;
+						for (int j=0; j<4; j++)
+						{
+							for (int k=0; k<48; k++)
+								ws[((k >> 4) << 6)+j_b+(k&15)] = rs[j_a+k];
+							j_a+=48;
+							j_b+=16;
+						}
+					}
+					else
+					{
+						for (int j=0; j<4; j++)
+						{
+							for (int k=0; k<48; k++)
+								ws[((k >> 3) << 5)+j_b+(k&7)] = rs[j_a+k];
+							j_a+=48;
+							j_b+=8;
+						}
 					}
 				}
-				shufflePreScrnL2L3(wf+8,((float*)&rs[4*48])+8,opt);
+				if (AVX512) shufflePreScrnL2L3(wf+8,((float*)&rs[4*64])+8,opt);
+				else shufflePreScrnL2L3(wf+8,((float*)&rs[4*48])+8,opt);
 				free(rs);
 			}
 		}
@@ -681,34 +761,50 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 			{
 				float *wf = weights0;
 				float *rf = (float*)malloc(dims0*sizeof(float));
+
 				if (rf==NULL)
 				{
 					FreeData();
 					if (threads>1) poolInterface->DeAllocateAllThreads(true);
 					env->ThrowError("nnedi3: Error while allocating rf!");
 				}
-				int j_b=0;
 
 				memcpy(rf,weights0,dims0*sizeof(float));
+				
+				int j_b=0;
+				
 				j_a=0;
-				if (opt>=5)
+				if (AVX512)
 				{
 					for (int j=0; j<4; j++)
 					{
 						for (int k=0; k<48; k++)
-							wf[((k >> 3) << 5)+j_b+(k&7)] = rf[j_a+k];
+							wf[((k >> 4) << 6)+j_b+(k&15)] = rf[j_a+k];
 						j_a+=48;
-						j_b+=8;
+						j_b+=16;
 					}
 				}
 				else
 				{
-					for (int j=0; j<4; j++)
+					if (opt>=5)
 					{
-						for (int k=0; k<48; k++)
-							wf[((k >> 2) << 4)+j_b+(k&3)] = rf[j_a+k];
-						j_a+=48;
-						j_b+=4;
+						for (int j=0; j<4; j++)
+						{
+							for (int k=0; k<48; k++)
+								wf[((k >> 3) << 5)+j_b+(k&7)] = rf[j_a+k];
+							j_a+=48;
+							j_b+=8;
+						}
+					}
+					else
+					{
+						for (int j=0; j<4; j++)
+						{
+							for (int k=0; k<48; k++)
+								wf[((k >> 2) << 4)+j_b+(k&3)] = rf[j_a+k];
+							j_a+=48;
+							j_b+=4;
+						}
 					}
 				}
 				shufflePreScrnL2L3(wf+4*49,rf+4*49,opt);
@@ -819,28 +915,43 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 				memcpy(rs,ws,nnst2*asize*sizeof(int16_t));
 				j_a=0;
-				if (opt>=5)
+				if (AVX512)
 				{
 					for (int j=0; j<nnst2; j++)
 					{
 						int j_b=((j >> 2) << 2)*asize;
-						int j_c=(j&3) << 4;
+						int j_c=(j&3) << 5;
 
 						for (int k=0; k<asize; k++)
-							ws[j_b+((k >> 4) << 6)+j_c+(k&15)] = rs[j_a+k];
+							ws[j_b+((k >> 5) << 7)+j_c+(k&31)] = rs[j_a+k];
 						j_a+=asize;
 					}
 				}
 				else
 				{
-					for (int j=0; j<nnst2; j++)
+					if (opt>=5)
 					{
-						int j_b=((j >> 2) << 2)*asize;
-						int j_c=(j&3) << 3;
+						for (int j=0; j<nnst2; j++)
+						{
+							int j_b=((j >> 2) << 2)*asize;
+							int j_c=(j&3) << 4;
 
-						for (int k=0; k<asize; k++)
-							ws[j_b+((k >> 3) << 5)+j_c+(k&7)] = rs[j_a+k];
-						j_a+=asize;
+							for (int k=0; k<asize; k++)
+								ws[j_b+((k >> 4) << 6)+j_c+(k&15)] = rs[j_a+k];
+							j_a+=asize;
+						}
+					}
+					else
+					{
+						for (int j=0; j<nnst2; j++)
+						{
+							int j_b=((j >> 2) << 2)*asize;
+							int j_c=(j&3) << 3;
+
+							for (int k=0; k<asize; k++)
+								ws[j_b+((k >> 3) << 5)+j_c+(k&7)] = rs[j_a+k];
+							j_a+=asize;
+						}
 					}
 				}
 				free(rs);
@@ -855,7 +966,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 
 			if (opt>1) // shuffle weight order for asm
 			{
-				if (opt>=5)
+				if (AVX512)
 				{
 					for (int j=0; j<nnst2; j++)
 					{
@@ -863,9 +974,9 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 						{
 							const double q = j < nnst ? mean[k] : 0.0;
 							int j_b=((j >> 2) << 2)*asize;
-							int j_c=(j&3) << 3;
+							int j_c=(j&3) << 4;
 
-							weights1[i][j_b+((k >> 3) << 5)+j_c+(k&7)]=(float)(bdataT[j_a+k]-mean[j_d]-q);
+							weights1[i][j_b+((k >> 4) << 6)+j_c+(k&15)]=(float)(bdataT[j_a+k]-mean[j_d]-q);
 						}
 						weights1[i][boff+j] = (float)(bdataT[boff+j]-(j<nnst?mean[asize]:0.0));
 						j_a+=asize;
@@ -874,19 +985,39 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 				}
 				else
 				{
-					for (int j=0; j<nnst2; j++)
+					if (opt>=5)
 					{
-						for (int k=0; k<asize; k++)
+						for (int j=0; j<nnst2; j++)
 						{
-							const double q = j < nnst ? mean[k] : 0.0;
-							int j_b=((j >> 2) << 2)*asize;
-							int j_c=(j&3) << 2;
+							for (int k=0; k<asize; k++)
+							{
+								const double q = j < nnst ? mean[k] : 0.0;
+								int j_b=((j >> 2) << 2)*asize;
+								int j_c=(j&3) << 3;
 
-							weights1[i][j_b+((k >> 2) << 4)+j_c+(k&3)]=(float)(bdataT[j_a+k]-mean[j_d]-q);
+								weights1[i][j_b+((k >> 3) << 5)+j_c+(k&7)]=(float)(bdataT[j_a+k]-mean[j_d]-q);
+							}
+							weights1[i][boff+j] = (float)(bdataT[boff+j]-(j<nnst?mean[asize]:0.0));
+							j_a+=asize;
+							j_d++;
 						}
-						weights1[i][boff+j] = (float)(bdataT[boff+j]-(j<nnst?mean[asize]:0.0));
-						j_a+=asize;
-						j_d++;
+					}
+					else
+					{
+						for (int j=0; j<nnst2; j++)
+						{
+							for (int k=0; k<asize; k++)
+							{
+								const double q = j < nnst ? mean[k] : 0.0;
+								int j_b=((j >> 2) << 2)*asize;
+								int j_c=(j&3) << 2;
+
+								weights1[i][j_b+((k >> 2) << 4)+j_c+(k&3)]=(float)(bdataT[j_a+k]-mean[j_d]-q);
+							}
+							weights1[i][boff+j] = (float)(bdataT[boff+j]-(j<nnst?mean[asize]:0.0));
+							j_a+=asize;
+							j_d++;
+						}
 					}
 				}
 			}
@@ -958,6 +1089,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		pssInfo[i].pscrn = pscrn;
 		pssInfo[i].env = env;
 		pssInfo[i].opt = opt;
+		pssInfo[i].AVX512 = AVX512;
 		pssInfo[i].Y = Y;
 		pssInfo[i].U = U;
 		pssInfo[i].V = V;
@@ -1635,7 +1767,6 @@ int processLine0_AVX2(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 }
 #endif
 
-
 // new prescreener functions
 
 void uc2s64_C(const uint8_t *t, const int pitch, float *p)
@@ -1701,6 +1832,7 @@ void evalFunc_1(void *ps)
 	float *input = pss->input;
 	const float *weights0 = pss->weights0;
 	const int opt = pss->opt;
+	const bool AVX512 = pss->AVX512;
 	const int pscrn = pss->pscrn;
 	const bool int16_prescreener = pss->int16_prescreener;
 	void (*uc2s)(const uint8_t*,const int,float*);
@@ -1737,13 +1869,19 @@ void evalFunc_1(void *ps)
 			if (opt==1) computeNetwork0=computeNetwork0_i16_C;
 			else
 			{
-				if (opt>=5) computeNetwork0=computeNetwork0_i16_AVX2;
+#ifdef AVX512_BUILD_POSSIBLE
+				if (AVX512) computeNetwork0=computeNetwork0_i16_AVX512;
 				else
+#endif
 				{
-					if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX;
-					else computeNetwork0=computeNetwork0_i16_SSE2;
+					if (opt>=5) computeNetwork0=computeNetwork0_i16_AVX2;
+					else
+					{
+						if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX;
+						else computeNetwork0=computeNetwork0_i16_SSE2;
+					}
 				}
-			}
+			}				
 		}
 		else
 		{
@@ -1760,17 +1898,23 @@ void evalFunc_1(void *ps)
 			if (opt==1) computeNetwork0=computeNetwork0_C;
 			else
 			{
-				if (opt==7) computeNetwork0=computeNetwork0_FMA4;
+#ifdef AVX512_BUILD_POSSIBLE
+				if (AVX512) computeNetwork0=computeNetwork0_AVX512;
 				else
+#endif
 				{
-					if (opt==6) computeNetwork0=computeNetwork0_FMA3;
+					if (opt==7) computeNetwork0=computeNetwork0_FMA4;
 					else
 					{
-						if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
+						if (opt==6) computeNetwork0=computeNetwork0_FMA3;
 						else
 						{
-							if (opt>=4) computeNetwork0=computeNetwork0_AVX;
-							else computeNetwork0=computeNetwork0_SSE2;
+							if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
+							else
+							{
+								if (opt>=4) computeNetwork0=computeNetwork0_AVX;
+								else computeNetwork0=computeNetwork0_SSE2;
+							}
 						}
 					}
 				}
@@ -1793,11 +1937,17 @@ void evalFunc_1(void *ps)
 		if (opt==1) computeNetwork0=computeNetwork0new_C;
 		else
 		{
-			if (opt>=5) computeNetwork0=computeNetwork0new_AVX2;
+#ifdef AVX512_BUILD_POSSIBLE
+			if (AVX512) computeNetwork0=computeNetwork0new_AVX512;
 			else
+#endif
 			{
-				if (opt>=4) computeNetwork0=computeNetwork0new_AVX;
-				else computeNetwork0=computeNetwork0new_SSE2;
+				if (opt>=5) computeNetwork0=computeNetwork0new_AVX2;
+				else
+				{
+					if (opt>=4) computeNetwork0=computeNetwork0new_AVX;
+					else computeNetwork0=computeNetwork0new_SSE2;
+				}
 			}
 		}
 	}
@@ -2158,6 +2308,7 @@ void evalFunc_1_16(void *ps)
 	float *input = pss->input;
 	const float *weights0 = pss->weights0;
 	const int opt = pss->opt;
+	const bool AVX512 = pss->AVX512;
 	const int pscrn = pss->pscrn;
 	const bool int16_prescreener = pss->int16_prescreener;
 	const uint8_t bits_per_pixel = pss->bits_per_pixel;
@@ -2186,11 +2337,17 @@ void evalFunc_1_16(void *ps)
 			if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0_i16_C;
 			else
 			{
-				if (opt>=5) computeNetwork0=computeNetwork0_i16_AVX2;
+#ifdef AVX512_BUILD_POSSIBLE
+				if (AVX512) computeNetwork0=computeNetwork0_i16_AVX512;
 				else
+#endif
 				{
-					if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX;
-					else computeNetwork0=computeNetwork0_i16_SSE2;
+					if (opt>=5) computeNetwork0=computeNetwork0_i16_AVX2;
+					else
+					{
+						if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX;
+						else computeNetwork0=computeNetwork0_i16_SSE2;
+					}
 				}
 			}
 		}
@@ -2209,17 +2366,23 @@ void evalFunc_1_16(void *ps)
 			if (opt==1) computeNetwork0=computeNetwork0_C;
 			else
 			{
-				if (opt==7) computeNetwork0=computeNetwork0_FMA4;
+#ifdef AVX512_BUILD_POSSIBLE
+				if (AVX512) computeNetwork0=computeNetwork0_AVX512;
 				else
+#endif
 				{
-					if (opt==6) computeNetwork0=computeNetwork0_FMA3;
+					if (opt==7) computeNetwork0=computeNetwork0_FMA4;
 					else
 					{
-						if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
+						if (opt==6) computeNetwork0=computeNetwork0_FMA3;
 						else
 						{
-							if (opt>=4) computeNetwork0=computeNetwork0_AVX;
-							else computeNetwork0=computeNetwork0_SSE2;
+							if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
+							else
+							{
+								if (opt>=4) computeNetwork0=computeNetwork0_AVX;
+								else computeNetwork0=computeNetwork0_SSE2;
+							}
 						}
 					}
 				}
@@ -2233,11 +2396,17 @@ void evalFunc_1_16(void *ps)
 		if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0new_C_16;
 		else
 		{
-			if (opt>=5) computeNetwork0=computeNetwork0new_AVX2;
+#ifdef AVX512_BUILD_POSSIBLE
+			if (AVX512) computeNetwork0=computeNetwork0new_AVX512;
 			else
+#endif
 			{
-				if (opt>=4) computeNetwork0=computeNetwork0new_AVX;
-				else computeNetwork0=computeNetwork0new_SSE2;
+				if (opt>=5) computeNetwork0=computeNetwork0new_AVX2;
+				else
+				{
+					if (opt>=4) computeNetwork0=computeNetwork0new_AVX;
+					else computeNetwork0=computeNetwork0new_SSE2;
+				}
 			}
 		}
 	}
@@ -2476,6 +2645,7 @@ void evalFunc_1_32(void *ps)
 	float *input = pss->input;
 	const float *weights0 = pss->weights0;
 	const int opt = pss->opt;
+	const bool AVX512 = pss->AVX512;
 	const int pscrn = pss->pscrn;
 	void(*uc2s)(const uint8_t*, const int, float*);
 	void(*computeNetwork0)(const float*, const float*, uint8_t*);
@@ -2496,17 +2666,23 @@ void evalFunc_1_32(void *ps)
 	if (opt==1) computeNetwork0=computeNetwork0_C;
 	else
 	{
-		if (opt==7) computeNetwork0=computeNetwork0_FMA4;
+#ifdef AVX512_BUILD_POSSIBLE
+		if (AVX512) computeNetwork0=computeNetwork0_AVX512;
 		else
+#endif
 		{
-			if (opt==6) computeNetwork0=computeNetwork0_FMA3;
+			if (opt==7) computeNetwork0=computeNetwork0_FMA4;
 			else
 			{
-				if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
+				if (opt==6) computeNetwork0=computeNetwork0_FMA3;
 				else
 				{
-					if (opt>=4) computeNetwork0=computeNetwork0_AVX;
-					else computeNetwork0=computeNetwork0_SSE2;
+					if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
+					else
+					{
+						if (opt>=4) computeNetwork0=computeNetwork0_AVX;
+						else computeNetwork0=computeNetwork0_SSE2;
+					}
 				}
 			}
 		}
@@ -2727,6 +2903,7 @@ void evalFunc_2(void *ps)
 	float *temp = pss->temp;
 	float **weights1 = pss->weights1;
 	const int opt = pss->opt;
+	const bool AVX512 = pss->AVX512;
 	const int qual = pss->qual;
 	const int asize = pss->asize;
 	const int nns = pss->nns;
@@ -2746,17 +2923,23 @@ void evalFunc_2(void *ps)
 	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
 	else
 	{
-		if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
+#ifdef AVX512_BUILD_POSSIBLE
+		if (AVX512) wae5=weightedAvgElliottMul5_m16_AVX512;
 		else
+#endif
 		{
-			if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
+			if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
 			else
 			{
-				if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
+				if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
 				else
 				{
-					if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
-					else wae5=weightedAvgElliottMul5_m16_SSE2;
+					if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
+					else
+					{
+						if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
+						else wae5=weightedAvgElliottMul5_m16_SSE2;
+					}
 				}
 			}
 		}
@@ -2777,14 +2960,21 @@ void evalFunc_2(void *ps)
 		if (opt==1) dotProd=dotProdS_C;
 		else
 		{
-			if (opt>=5)
-				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
+#ifdef AVX512_BUILD_POSSIBLE
+			if (AVX512)
+				dotProd= ((asize%64)!=0) ? dotProd_m32_m16_i16_AVX512 : dotProd_m64_m16_i16_AVX512;
 			else
+#endif
 			{
-				if (opt>=4)
-					dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX : dotProd_m48_m16_i16_AVX;
+				if (opt>=5)
+					dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
 				else
-					dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
+				{
+					if (opt>=4)
+						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX : dotProd_m48_m16_i16_AVX;
+					else
+						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
+				}
 			}
 		}
 	}
@@ -2811,22 +3001,29 @@ void evalFunc_2(void *ps)
 		if (opt==1) dotProd=dotProd_C;
 		else
 		{
-			if (opt==7)
-				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
+#ifdef AVX512_BUILD_POSSIBLE
+			if (AVX512)
+				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX512 : dotProd_m48_m16_AVX512;
 			else
+#endif
 			{
-				if (opt==6)
-					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
+				if (opt==7)
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
 				else
 				{
-					if (opt>=5)
-						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
+					if (opt==6)
+						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
 					else
 					{
-						if (opt>=4)
-							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
+						if (opt>=5)
+							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
 						else
-							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+						{
+							if (opt>=4)
+								dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
+							else
+								dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+						}
 					}
 				}
 			}
@@ -3177,6 +3374,7 @@ void extract_m8_i16_C_16_4(const uint8_t *srcp, const int stride, const int xdia
 }
 #endif
 
+
 void extract_m8_C_16(const uint8_t *srcp,const int stride,const int xdia,const int ydia,float *mstd,float *input)
 {
 	int64_t sum = 0, sumsq = 0;
@@ -3217,6 +3415,7 @@ void evalFunc_2_16(void *ps)
 	float *temp = pss->temp;
 	float **weights1 = pss->weights1;
 	const int opt = pss->opt;
+	const bool AVX512 = pss->AVX512;
 	const int qual = pss->qual;
 	const int asize = pss->asize;
 	const int nns = pss->nns;
@@ -3237,17 +3436,23 @@ void evalFunc_2_16(void *ps)
 	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
 	else
 	{
-		if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
+#ifdef AVX512_BUILD_POSSIBLE
+		if (AVX512) wae5=weightedAvgElliottMul5_m16_AVX512;
 		else
+#endif
 		{
-			if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
+			if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
 			else
 			{
-				if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
+				if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
 				else
 				{
-					if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
-					else wae5=weightedAvgElliottMul5_m16_SSE2;
+					if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
+					else
+					{
+						if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
+						else wae5=weightedAvgElliottMul5_m16_SSE2;
+					}
 				}
 			}
 		}
@@ -3285,14 +3490,21 @@ void evalFunc_2_16(void *ps)
 		if ((opt==1) || (bits_per_pixel>14)) dotProd=dotProdS_C_16;
 		else
 		{
-			if (opt>=5)
-				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
+#ifdef AVX512_BUILD_POSSIBLE
+			if (AVX512)
+				dotProd= ((asize%64)!=0) ? dotProd_m32_m16_i16_AVX512 : dotProd_m64_m16_i16_AVX512;
 			else
+#endif
 			{
-				if (opt>=4)
-					dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX : dotProd_m48_m16_i16_AVX;
+				if (opt>=5)
+					dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
 				else
-					dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
+				{
+					if (opt>=4)
+						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX : dotProd_m48_m16_i16_AVX;
+					else
+						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
+				}
 			}
 		}
 	}
@@ -3319,22 +3531,29 @@ void evalFunc_2_16(void *ps)
 		if (opt==1) dotProd = dotProd_C;
 		else
 		{
-			if (opt==7)
-				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
+#ifdef AVX512_BUILD_POSSIBLE
+			if (AVX512)
+				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX512 : dotProd_m48_m16_AVX512;
 			else
+#endif
 			{
-				if (opt==6)
-					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
+				if (opt==7)
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
 				else
 				{
-					if (opt>=5)
-						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
+					if (opt==6)
+						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
 					else
 					{
-						if (opt>=4)
-							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
+						if (opt>=5)
+							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
 						else
-							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+						{
+							if (opt>=4)
+								dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
+							else
+								dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+						}
 					}
 				}
 			}
@@ -3645,6 +3864,7 @@ void evalFunc_2_32(void *ps)
 	float *temp = pss->temp;
 	float **weights1 = pss->weights1;
 	const int opt = pss->opt;
+	const bool AVX512 = pss->AVX512;
 	const int qual = pss->qual;
 	const int asize = pss->asize;
 	const int nns = pss->nns;
@@ -3663,17 +3883,23 @@ void evalFunc_2_32(void *ps)
 	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
 	else
 	{
-		if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
+#ifdef AVX512_BUILD_POSSIBLE
+		if (AVX512) wae5=weightedAvgElliottMul5_m16_AVX512;
 		else
+#endif
 		{
-			if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
+			if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
 			else
 			{
-				if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
+				if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
 				else
 				{
-					if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
-					else wae5=weightedAvgElliottMul5_m16_SSE2;
+					if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
+					else
+					{
+						if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
+						else wae5=weightedAvgElliottMul5_m16_SSE2;
+					}
 				}
 			}
 		}
@@ -3701,22 +3927,29 @@ void evalFunc_2_32(void *ps)
 	if (opt==1) dotProd = dotProd_C;
 	else
 	{
-		if (opt==7)
-			dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
+#ifdef AVX512_BUILD_POSSIBLE
+		if (AVX512)
+			dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX512 : dotProd_m48_m16_AVX512;
 		else
+#endif
 		{
-			if (opt==6)
-				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
+			if (opt==7)
+				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
 			else
 			{
-				if (opt>=5)
-					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
+				if (opt==6)
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
 				else
 				{
-					if (opt>=4)
-						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
+					if (opt>=5)
+						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
 					else
-						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+					{
+						if (opt>=4)
+							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
+						else
+							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+					}
 				}
 			}
 		}
@@ -4110,8 +4343,8 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 		env->ThrowError("nnedi3_rpow2: 0 <= threads <= %d!\n",MAX_MT_THREADS);
 	if (threads_rs < 0 || threads_rs > MAX_MT_THREADS)
 		env->ThrowError("nnedi3_rpow2: 0 <= threads_rs <= %d!\n",MAX_MT_THREADS);
-	if (opt < 0 || opt > 7)
-		env->ThrowError("nnedi3_rpow2: opt must be in [0,7]!\n");
+	if (opt < 0 || opt > 8)
+		env->ThrowError("nnedi3_rpow2: opt must be in [0,8]!\n");
 	if (fapprox < 0 || fapprox > 15)
 		env->ThrowError("nnedi3_rpow2: fapprox must be [0,15]!\n");
 

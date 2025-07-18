@@ -82,7 +82,7 @@ ub_1 byte 32 dup(1)
 
 d_19 sdword 8 dup(19)
 d_3 sdword 8 dup(3)
-ud_16 dword 16 dup(16)
+ud_16 dword 8 dup(16)
 uw_1 word 16 dup(1)
 
 f_19 real4 8 dup(0.59375)
@@ -1223,6 +1223,9 @@ weightedAvgElliottMul5_m16_AVX2 proc ptr_w:dword,n:dword,mstd:dword
 		mov ecx,n
 		lea edx,[eax+ecx*4]
 		xor edi,edi
+
+		vmovdqa ymm6,YMMWORD ptr sign_bits_f_32
+		vmovaps ymm7,YMMWORD ptr ones_f_32
 		
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
@@ -1231,8 +1234,8 @@ nloop_5:
 		vmovaps ymm2,YMMWORD ptr [eax+edi*4]
 		vmovaps ymm4,YMMWORD ptr [edx+edi*4]
 		vaddps ymm0,ymm0,ymm2
-		vandps ymm5,ymm4,YMMWORD ptr sign_bits_f_32
-		vaddps ymm5,ymm5,YMMWORD ptr ones_f_32
+		vandps ymm5,ymm4,ymm6
+		vaddps ymm5,ymm5,ymm7
 		vrcpps ymm5,ymm5
 		vmulps ymm4,ymm4,ymm5
 		vmulps ymm4,ymm4,ymm2
@@ -1241,8 +1244,8 @@ nloop_5:
 		vmovaps ymm2,YMMWORD ptr [eax+edi*4+32]
 		vmovaps ymm4,YMMWORD ptr [edx+edi*4+32]
 		vaddps ymm0,ymm0,ymm2
-		vandps ymm5,ymm4,YMMWORD ptr sign_bits_f_32
-		vaddps ymm5,ymm5,YMMWORD ptr ones_f_32
+		vandps ymm5,ymm4,ymm6
+		vaddps ymm5,ymm5,ymm7
 		vrcpps ymm5,ymm5
 		vmulps ymm4,ymm4,ymm5
 		vmulps ymm4,ymm4,ymm2
@@ -1299,7 +1302,10 @@ weightedAvgElliottMul5_m16_FMA3 proc ptr_w:dword,n:dword,mstd:dword
 		mov ecx,n
 		lea edx,[eax+ecx*4]
 		xor edi,edi
-		
+
+		vmovdqa ymm6,YMMWORD ptr sign_bits_f_32
+		vmovaps ymm7,YMMWORD ptr ones_f_32
+
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
 		
@@ -1307,8 +1313,8 @@ nloop_52:
 		vmovaps ymm2,YMMWORD ptr [eax+edi*4]
 		vmovaps ymm4,YMMWORD ptr [edx+edi*4]
 		vaddps ymm0,ymm0,ymm2
-		vandps ymm5,ymm4,YMMWORD ptr sign_bits_f_32
-		vaddps ymm5,ymm5,YMMWORD ptr ones_f_32
+		vandps ymm5,ymm4,ymm6
+		vaddps ymm5,ymm5,ymm7
 		vrcpps ymm5,ymm5
 		vmulps ymm4,ymm4,ymm5
 		vfmadd231ps ymm1,ymm2,ymm4
@@ -1316,8 +1322,8 @@ nloop_52:
 		vmovaps ymm2,YMMWORD ptr [eax+edi*4+32]
 		vmovaps ymm4,YMMWORD ptr [edx+edi*4+32]
 		vaddps ymm0,ymm0,ymm2
-		vandps ymm5,ymm4,YMMWORD ptr sign_bits_f_32
-		vaddps ymm5,ymm5,YMMWORD ptr ones_f_32
+		vandps ymm5,ymm4,ymm6
+		vaddps ymm5,ymm5,ymm7
 		vrcpps ymm5,ymm5
 		vmulps ymm4,ymm4,ymm5
 		vfmadd231ps ymm1,ymm2,ymm4
@@ -1373,7 +1379,10 @@ weightedAvgElliottMul5_m16_FMA4 proc ptr_w:dword,n:dword,mstd:dword
 		mov ecx,n
 		lea edx,[eax+ecx*4]
 		xor edi,edi
-		
+
+		vmovdqa ymm6,YMMWORD ptr sign_bits_f_32
+		vmovaps ymm7,YMMWORD ptr ones_f_32
+
 		vxorps ymm0,ymm0,ymm0
 		vxorps ymm1,ymm1,ymm1
 		
@@ -1381,8 +1390,8 @@ nloop_53:
 		vmovaps ymm2,YMMWORD ptr [eax+edi*4]
 		vmovaps ymm4,YMMWORD ptr [edx+edi*4]
 		vaddps ymm0,ymm0,ymm2
-		vandps ymm5,ymm4,YMMWORD ptr sign_bits_f_32
-		vaddps ymm5,ymm5,YMMWORD ptr ones_f_32
+		vandps ymm5,ymm4,ymm6
+		vaddps ymm5,ymm5,ymm7
 		vrcpps ymm5,ymm5
 		vmulps ymm4,ymm4,ymm5
 		vfmaddps ymm1,ymm2,ymm4,ymm1
@@ -1390,8 +1399,8 @@ nloop_53:
 		vmovaps ymm2,YMMWORD ptr [eax+edi*4+32]
 		vmovaps ymm4,YMMWORD ptr [edx+edi*4+32]
 		vaddps ymm0,ymm0,ymm2
-		vandps ymm5,ymm4,YMMWORD ptr sign_bits_f_32
-		vaddps ymm5,ymm5,YMMWORD ptr ones_f_32
+		vandps ymm5,ymm4,ymm6
+		vaddps ymm5,ymm5,ymm7
 		vrcpps ymm5,ymm5
 		vmulps ymm4,ymm4,ymm5
 		vfmaddps ymm1,ymm2,ymm4,ymm1

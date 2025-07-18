@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.65 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.66 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -53,6 +53,7 @@ struct PS_INFO {
 	int sheight[PLANE_MAX],eheight[PLANE_MAX];
 	int sheight2[PLANE_MAX],eheight2[PLANE_MAX];
 	int *lcount[PLANE_MAX],opt,qual;
+	bool AVX512;
 	float *input,*temp;
 	float *weights0,**weights1;
 	int asize,nns,xdia,ydia,fapprox;
@@ -72,6 +73,7 @@ protected:
 	bool dh,Y,U,V,A;
 	int pscrn;
 	int field,opt,nns,etype;
+	bool AVX512;
 	int *lcount[PLANE_MAX],qual,nsize,fapprox;
 	PlanarFrame *srcPF,*dstPF;
 	PS_INFO pssInfo[MAX_MT_THREADS];

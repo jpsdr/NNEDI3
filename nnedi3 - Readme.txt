@@ -1,7 +1,7 @@
                                                                                                     |
                                 nnedi3 for Avisynth by tritical                                     |
                                        modified by JPSDR                                            |
-                                     v0.9.4.65 (13/03/2025)                                         |
+                                     v0.9.4.66 (18/07/2025)                                         |
                                            HELP FILE                                                |
 -----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
@@ -191,6 +191,7 @@ PARAMETERS (nnedi3):
          5 = use AVX2
          6 = use FMA3
          7 = use FMA4
+         8 = use AVX512
 
         ** for an older version supporting sse use v0.9.1 available at:
         **    http://bengal.missouri.edu/~kes25c/old_stuff/
@@ -410,6 +411,9 @@ nnedi3_rpow2 EXAMPLES:
 
 
 CHANGE LIST:
+   18/07/2025  v0.9.4.66
+       + Add AVX512 code path.
+
    13/03/2025  v0.9.4.65
        + Update for new parameters on some resamplers.
 
