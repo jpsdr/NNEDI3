@@ -1,5 +1,5 @@
 /*
-**                    nnedi3 v0.9.4.66 for Avs+/Avisynth 2.6.x
+**                    nnedi3 v0.9.4.67 for Avs+/Avisynth 2.6.x
 **
 **   Copyright (C) 2010-2011 Kevin Stone
 **
@@ -79,11 +79,17 @@ extern "C" void extract_m8_FMA4_32(const uint8_t *srcp, const int stride, const 
 extern "C" void computeNetwork0_AVX512(const float *input,const float *weights,uint8_t *d);
 extern "C" void computeNetwork0_i16_AVX512(const float *inputf,const float *weightsf,uint8_t *d);
 extern "C" void computeNetwork0new_AVX512(const float *datai,const float *weights,uint8_t *d);
+extern "C" int processLine0_AVX512_ASM(const uint8_t * tempu, int width, uint8_t * dstp, const uint8_t * src3p, const int src_pitch, const uint16_t * val_min_max);
+extern "C" int processLine0_AVX512_ASM_16(const uint8_t * tempu, int width, uint8_t * dstp, const uint8_t * src3p, const int src_pitch, const uint16_t * val_min_max);
+extern "C" int processLine0_AVX512_ASM_32(const uint8_t * tempu, int width, uint8_t * dstp, const uint8_t * src3p, const int src_pitch);
 extern "C" void dotProd_m32_m16_AVX512(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
 extern "C" void dotProd_m48_m16_AVX512(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
 extern "C" void dotProd_m32_m16_i16_AVX512(const float *dataf,const float *weightsf,float *vals,const int n,const int len,const float *istd);
 extern "C" void dotProd_m64_m16_i16_AVX512(const float *dataf,const float *weightsf,float *vals,const int n,const int len,const float *istd);
 extern "C" void weightedAvgElliottMul5_m16_AVX512(const float *w,const int n,float *mstd);
+extern "C" void e0_m16_AVX512(float *s, const int n);
+extern "C" void e1_m16_AVX512(float *s, const int n);
+extern "C" void e2_m16_AVX512(float *s, const int n);
 #endif
 
 extern "C" void computeNetwork0_SSE2(const float *input,const float *weights,uint8_t *d);
@@ -1767,6 +1773,20 @@ int processLine0_AVX2(const uint8_t *tempu, int width, uint8_t *dstp, const uint
 }
 #endif
 
+
+#ifdef AVX512_BUILD_POSSIBLE
+int processLine0_AVX512(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t *val_min_max)
+{
+	int count;
+	const int width_m = ((width+63) >> 6) << 6;
+
+	if (width_m!=0) count=processLine0_AVX512_ASM(tempu,width_m,dstp,src3p,src_pitch,val_min_max);
+	else count=0;
+	return count;
+}
+#endif
+
+
 // new prescreener functions
 
 void uc2s64_C(const uint8_t *t, const int pitch, float *p)
@@ -1840,15 +1860,22 @@ void evalFunc_1(void *ps)
 	int (*processLine0)(const uint8_t*,int,uint8_t*,const uint8_t*,const int,const uint16_t*);
 	uint16_t *data16=pss->val_min_max;
 
-#ifdef AVX2_BUILD_POSSIBLE
-	if (opt==1) processLine0=processLine0_C;
+#ifdef AVX512_BUILD_POSSIBLE
+	if (AVX512) processLine0=processLine0_AVX512;
 	else
+#endif
 	{
+#ifdef AVX2_BUILD_POSSIBLE
 		if (opt>=5) processLine0=processLine0_AVX2;
 		else
+#endif
 		{
 			if (opt>=4) processLine0=processLine0_AVX;
-			else processLine0=processLine0_SSE2;
+			else
+			{
+				if (opt>1) processLine0=processLine0_SSE2;
+				else processLine0=processLine0_C;
+			}
 		}
 	}
 
@@ -1856,65 +1883,86 @@ void evalFunc_1(void *ps)
 	{
 		if (int16_prescreener) // int16 dot products
 		{
-			if (opt==1) uc2s=uc2s48_C;
-			else
-			{
-				if (opt>=5) uc2s=uc2s48_AVX2;
-				else
-				{
-					if (opt>=4) uc2s=uc2s48_AVX;
-					else uc2s=uc2s48_SSE2;
-				}
-			}
-			if (opt==1) computeNetwork0=computeNetwork0_i16_C;
-			else
-			{
 #ifdef AVX512_BUILD_POSSIBLE
-				if (AVX512) computeNetwork0=computeNetwork0_i16_AVX512;
+			if (AVX512)
+			{
+				uc2s=uc2s48_AVX2;
+				computeNetwork0=computeNetwork0_i16_AVX512;
+			}
+			else
+#endif
+			{
+#ifdef AVX2_BUILD_POSSIBLE
+				if (opt>=5)
+				{
+					uc2s=uc2s48_AVX2;
+					computeNetwork0=computeNetwork0_i16_AVX2;
+				}
 				else
 #endif
 				{
-					if (opt>=5) computeNetwork0=computeNetwork0_i16_AVX2;
+					if (opt>=4)
+					{
+						uc2s=uc2s48_AVX;
+						computeNetwork0=computeNetwork0_i16_AVX;
+					}
 					else
 					{
-						if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX;
-						else computeNetwork0=computeNetwork0_i16_SSE2;
+						if (opt>1)
+						{
+							uc2s=uc2s48_SSE2;
+							computeNetwork0=computeNetwork0_i16_SSE2;
+						}
+						else
+						{
+							uc2s=uc2s48_C;
+							computeNetwork0=computeNetwork0_i16_C;
+						}
 					}
 				}
-			}				
-		}
-		else
-		{
-			if (opt==1) uc2s=uc2f48_C;
-			else
-			{
-				if (opt>=5) uc2s=uc2f48_AVX2;
-				else
-				{
-					if (opt>=4) uc2s=uc2f48_AVX;
-					else uc2s=uc2f48_SSE2;
-				}
 			}
-			if (opt==1) computeNetwork0=computeNetwork0_C;
-			else
-			{
+		}
+		else  // use float dot products
+		{
 #ifdef AVX512_BUILD_POSSIBLE
-				if (AVX512) computeNetwork0=computeNetwork0_AVX512;
-				else
+			if (AVX512)
+			{
+				uc2s=uc2f48_AVX2;
+				computeNetwork0=computeNetwork0_AVX512;
+			}
+			else
 #endif
+			{
+#ifdef AVX2_BUILD_POSSIBLE
+				if (opt>=5)
 				{
+					uc2s=uc2f48_AVX2;
 					if (opt==7) computeNetwork0=computeNetwork0_FMA4;
 					else
 					{
 						if (opt==6) computeNetwork0=computeNetwork0_FMA3;
+						else computeNetwork0=computeNetwork0_AVX2;
+					}
+				}
+				else
+#endif
+				{
+					if (opt>=4)
+					{
+						uc2s=uc2f48_AVX;
+						computeNetwork0=computeNetwork0_AVX;
+					}
+					else
+					{
+						if (opt>1)
+						{
+							uc2s=uc2f48_SSE2;
+							computeNetwork0=computeNetwork0_SSE2;
+						}
 						else
 						{
-							if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
-							else
-							{
-								if (opt>=4) computeNetwork0=computeNetwork0_AVX;
-								else computeNetwork0=computeNetwork0_SSE2;
-							}
+							uc2s=uc2f48_C;
+							computeNetwork0=computeNetwork0_C;
 						}
 					}
 				}
@@ -1924,91 +1972,45 @@ void evalFunc_1(void *ps)
 	else // new prescreener
 	{
 		// only int16 dot products
-		if (opt==1) uc2s=uc2s64_C;
-		else
-		{
-			if (opt>=5) uc2s=uc2s64_AVX2;
-			else
-			{
-				if (opt>=4) uc2s=uc2s64_AVX;
-				else uc2s=uc2s64_SSE2;
-			}
-		}
-		if (opt==1) computeNetwork0=computeNetwork0new_C;
-		else
-		{
 #ifdef AVX512_BUILD_POSSIBLE
-			if (AVX512) computeNetwork0=computeNetwork0new_AVX512;
+		if (AVX512)
+		{
+			uc2s=uc2s64_AVX2;
+			computeNetwork0=computeNetwork0new_AVX512;
+		}
+		else
+#endif
+		{
+#ifdef AVX2_BUILD_POSSIBLE
+			if (opt>=5)
+			{
+				uc2s=uc2s64_AVX2;
+				computeNetwork0=computeNetwork0new_AVX2;
+			}
 			else
 #endif
 			{
-				if (opt>=5) computeNetwork0=computeNetwork0new_AVX2;
+				if (opt>=4)
+				{
+					uc2s=uc2s64_AVX;
+					computeNetwork0=computeNetwork0new_AVX;
+				}
 				else
 				{
-					if (opt>=4) computeNetwork0=computeNetwork0new_AVX;
-					else computeNetwork0=computeNetwork0new_SSE2;
+					if (opt>1)
+					{
+						uc2s=uc2s64_SSE2;
+						computeNetwork0=computeNetwork0new_SSE2;
+					}
+					else
+					{
+						uc2s=uc2s64_C;
+						computeNetwork0=computeNetwork0new_C;
+					}
 				}
 			}
 		}
 	}
-#else
-	if (opt==1) processLine0=processLine0_C;
-	else
-	{
-		if (opt>=4) processLine0=processLine0_AVX;
-		else processLine0=processLine0_SSE2;
-	}
-
-	if (pscrn<2) // original prescreener
-	{
-		if (int16_prescreener) // int16 dot products
-		{
-			if (opt==1) uc2s=uc2s48_C;
-			else
-			{
-				if (opt>=4) uc2s=uc2s48_AVX;
-				else uc2s=uc2s48_SSE2;
-			}
-			if (opt==1) computeNetwork0=computeNetwork0_i16_C;
-			else
-			{
-				if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX;
-				else computeNetwork0=computeNetwork0_i16_SSE2;
-			}
-		}
-		else
-		{
-			if (opt==1) uc2s=uc2f48_C;
-			else
-			{
-				if (opt>=4) uc2s=uc2f48_AVX;
-				else uc2s=uc2f48_SSE2;
-			}
-			if (opt==1) computeNetwork0=computeNetwork0_C;
-			else
-			{
-				if (opt>=4) computeNetwork0=computeNetwork0_AVX;
-				else computeNetwork0=computeNetwork0_SSE2;
-			}
-		}
-	}
-	else // new prescreener
-	{
-		// only int16 dot products
-		if (opt==1) uc2s=uc2s64_C;
-		else
-		{
-			if (opt>=4) uc2s=uc2s64_AVX;
-			else uc2s=uc2s64_SSE2;
-		}
-		if (opt==1) computeNetwork0=computeNetwork0new_C;
-		else
-		{
-			if (opt>=4) computeNetwork0=computeNetwork0new_AVX;
-			else computeNetwork0=computeNetwork0new_SSE2;
-		}
-	}
-#endif
 
 	uint8_t b = pss->current_plane;
 
@@ -2302,6 +2304,20 @@ int processLine0_AVX2_16(const uint8_t *tempu, int width, uint8_t *dstp, const u
 #endif
 
 
+#ifdef AVX512_BUILD_POSSIBLE
+int processLine0_AVX512_16(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch,const uint16_t *val_min_max)
+{
+	int count;
+	const int width_m = ((width+31) >> 5) << 5;
+
+	if (width_m!=0) count=processLine0_AVX512_ASM_16(tempu,width_m,dstp,src3p,src_pitch,val_min_max);
+	else count=0;
+
+	return count;
+}
+#endif
+
+
 void evalFunc_1_16(void *ps)
 {
 	PS_INFO *pss = (PS_INFO *)ps;
@@ -2317,15 +2333,22 @@ void evalFunc_1_16(void *ps)
 	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int,const uint16_t *);
 	uint16_t *data16=pss->val_min_max;
 
-#ifdef AVX2_BUILD_POSSIBLE
-	if (opt<3) processLine0=processLine0_C_16;
+#ifdef AVX512_BUILD_POSSIBLE
+	if (AVX512) processLine0=processLine0_AVX512_16;
 	else
+#endif
 	{
+#ifdef AVX2_BUILD_POSSIBLE
 		if (opt>=5) processLine0=processLine0_AVX2_16;
 		else
+#endif
 		{
 			if (opt>=4) processLine0=processLine0_AVX_16;
-			else processLine0=processLine0_SSE2_16;
+			else
+			{
+				if (opt>1) processLine0=processLine0_SSE2_16;
+				else processLine0=processLine0_C_16;
+			}
 		}
 	}
 
@@ -2334,55 +2357,70 @@ void evalFunc_1_16(void *ps)
 		if (int16_prescreener) // int16 dot products
 		{
 			uc2s=uc2s48_C_16;
-			if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0_i16_C;
-			else
+			if (bits_per_pixel<=14)
 			{
 #ifdef AVX512_BUILD_POSSIBLE
 				if (AVX512) computeNetwork0=computeNetwork0_i16_AVX512;
 				else
 #endif
 				{
+#ifdef AVX2_BUILD_POSSIBLE
 					if (opt>=5) computeNetwork0=computeNetwork0_i16_AVX2;
 					else
+#endif
 					{
 						if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX;
-						else computeNetwork0=computeNetwork0_i16_SSE2;
+						else
+						{
+							if (opt>1) computeNetwork0=computeNetwork0_i16_SSE2;
+							else computeNetwork0=computeNetwork0_i16_C;
+						}
 					}
 				}
 			}
+			else computeNetwork0=computeNetwork0_i16_C;
 		}
-		else
+		else  // use float dot products
 		{
-			if (opt==1) uc2s=uc2f48_C_16;
-			else
-			{
-				if (opt>=5) uc2s=uc2f48_AVX2_16;
-				else
-				{
-					if (opt>=4) uc2s=uc2f48_AVX_16;
-					else uc2s=uc2f48_SSE2_16;
-				}
-			}
-			if (opt==1) computeNetwork0=computeNetwork0_C;
-			else
-			{
 #ifdef AVX512_BUILD_POSSIBLE
-				if (AVX512) computeNetwork0=computeNetwork0_AVX512;
-				else
+			if (AVX512)
+			{
+				uc2s=uc2f48_AVX2_16;
+				computeNetwork0=computeNetwork0_AVX512;
+			}
+			else
 #endif
+			{
+#ifdef AVX2_BUILD_POSSIBLE
+				if (opt>=5)
 				{
+					uc2s=uc2f48_AVX2_16;
 					if (opt==7) computeNetwork0=computeNetwork0_FMA4;
 					else
 					{
 						if (opt==6) computeNetwork0=computeNetwork0_FMA3;
+						else computeNetwork0=computeNetwork0_AVX2;
+					}
+				}
+				else
+#endif
+				{
+					if (opt>=4)
+					{
+						uc2s=uc2f48_AVX_16;
+						computeNetwork0=computeNetwork0_AVX;
+					}
+					else
+					{
+						if (opt>1)
+						{
+							uc2s=uc2f48_SSE2_16;
+							computeNetwork0=computeNetwork0_SSE2;
+						}
 						else
 						{
-							if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
-							else
-							{
-								if (opt>=4) computeNetwork0=computeNetwork0_AVX;
-								else computeNetwork0=computeNetwork0_SSE2;
-							}
+							uc2s=uc2f48_C_16;
+							computeNetwork0=computeNetwork0_C;
 						}
 					}
 				}
@@ -2393,71 +2431,25 @@ void evalFunc_1_16(void *ps)
 	{
 		// only int16 dot products
 		uc2s = uc2s64_C_16;
-		if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0new_C_16;
-		else
-		{
 #ifdef AVX512_BUILD_POSSIBLE
-			if (AVX512) computeNetwork0=computeNetwork0new_AVX512;
+		if (AVX512) computeNetwork0=computeNetwork0new_AVX512;
+		else
+#endif
+		{
+#ifdef AVX2_BUILD_POSSIBLE
+			if (opt>=5) computeNetwork0=computeNetwork0new_AVX2;
 			else
 #endif
 			{
-				if (opt>=5) computeNetwork0=computeNetwork0new_AVX2;
+				if (opt>=4) computeNetwork0=computeNetwork0new_AVX;
 				else
 				{
-					if (opt>=4) computeNetwork0=computeNetwork0new_AVX;
-					else computeNetwork0=computeNetwork0new_SSE2;
+					if (opt>1) computeNetwork0=computeNetwork0new_SSE2;
+					else computeNetwork0=computeNetwork0new_C;
 				}
 			}
 		}
 	}
-#else
-	if (opt>=4) processLine0 = processLine0_AVX_16;
-	else
-	{
-		if (opt>=3) processLine0 = processLine0_SSE2_16;
-		else processLine0 = processLine0_C_16;
-	}
-
-	if (pscrn<2) // original prescreener
-	{
-		if (int16_prescreener) // int16 dot products
-		{
-			uc2s=uc2s48_C_16;
-			if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0_i16_C;
-			else
-			{
-				if (opt>=4) computeNetwork0=computeNetwork0_i16_AVX;
-				else computeNetwork0=computeNetwork0_i16_SSE2;
-			}
-		}
-		else
-		{
-			if (opt==1) uc2s=uc2f48_C_16;
-			else
-			{
-				if (opt>=4) uc2s=uc2f48_AVX_16;
-				else uc2s=uc2f48_SSE2_16;
-			}
-			if (opt==1) computeNetwork0=computeNetwork0_C;
-			else
-			{
-				if (opt>=4) computeNetwork0=computeNetwork0_AVX;
-				else computeNetwork0=computeNetwork0_SSE2;
-			}
-		}
-	}
-	else // new prescreener
-	{
-		// only int16 dot products
-		uc2s = uc2s64_C_16;
-		if ((opt==1) || (bits_per_pixel>14)) computeNetwork0=computeNetwork0new_C_16;
-		else
-		{
-			if (opt>=4) computeNetwork0=computeNetwork0new_AVX;
-			else computeNetwork0=computeNetwork0new_SSE2;
-		}
-	}
-#endif
 
 	uint8_t b = pss->current_plane;
 
@@ -2639,6 +2631,20 @@ int processLine0_AVX2_32(const uint8_t *tempu, int width, uint8_t *dstp, const u
 #endif
 
 
+#ifdef AVX512_BUILD_POSSIBLE
+int processLine0_AVX512_32(const uint8_t *tempu, int width, uint8_t *dstp, const uint8_t *src3p, const int src_pitch)
+{
+	int count;
+	const int width_m = ((width+15) >> 4) << 4;
+
+	if (width_m!=0) count=processLine0_AVX512_ASM_32(tempu,width_m,dstp,src3p,src_pitch);
+	else count=0;
+
+	return count;
+}
+#endif
+
+
 void evalFunc_1_32(void *ps)
 {
 	PS_INFO *pss = (PS_INFO *)ps;
@@ -2651,57 +2657,50 @@ void evalFunc_1_32(void *ps)
 	void(*computeNetwork0)(const float*, const float*, uint8_t*);
 	int(*processLine0)(const uint8_t*, int, uint8_t*, const uint8_t*, const int);
 
-#ifdef AVX2_BUILD_POSSIBLE
-	if (opt==1) processLine0=processLine0_C_32;
-	else
-	{
-		if (opt>=5) processLine0=processLine0_AVX2_32;
-		else
-		{
-			if (opt>=4) processLine0=processLine0_AVX_32;
-			else processLine0=processLine0_SSE2_32;
-		}
-	}
-
-	if (opt==1) computeNetwork0=computeNetwork0_C;
-	else
-	{
+	uc2s=uc2f48_C_32;
 #ifdef AVX512_BUILD_POSSIBLE
-		if (AVX512) computeNetwork0=computeNetwork0_AVX512;
-		else
+	if (AVX512)
+	{
+		processLine0=processLine0_AVX512_32;
+		computeNetwork0=computeNetwork0_AVX512;
+	}
+	else
 #endif
+	{
+#ifdef AVX2_BUILD_POSSIBLE
+		if (opt>=5)
 		{
+			processLine0=processLine0_AVX2_32;
 			if (opt==7) computeNetwork0=computeNetwork0_FMA4;
 			else
 			{
 				if (opt==6) computeNetwork0=computeNetwork0_FMA3;
+				else computeNetwork0=computeNetwork0_AVX2;
+			}
+		}
+		else
+#endif
+		{
+			if (opt>=4)
+			{
+				processLine0=processLine0_AVX_32;
+				computeNetwork0=computeNetwork0_AVX;
+			}
+			else
+			{
+				if (opt>1)
+				{
+					processLine0=processLine0_SSE2_32;
+					computeNetwork0=computeNetwork0_SSE2;
+				}
 				else
 				{
-					if (opt>=5) computeNetwork0=computeNetwork0_AVX2;
-					else
-					{
-						if (opt>=4) computeNetwork0=computeNetwork0_AVX;
-						else computeNetwork0=computeNetwork0_SSE2;
-					}
+					processLine0=processLine0_C_32;
+					computeNetwork0=computeNetwork0_C;
 				}
 			}
 		}
 	}
-#else
-	if (opt==1) processLine0 = processLine0_C_32;
-	else
-	{
-		if (opt>=4) processLine0 = processLine0_AVX_32;
-		else processLine0 = processLine0_SSE2_32;
-	}
-	if (opt==1) computeNetwork0=computeNetwork0_C;
-	else
-	{
-		if (opt>=4) computeNetwork0=computeNetwork0_AVX;
-		else computeNetwork0=computeNetwork0_SSE2;
-	}
-#endif
-	uc2s=uc2f48_C_32;
 
 	uint8_t b = pss->current_plane;
 
@@ -2919,235 +2918,159 @@ void evalFunc_2(void *ps)
 	void (*expf)(float *,const int);
 	void (*wae5)(const float*,const int,float*);
 
+
+#ifdef AVX512_BUILD_POSSIBLE
+	if (AVX512)
+	{
+		wae5=weightedAvgElliottMul5_m16_AVX512;
+		
+		if (int16_predictor) // use int16 dot products
+		{
+			extract=extract_m8_i16_AVX2;
+			dotProd= ((asize&63)!=0) ? dotProd_m32_m16_i16_AVX512 : dotProd_m64_m16_i16_AVX512;
+		}
+		else // use float dot products
+		{
+			extract=extract_m8_FMA3;
+			dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX512 : dotProd_m48_m16_AVX512;
+		}
+		
+		if ((fapprox&12)==0) expf=e2_m16_AVX512; // use slow exp
+		else if ((fapprox&12)==4) expf=e1_m16_AVX512; // use faster exp
+		else expf = ((nns&63)!=0) ? e0_m16_FMA3 : e0_m16_AVX512; // use fastest exp
+	}
+	else
+#endif
+	{
 #ifdef AVX2_BUILD_POSSIBLE
-	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
-	else
-	{
-#ifdef AVX512_BUILD_POSSIBLE
-		if (AVX512) wae5=weightedAvgElliottMul5_m16_AVX512;
-		else
-#endif
+		if (opt>=5)
 		{
-			if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
-			else
+			if (opt==7)
 			{
-				if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
-				else
-				{
-					if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
-					else
-					{
-						if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
-						else wae5=weightedAvgElliottMul5_m16_SSE2;
-					}
-				}
-			}
-		}
-	}
+				wae5=weightedAvgElliottMul5_m16_FMA4;
 
-	if (int16_predictor) // use int16 dot products
-	{
-		if (opt==1) extract=extract_m8_i16_C;
-		else
-		{
-			if (opt>=5) extract=extract_m8_i16_AVX2;
-			else
-			{
-				if (opt>=4) extract=extract_m8_i16_AVX;
-				else extract=extract_m8_i16_SSE2;
-			}
-		}
-		if (opt==1) dotProd=dotProdS_C;
-		else
-		{
-#ifdef AVX512_BUILD_POSSIBLE
-			if (AVX512)
-				dotProd= ((asize%64)!=0) ? dotProd_m32_m16_i16_AVX512 : dotProd_m64_m16_i16_AVX512;
-			else
-#endif
-			{
-				if (opt>=5)
+				if (int16_predictor) // use int16 dot products
+				{
+					extract=extract_m8_i16_AVX2;
 					dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
-				else
-				{
-					if (opt>=4)
-						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX : dotProd_m48_m16_i16_AVX;
-					else
-						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
 				}
-			}
-		}
-	}
-	else // use float dot products
-	{
-		if (opt==1) extract=extract_m8_C;
-		else
-		{
-			if (opt==7) extract=extract_m8_FMA4;
-			else
-			{
-				if (opt==6) extract=extract_m8_FMA3;
-				else
+				else // use float dot products
 				{
-					if (opt>=5) extract=extract_m8_AVX2;
-					else
-					{
-						if (opt>=4) extract=extract_m8_AVX;
-						else extract=extract_m8_SSE2;
-					}
-				}
-			}
-		}
-		if (opt==1) dotProd=dotProd_C;
-		else
-		{
-#ifdef AVX512_BUILD_POSSIBLE
-			if (AVX512)
-				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX512 : dotProd_m48_m16_AVX512;
-			else
-#endif
-			{
-				if (opt==7)
+					extract=extract_m8_FMA4;
 					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
-				else
+				}
+
+				if ((fapprox&12)==0) expf=e2_m16_AVX2; // use slow exp
+				else if ((fapprox&12)==4) expf=e1_m16_AVX2; // use faster exp
+				else expf=e0_m16_FMA4; // use fastest exp
+			}
+			else
+			{
+				if (opt==6)
 				{
-					if (opt==6)
+					wae5=weightedAvgElliottMul5_m16_FMA3;
+
+					if (int16_predictor) // use int16 dot products
+					{
+						extract=extract_m8_i16_AVX2;
+						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
+					}
+					else // use float dot products
+					{
+						extract=extract_m8_FMA3;
 						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
-					else
-					{
-						if (opt>=5)
-							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
-						else
-						{
-							if (opt>=4)
-								dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
-							else
-								dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
-						}
 					}
-				}
-			}
-		}
-	}
 
-	if ((fapprox&12)==0) // use slow exp
-	{
-		if (opt==1) expf=e2_m16_C;
-		else
-		{
-			if (opt>=5) expf=e2_m16_AVX2;
-			else
-			{
-				if (opt>=4) expf=e2_m16_AVX;
-				else expf=e2_m16_SSE2;
-			}
-		}
-	}
-	else if ((fapprox&12)==4) // use faster exp
-	{
-		if (opt==1) expf=e1_m16_C;
-		else
-		{
-			if (opt>=5) expf=e1_m16_AVX2;
-			else
-			{
-				if (opt>=4) expf=e1_m16_AVX;
-				else expf=e1_m16_SSE2;
-			}
-		}
-	}
-	else // use fastest exp
-	{
-		if (opt==1) expf=e0_m16_C;
-		else
-		{
-			if (opt==7) expf=e0_m16_FMA4;
-			else
-			{
-				if (opt==6) expf=e0_m16_FMA3;
+					if ((fapprox&12)==0) expf=e2_m16_AVX2; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_AVX2; // use faster exp
+					else expf=e0_m16_FMA3; // use fastest exp
+				}
 				else
 				{
-					if (opt>=5) expf=e0_m16_AVX2;
-					else
+					wae5=weightedAvgElliottMul5_m16_AVX2;
+
+					if (int16_predictor) // use int16 dot products
 					{
-						if (opt>=4) expf=e0_m16_AVX;
-						else expf=e0_m16_SSE2;
+						extract=extract_m8_i16_AVX2;
+						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
 					}
+					else // use float dot products
+					{
+						extract=extract_m8_AVX2;
+						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
+					}
+
+					if ((fapprox&12)==0) expf=e2_m16_AVX2; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_AVX2; // use faster exp
+					else expf=e0_m16_AVX2; // use fastest exp
+				}
+			}
+		}
+#endif
+		else
+		{
+			if (opt>=4)
+			{
+				wae5=weightedAvgElliottMul5_m16_AVX;
+
+				if (int16_predictor) // use int16 dot products
+				{
+					extract=extract_m8_i16_AVX;
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX : dotProd_m48_m16_i16_AVX;
+				}
+				else // use float dot products
+				{
+					extract=extract_m8_AVX;
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
+				}					
+
+				if ((fapprox&12)==0) expf=e2_m16_AVX; // use slow exp
+				else if ((fapprox&12)==4) expf=e1_m16_AVX; // use faster exp
+				else expf=e0_m16_AVX; // use fastest exp
+			}
+			else
+			{
+				if (opt>1)
+				{
+					wae5=weightedAvgElliottMul5_m16_SSE2;
+
+					if (int16_predictor) // use int16 dot products
+					{
+						extract=extract_m8_i16_SSE2;
+						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
+					}
+					else // use float dot products
+					{
+						extract=extract_m8_SSE2;
+						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+					}
+
+					if ((fapprox&12)==0) expf=e2_m16_SSE2; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_SSE2; // use faster exp
+					else expf=e0_m16_SSE2; // use fastest exp
+				}
+				else
+				{
+					wae5=weightedAvgElliottMul5_m16_C;
+
+					if (int16_predictor) // use int16 dot products
+					{
+						extract=extract_m8_i16_C;
+						dotProd=dotProdS_C;
+					}
+					else // use float dot products
+					{
+						extract=extract_m8_C;
+						dotProd=dotProd_C;
+					}
+
+					if ((fapprox&12)==0) expf=e2_m16_C; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_C; // use faster exp
+					else expf=e0_m16_C; // use fastest exp
 				}
 			}
 		}
 	}
-#else
-	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
-	else
-	{
-		if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
-		else wae5=weightedAvgElliottMul5_m16_SSE2;
-	}
-
-	if (int16_predictor) // use int16 dot products
-	{
-		if (opt==1) extract=extract_m8_i16_C;
-		else
-		{
-			if (opt>=4) extract=extract_m8_i16_AVX;
-			else extract=extract_m8_i16_SSE2;
-		}
-		if (opt==1) dotProd=dotProdS_C;
-		else
-		{
-			if (opt>=4)
-				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX : dotProd_m48_m16_i16_AVX;
-			else
-				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
-		}
-	}
-	else // use float dot products
-	{
-		if (opt==1) extract=extract_m8_C;
-		else
-		{
-			if (opt>=4) extract=extract_m8_AVX;
-			else extract=extract_m8_SSE2;
-		}
-		if (opt==1) dotProd=dotProd_C;
-		else
-		{
-			if (opt>=4)
-				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
-			else
-				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
-		}
-	}
-
-	if ((fapprox&12)==0) // use slow exp
-	{
-		if (opt==1) expf=e2_m16_C;
-		else
-		{
-			if (opt>=4) expf=e2_m16_AVX;
-			else expf=e2_m16_SSE2;
-		}
-	}
-	else if ((fapprox&12)==4) // use faster exp
-	{
-		if (opt==1) expf=e1_m16_C;
-		else
-		{
-			if (opt>=4) expf=e1_m16_AVX;
-			else expf=e1_m16_SSE2;
-		}
-	}
-	else // use fastest exp
-	{
-		if (opt==1) expf=e0_m16_C;
-		else
-		{
-			if (opt>=4) expf=e0_m16_AVX;
-			else expf=e0_m16_SSE2;
-		}
-	}
-#endif
 
 	uint8_t b = pss->current_plane;
 
@@ -3432,265 +3355,180 @@ void evalFunc_2_16(void *ps)
 	void(*expf)(float *, const int);
 	void(*wae5)(const float*, const int, float*);
 
-#ifdef AVX2_BUILD_POSSIBLE
-	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
-	else
-	{
 #ifdef AVX512_BUILD_POSSIBLE
-		if (AVX512) wae5=weightedAvgElliottMul5_m16_AVX512;
-		else
-#endif
-		{
-			if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
-			else
-			{
-				if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
-				else
-				{
-					if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
-					else
-					{
-						if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
-						else wae5=weightedAvgElliottMul5_m16_SSE2;
-					}
-				}
-			}
-		}
-	}
-
-	if (int16_predictor) // use int16 dot products
+	if (AVX512)
 	{
-		if (opt>=5)
+		wae5=weightedAvgElliottMul5_m16_AVX512;
+		
+		if (int16_predictor) // use int16 dot products
 		{
 			if (bits_per_pixel<=10) extract=extract_m8_i16_AVX2_16;
 			else extract=extract_m8_i16_C_16_4;
+			if (bits_per_pixel<=14)
+				dotProd= ((asize&63)!=0) ? dotProd_m32_m16_i16_AVX512 : dotProd_m64_m16_i16_AVX512;
+			else dotProd=dotProdS_C_16;
 		}
+		else // use float dot products
+		{
+			extract=extract_m8_FMA3_16;
+			dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX512 : dotProd_m48_m16_AVX512;
+		}
+		
+		if ((fapprox&12)==0) expf=e2_m16_AVX512; // use slow exp
+		else if ((fapprox&12)==4) expf=e1_m16_AVX512; // use faster exp
+		else expf = ((nns&63)!=0) ? e0_m16_FMA3 : e0_m16_AVX512; // use fastest exp
+	}
+	else
+#endif
+	{
+#ifdef AVX2_BUILD_POSSIBLE
+		if (opt>=5)
+		{
+			if (opt==7)
+			{
+				wae5=weightedAvgElliottMul5_m16_FMA4;
+
+				if (int16_predictor) // use int16 dot products
+				{
+					if (bits_per_pixel<=10) extract=extract_m8_i16_AVX2_16;
+					else extract=extract_m8_i16_C_16_4;
+					if (bits_per_pixel<=14)
+						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
+					else dotProd=dotProdS_C_16;
+				}
+				else // use float dot products
+				{
+					extract=extract_m8_FMA4_16;
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
+				}
+
+				if ((fapprox&12)==0) expf=e2_m16_AVX2; // use slow exp
+				else if ((fapprox&12)==4) expf=e1_m16_AVX2; // use faster exp
+				else expf=e0_m16_FMA4; // use fastest exp
+			}
+			else
+			{
+				if (opt==6)
+				{
+					wae5=weightedAvgElliottMul5_m16_FMA3;
+
+					if (int16_predictor) // use int16 dot products
+					{
+						if (bits_per_pixel<=10) extract=extract_m8_i16_AVX2_16;
+						else extract=extract_m8_i16_C_16_4;
+						if (bits_per_pixel<=14)
+							dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
+						else dotProd=dotProdS_C_16;
+					}
+					else // use float dot products
+					{
+						extract=extract_m8_FMA3_16;
+						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
+					}
+
+					if ((fapprox&12)==0) expf=e2_m16_AVX2; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_AVX2; // use faster exp
+					else expf=e0_m16_FMA3; // use fastest exp
+				}
+				else
+				{
+					wae5=weightedAvgElliottMul5_m16_AVX2;
+
+					if (int16_predictor) // use int16 dot products
+					{
+						if (bits_per_pixel<=10) extract=extract_m8_i16_AVX2_16;
+						else extract=extract_m8_i16_C_16_4;
+						if (bits_per_pixel<=14)
+							dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
+						else dotProd=dotProdS_C_16;
+					}
+					else // use float dot products
+					{
+						extract=extract_m8_AVX2_16;
+						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
+					}
+
+					if ((fapprox&12)==0) expf=e2_m16_AVX2; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_AVX2; // use faster exp
+					else expf=e0_m16_AVX2; // use fastest exp
+				}
+			}
+		}
+#endif
 		else
 		{
 			if (opt>=4)
 			{
-				if (bits_per_pixel<=10) extract=extract_m8_i16_AVX_16;
-				else extract=extract_m8_i16_C_16_3;
-			}
-			else
-			{
-				if (opt>=3)
-				{
-					if (bits_per_pixel<=10) extract=extract_m8_i16_SSE2_16;
-					else extract=extract_m8_i16_C_16_2;
-				}
-				else
-				{
-					if ((opt>=2) && (bits_per_pixel<=10)) extract=extract_m8_i16_SSE2_16;
-					else extract=extract_m8_i16_C_16;
-				}
-			}
-		}
+				wae5=weightedAvgElliottMul5_m16_AVX;
 
-		if ((opt==1) || (bits_per_pixel>14)) dotProd=dotProdS_C_16;
-		else
-		{
-#ifdef AVX512_BUILD_POSSIBLE
-			if (AVX512)
-				dotProd= ((asize%64)!=0) ? dotProd_m32_m16_i16_AVX512 : dotProd_m64_m16_i16_AVX512;
-			else
-#endif
-			{
-				if (opt>=5)
-					dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX2 : dotProd_m48_m16_i16_AVX2;
-				else
+				if (int16_predictor) // use int16 dot products
 				{
-					if (opt>=4)
+					if (bits_per_pixel<=10) extract=extract_m8_i16_AVX_16;
+					else extract=extract_m8_i16_C_16_3;
+					if (bits_per_pixel<=14)
 						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX : dotProd_m48_m16_i16_AVX;
-					else
-						dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
+					else dotProd=dotProdS_C_16;
 				}
+				else // use float dot products
+				{
+					extract=extract_m8_AVX_16;
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
+				}					
+
+				if ((fapprox&12)==0) expf=e2_m16_AVX; // use slow exp
+				else if ((fapprox&12)==4) expf=e1_m16_AVX; // use faster exp
+				else expf=e0_m16_AVX; // use fastest exp
 			}
-		}
-	}
-	else // use float dot products
-	{
-		if (opt==1) extract=extract_m8_C_16;
-		else
-		{
-			if (opt==7) extract=extract_m8_FMA4_16;
 			else
 			{
-				if (opt==6) extract=extract_m8_FMA3_16;
-				else
+				if (opt>1)
 				{
-					if (opt>=5) extract=extract_m8_AVX2_16;
-					else
+					wae5=weightedAvgElliottMul5_m16_SSE2;
+
+					if (int16_predictor) // use int16 dot products
 					{
-						if (opt>=4) extract=extract_m8_AVX_16;
-						else extract=extract_m8_SSE2_16;
-					}
-				}
-			}
-		}
-		if (opt==1) dotProd = dotProd_C;
-		else
-		{
-#ifdef AVX512_BUILD_POSSIBLE
-			if (AVX512)
-				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX512 : dotProd_m48_m16_AVX512;
-			else
-#endif
-			{
-				if (opt==7)
-					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
-				else
-				{
-					if (opt==6)
-						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
-					else
-					{
-						if (opt>=5)
-							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
+						if (bits_per_pixel<=10) extract=extract_m8_i16_SSE2_16;
 						else
 						{
-							if (opt>=4)
-								dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
-							else
-								dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+							if (opt>=3) extract=extract_m8_i16_C_16_2;
+							else extract=extract_m8_i16_C_16;
 						}
+						if (bits_per_pixel<=14)
+							dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
+						else dotProd=dotProdS_C_16;
 					}
-				}
-			}
-		}
-	}
+					else // use float dot products
+					{
+						extract=extract_m8_SSE2_16;
+						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+					}
 
-	if ((fapprox & 12)==0) // use slow exp
-	{
-		if (opt==1) expf = e2_m16_C;
-		else
-		{
-			if (opt>=5) expf = e2_m16_AVX2;
-			else
-			{
-				if (opt>=4) expf = e2_m16_AVX;
-				else expf = e2_m16_SSE2;
-			}
-		}
-	}
-	else if ((fapprox & 12)==4) // use faster exp
-	{
-		if (opt==1) expf = e1_m16_C;
-		else
-		{
-			if (opt>=5) expf = e1_m16_AVX2;
-			else
-			{
-				if (opt>=4) expf = e1_m16_AVX;
-				else expf = e1_m16_SSE2;
-			}
-		}
-	}
-	else // use fastest exp
-	{
-		if (opt==1) expf=e0_m16_C;
-		else
-		{
-			if (opt==7) expf=e0_m16_FMA4;
-			else
-			{
-				if (opt==6) expf=e0_m16_FMA3;
+					if ((fapprox&12)==0) expf=e2_m16_SSE2; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_SSE2; // use faster exp
+					else expf=e0_m16_SSE2; // use fastest exp
+				}
 				else
 				{
-					if (opt>=5) expf=e0_m16_AVX2;
-					else
+					wae5=weightedAvgElliottMul5_m16_C;
+
+					if (int16_predictor) // use int16 dot products
 					{
-						if (opt>=4) expf=e0_m16_AVX;
-						else expf=e0_m16_SSE2;
+						extract=extract_m8_i16_C_16;
+						dotProd=dotProdS_C_16;
 					}
+					else // use float dot products
+					{
+						extract=extract_m8_C_16;
+						dotProd=dotProd_C;
+					}
+
+					if ((fapprox&12)==0) expf=e2_m16_C; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_C; // use faster exp
+					else expf=e0_m16_C; // use fastest exp
 				}
 			}
 		}
 	}
-#else
-	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
-	else
-	{
-		if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
-		else wae5=weightedAvgElliottMul5_m16_SSE2;
-	}
-
-	if (int16_predictor) // use int16 dot products
-	{
-		if (opt>=4)
-		{
-			if (bits_per_pixel<=10) extract=extract_m8_i16_AVX_16;
-			else extract=extract_m8_i16_C_16_3;
-		}
-		else
-		{
-			if (opt>=3)
-			{
-				if (bits_per_pixel<=10) extract=extract_m8_i16_SSE2_16;
-				else extract=extract_m8_i16_C_16_2;
-			}
-			else
-			{
-				if ((opt>=2) && (bits_per_pixel<=10)) extract=extract_m8_i16_SSE2_16;
-				else extract=extract_m8_i16_C_16;
-			}
-		}
-
-		if ((opt==1) || (bits_per_pixel>14)) dotProd=dotProdS_C_16;
-		else
-		{
-			if (opt>=4)
-				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_AVX : dotProd_m48_m16_i16_AVX;
-			else
-				dotProd= ((asize%48)!=0) ? dotProd_m32_m16_i16_SSE2 : dotProd_m48_m16_i16_SSE2;
-		}
-	}
-	else // use float dot products
-	{
-		if (opt==1) extract=extract_m8_C_16;
-		else
-		{
-			if (opt>=4) extract=extract_m8_AVX_16;
-			else extract=extract_m8_SSE2_16;
-		}
-		if (opt==1) dotProd = dotProd_C;
-		else
-		{
-			if (opt>=4)
-				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
-			else
-				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
-		}
-	}
-
-	if ((fapprox & 12)==0) // use slow exp
-	{
-		if (opt==1) expf = e2_m16_C;
-		else
-		{
-			if (opt>=4) expf = e2_m16_AVX;
-			else expf = e2_m16_SSE2;
-		}
-	}
-	else if ((fapprox & 12)==4) // use faster exp
-	{
-		if (opt==1) expf = e1_m16_C;
-		else
-		{
-			if (opt>=4) expf = e1_m16_AVX;
-			else expf = e1_m16_SSE2;
-		}
-	}
-	else // use fastest exp
-	{
-		if (opt==1) expf=e0_m16_C;
-		else
-		{
-			if (opt>=4) expf=e0_m16_AVX;
-			else expf=e0_m16_SSE2;
-		}
-	}
-#endif
 
 	uint8_t b = pss->current_plane;
 
@@ -3879,181 +3717,102 @@ void evalFunc_2_32(void *ps)
 	void(*expf)(float *, const int);
 	void(*wae5)(const float*, const int, float*);
 
+#ifdef AVX512_BUILD_POSSIBLE
+	if (AVX512)
+	{
+		wae5=weightedAvgElliottMul5_m16_AVX512;
+		
+		extract=extract_m8_FMA3_32;
+		dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX512 : dotProd_m48_m16_AVX512;
+		
+		if ((fapprox&12)==0) expf=e2_m16_AVX512; // use slow exp
+		else if ((fapprox&12)==4) expf=e1_m16_AVX512; // use faster exp
+		else expf = ((nns&63)!=0) ? e0_m16_FMA3 : e0_m16_AVX512; // use fastest exp
+	}
+	else
+#endif
+	{
 #ifdef AVX2_BUILD_POSSIBLE
-	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
-	else
-	{
-#ifdef AVX512_BUILD_POSSIBLE
-		if (AVX512) wae5=weightedAvgElliottMul5_m16_AVX512;
-		else
-#endif
-		{
-			if (opt==7) wae5=weightedAvgElliottMul5_m16_FMA4;
-			else
-			{
-				if (opt==6) wae5=weightedAvgElliottMul5_m16_FMA3;
-				else
-				{
-					if (opt>=5) wae5=weightedAvgElliottMul5_m16_AVX2;
-					else
-					{
-						if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
-						else wae5=weightedAvgElliottMul5_m16_SSE2;
-					}
-				}
-			}
-		}
-	}
-
-	if (opt==1) extract=extract_m8_C_32;
-	else
-	{
-		if (opt==7) extract=extract_m8_FMA4_32;
-		else
-		{
-			if (opt==6) extract=extract_m8_FMA3_32;
-			else
-			{
-				if (opt>=5) extract=extract_m8_AVX2_32;
-				else
-				{
-					if (opt>=4) extract=extract_m8_AVX_32;
-					else extract=extract_m8_SSE2_32;
-				}
-			}
-		}
-	}
-
-	if (opt==1) dotProd = dotProd_C;
-	else
-	{
-#ifdef AVX512_BUILD_POSSIBLE
-		if (AVX512)
-			dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX512 : dotProd_m48_m16_AVX512;
-		else
-#endif
+		if (opt>=5)
 		{
 			if (opt==7)
+			{
+				wae5=weightedAvgElliottMul5_m16_FMA4;
+
+				extract=extract_m8_FMA4_32;
 				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA4 : dotProd_m48_m16_FMA4;
+
+				if ((fapprox&12)==0) expf=e2_m16_AVX2; // use slow exp
+				else if ((fapprox&12)==4) expf=e1_m16_AVX2; // use faster exp
+				else expf=e0_m16_FMA4; // use fastest exp
+			}
 			else
 			{
 				if (opt==6)
+				{
+					wae5=weightedAvgElliottMul5_m16_FMA3;
+
+					extract=extract_m8_FMA3_32;
 					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_FMA3 : dotProd_m48_m16_FMA3;
+
+					if ((fapprox&12)==0) expf=e2_m16_AVX2; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_AVX2; // use faster exp
+					else expf=e0_m16_FMA3; // use fastest exp
+				}
 				else
 				{
-					if (opt>=5)
-						dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
-					else
-					{
-						if (opt>=4)
-							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
-						else
-							dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
-					}
+					wae5=weightedAvgElliottMul5_m16_AVX2;
+
+					extract=extract_m8_AVX2_32;
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX2 : dotProd_m48_m16_AVX2;
+
+					if ((fapprox&12)==0) expf=e2_m16_AVX2; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_AVX2; // use faster exp
+					else expf=e0_m16_AVX2; // use fastest exp
 				}
 			}
 		}
-	}
-
-	if ((fapprox & 12)==0) // use slow exp
-	{
-		if (opt==1) expf = e2_m16_C;
-		else
-		{
-			if (opt>=5) expf = e2_m16_AVX2;
-			else
-			{
-				if (opt>=4) expf = e2_m16_AVX;
-				else expf = e2_m16_SSE2;
-			}
-		}
-	}
-	else if ((fapprox & 12)==4) // use faster exp
-	{
-		if (opt==1) expf = e1_m16_C;
-		else
-		{
-			if (opt>=5) expf = e1_m16_AVX2;
-			else
-			{
-				if (opt>=4) expf = e1_m16_AVX;
-				else expf = e1_m16_SSE2;
-			}
-		}
-	}
-	else // use fastest exp
-	{
-		if (opt==1) expf=e0_m16_C;
-		else
-		{
-			if (opt==7) expf=e0_m16_FMA4;
-			else
-			{
-				if (opt==6) expf=e0_m16_FMA3;
-				else
-				{
-					if (opt>=5) expf=e0_m16_AVX2;
-					else
-					{
-						if (opt>=4) expf=e0_m16_AVX;
-						else expf=e0_m16_SSE2;
-					}
-				}
-			}
-		}
-	}
-#else
-	if (opt==1) wae5=weightedAvgElliottMul5_m16_C;
-	else
-	{
-		if (opt>=4) wae5=weightedAvgElliottMul5_m16_AVX;
-		else wae5=weightedAvgElliottMul5_m16_SSE2;
-	}
-
-	if (opt==1) extract=extract_m8_C_32;
-	else
-	{
-		if (opt>=4) extract=extract_m8_AVX_32;
-		else extract=extract_m8_SSE2_32;
-	}
-
-	if (opt==1) dotProd = dotProd_C;
-	else
-	{
-		if (opt>=4)
-			dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
-		else
-			dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
-	}
-
-	if ((fapprox & 12)==0) // use slow exp
-	{
-		if (opt==1) expf = e2_m16_C;
-		else
-		{
-			if (opt>=4) expf = e2_m16_AVX;
-			else expf = e2_m16_SSE2;
-		}
-	}
-	else if ((fapprox & 12)==4) // use faster exp
-	{
-		if (opt==1) expf = e1_m16_C;
-		else
-		{
-			if (opt>=4) expf = e1_m16_AVX;
-			else expf = e1_m16_SSE2;
-		}
-	}
-	else // use fastest exp
-	{
-		if (opt==1) expf=e0_m16_C;
-		else
-		{
-			if (opt>=4) expf=e0_m16_AVX;
-			else expf=e0_m16_SSE2;
-		}
-	}
 #endif
+		else
+		{
+			if (opt>=4)
+			{
+				wae5=weightedAvgElliottMul5_m16_AVX;
+
+				extract=extract_m8_AVX_32;
+				dotProd = ((asize%48)!=0) ? dotProd_m32_m16_AVX : dotProd_m48_m16_AVX;
+
+				if ((fapprox&12)==0) expf=e2_m16_AVX; // use slow exp
+				else if ((fapprox&12)==4) expf=e1_m16_AVX; // use faster exp
+				else expf=e0_m16_AVX; // use fastest exp
+			}
+			else
+			{
+				if (opt>1)
+				{
+					wae5=weightedAvgElliottMul5_m16_SSE2;
+
+					extract=extract_m8_SSE2_32;
+					dotProd = ((asize%48)!=0) ? dotProd_m32_m16_SSE2 : dotProd_m48_m16_SSE2;
+
+					if ((fapprox&12)==0) expf=e2_m16_SSE2; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_SSE2; // use faster exp
+					else expf=e0_m16_SSE2; // use fastest exp
+				}
+				else
+				{
+					wae5=weightedAvgElliottMul5_m16_C;
+
+					extract=extract_m8_C_32;
+					dotProd=dotProd_C;
+
+					if ((fapprox&12)==0) expf=e2_m16_C; // use slow exp
+					else if ((fapprox&12)==4) expf=e1_m16_C; // use faster exp
+					else expf=e0_m16_C; // use fastest exp
+				}
+			}
+		}
+	}
 
 	uint8_t b = pss->current_plane;
 

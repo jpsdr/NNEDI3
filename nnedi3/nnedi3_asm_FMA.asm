@@ -484,6 +484,7 @@ xloop:
 		vpaddw ymm2,ymm2,ymm3
 		vpmullw ymm0,ymm0,YMMWORD PTR w_19
 		vpmullw ymm2,ymm2,YMMWORD PTR w_19
+
 		vmovdqa ymm1,YMMWORD PTR [ebx]
 		vmovdqa ymm3,YMMWORD PTR [edi+edx*2]
 		vpunpckhbw ymm4,ymm1,ymm7
@@ -494,6 +495,7 @@ xloop:
 		vpaddw ymm4,ymm4,ymm5
 		vpmullw ymm1,ymm1,YMMWORD PTR w_3
 		vpmullw ymm4,ymm4,YMMWORD PTR w_3
+
 		vmovdqa ymm5,YMMWORD PTR [eax]
 		vpsubusw ymm0,ymm0,ymm1
 		vpsubusw ymm2,ymm2,ymm4
@@ -504,12 +506,14 @@ xloop:
 		vpsraw ymm0,ymm0,5		
 		vpsraw ymm2,ymm2,5		
 		vmovdqa ymm3,ymm5
-		vpmaxsw ymm0,ymm0,YMMWORD PTR[ebp]
+
+		vpmaxuw ymm0,ymm0,YMMWORD PTR[ebp]
 		vpsrldq ymm5,ymm5,8
-		vpmaxsw ymm2,ymm2,YMMWORD PTR[ebp]
+		vpmaxuw ymm2,ymm2,YMMWORD PTR[ebp]
 		vpaddusw ymm5,ymm5,ymm3
-		vpminsw ymm0,ymm0,YMMWORD PTR[ebp+64]
-		vpminsw ymm2,ymm2,YMMWORD PTR[ebp+64]
+		vpminuw ymm0,ymm0,YMMWORD PTR[ebp+64]
+		vpminuw ymm2,ymm2,YMMWORD PTR[ebp+64]
+
 		vextracti128 xmm3,ymm5,1
 		vpackuswb ymm0,ymm0,ymm2
 		vpaddusw xmm5,xmm5,xmm3
@@ -553,8 +557,10 @@ processLine0_AVX2_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,sr
 		mov esi,dstp
 		lea edi,[ebx+edx*4]
 		mov ebp,val_min_max
+
 		vpxor ymm6,ymm6,ymm6
 		vpxor ymm7,ymm7,ymm7
+
 xloop_16:
 		vmovdqa ymm0,YMMWORD ptr[ebx+edx*2]
 		vmovdqa ymm1,YMMWORD ptr[edi]
@@ -566,6 +572,7 @@ xloop_16:
 		vpaddd ymm2,ymm2,ymm3
 		vpmulld ymm0,ymm0,YMMWORD ptr d_19
 		vpmulld ymm2,ymm2,YMMWORD ptr d_19
+
 		vmovdqa ymm1,YMMWORD ptr[ebx]
 		vmovdqa ymm3,YMMWORD ptr[edi+edx*2]
 		vpunpckhwd ymm4,ymm1,ymm7
@@ -578,17 +585,20 @@ xloop_16:
 		vpmulld ymm4,ymm4,YMMWORD ptr d_3
 		vpsubd ymm0,ymm0,ymm1
 		vpsubd ymm2,ymm2,ymm4
+
 		vmovdqa xmm5,XMMWORD ptr [eax]
 		vpaddd ymm0,ymm0,YMMWORD ptr ud_16
 		vpaddd ymm2,ymm2,YMMWORD ptr ud_16
 		vpxor xmm5,xmm5,XMMWORD ptr ub_1
 		vpsrad ymm0,ymm0,5
 		vpsrad ymm2,ymm2,5
+
 		vpsadbw xmm5,xmm5,xmm7
 		vpackusdw ymm0,ymm0,ymm2
 		vmovdqa xmm3,xmm5
 		vpmaxuw ymm0,ymm0,YMMWORD ptr[ebp]
 		vpsrldq xmm5,xmm5,8
+
 		vpminuw ymm0,ymm0,YMMWORD ptr[ebp+64]
 		vpaddusw xmm5,xmm5,xmm3
 		vmovdqa YMMWORD ptr [esi],ymm0
@@ -629,6 +639,7 @@ processLine0_AVX2_ASM_32 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,sr
 		mov edx,src_pitch
 		mov esi,dstp
 		lea edi,[ebx+edx*4]
+
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6		
 		
@@ -637,20 +648,24 @@ xloop_32:
 		vmovaps ymm2,YMMWORD ptr[ebx]		
 		vmovaps ymm0,YMMWORD ptr[ebx+edx*2]
 		vpunpcklbw xmm4,xmm4,xmm6		
+
 		vmovaps ymm1,YMMWORD ptr[edi]
-		vmovaps ymm3,YMMWORD ptr[edi+edx*2]		
+		vmovaps ymm3,YMMWORD ptr[edi+edx*2]
 		vaddps ymm0,ymm0,ymm1
 		vpxor xmm4,xmm4,XMMWORD ptr uw_1		
 		vaddps ymm2,ymm2,ymm3		
 		vpsadbw xmm4,xmm4,xmm6
+
 		vmulps ymm0,ymm0,YMMWORD ptr f_19
 		vmovdqa xmm3,xmm4
 		vmulps ymm2,ymm2,YMMWORD ptr f_3
 		vpsrldq xmm4,xmm4,8
 		vsubps ymm0,ymm0,ymm2	
 		vpaddusw xmm4,xmm4,xmm3
+
 		vmovaps YMMWORD ptr[esi],ymm0
 		vpaddusw xmm5,xmm5,xmm4
+
 		add ebx,32
 		add edi,32
 		add eax,8
@@ -3877,10 +3892,10 @@ e0_m16_AVX2 proc ptr_s:dword,n:dword
 		mov eax,ptr_s
 		mov ecx,n
 		
-		vmovdqa ymm2,YMMWORD ptr exp_hi
-		vmovdqa ymm3,YMMWORD ptr exp_lo
-		vmovdqa ymm4,YMMWORD ptr e0_mult
-		vmovdqa ymm5,YMMWORD ptr e0_bias
+		vmovaps ymm2,YMMWORD ptr exp_hi
+		vmovaps ymm3,YMMWORD ptr exp_lo
+		vmovaps ymm4,YMMWORD ptr e0_mult
+		vmovaps ymm5,YMMWORD ptr e0_bias
 		
 eloop16:
 		vmovaps ymm0,YMMWORD ptr [eax]
@@ -3916,10 +3931,10 @@ e0_m16_FMA3 proc ptr_s:dword,n:dword
 		mov eax,ptr_s
 		mov ecx,n
 		
-		vmovdqa ymm2,YMMWORD ptr exp_hi
-		vmovdqa ymm3,YMMWORD ptr exp_lo
-		vmovdqa ymm4,YMMWORD ptr e0_mult
-		vmovdqa ymm5,YMMWORD ptr e0_bias
+		vmovaps ymm2,YMMWORD ptr exp_hi
+		vmovaps ymm3,YMMWORD ptr exp_lo
+		vmovaps ymm4,YMMWORD ptr e0_mult
+		vmovaps ymm5,YMMWORD ptr e0_bias
 		
 eloop16_2:
 		vmovaps ymm0,YMMWORD ptr [eax]
@@ -3955,10 +3970,10 @@ e0_m16_FMA4 proc ptr_s:dword,n:dword
 		mov eax,ptr_s
 		mov ecx,n
 		
-		vmovdqa ymm2,YMMWORD ptr exp_hi
-		vmovdqa ymm3,YMMWORD ptr exp_lo
-		vmovdqa ymm4,YMMWORD ptr e0_mult
-		vmovdqa ymm5,YMMWORD ptr e0_bias
+		vmovaps ymm2,YMMWORD ptr exp_hi
+		vmovaps ymm3,YMMWORD ptr exp_lo
+		vmovaps ymm4,YMMWORD ptr e0_mult
+		vmovaps ymm5,YMMWORD ptr e0_bias
 		
 eloop16_3:
 		vmovaps ymm0,YMMWORD ptr [eax]
@@ -4066,6 +4081,7 @@ eloop4:
 		vaddps ymm0,ymm2,YMMWORD ptr am_1
 		vmulps ymm0,ymm0,ymm1
 		vmovaps YMMWORD ptr [eax],ymm0
+
 		add eax,32
 		sub ecx,8
 		jnz eloop4

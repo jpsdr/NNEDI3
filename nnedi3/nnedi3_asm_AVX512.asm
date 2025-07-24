@@ -92,15 +92,15 @@ f_3 real4 16 dup(0.09375)
 sign_bits_f_32 qword 8 dup(7FFFFFFF7FFFFFFFh)
 ones_f_32 real4 16 dup(1.0)
 
-SAVE_ZMM0 real4 16 dup(0.0)
-SAVE_ZMM1 real4 16 dup(0.0)
-
 .code
 
 
 computeNetwork0_i16_AVX512 proc inputf:dword,weightsf:dword,ptr_d:dword
 
     public computeNetwork0_i16_AVX512
+	
+		local SAVE_YMM0:YMMWORD
+		local SAVE_YMM1:YMMWORD
 
 		mov ecx,inputf
 		mov edx,weightsf
@@ -122,8 +122,8 @@ computeNetwork0_i16_AVX512 proc inputf:dword,weightsf:dword,ptr_d:dword
 		vpaddd zmm2,zmm2,zmm6
 		vpaddd zmm3,zmm3,zmm7
 
-		vmovdqa YMMWORD ptr SAVE_ZMM0,ymm0
-		vmovdqa YMMWORD ptr SAVE_ZMM1,ymm1
+		vmovdqu SAVE_YMM0,ymm0
+		vmovdqu SAVE_YMM1,ymm1
 		
 		vextracti32x8 ymm6,zmm0,1
 		vextracti32x8 ymm5,zmm1,1
@@ -137,8 +137,8 @@ computeNetwork0_i16_AVX512 proc inputf:dword,weightsf:dword,ptr_d:dword
 		vpaddd ymm6,ymm6,ymm0
 		vpaddd ymm7,ymm7,ymm1
 
-		vmovdqa ymm0,YMMWORD ptr SAVE_ZMM0
-		vmovdqa ymm1,YMMWORD ptr SAVE_ZMM1
+		vmovdqu ymm0,SAVE_YMM0
+		vmovdqu ymm1,SAVE_YMM1
 
 		vpunpckhqdq ymm4,ymm0,ymm1
 		vpunpckhqdq ymm5,ymm2,ymm3
@@ -217,9 +217,9 @@ computeNetwork0_i16_AVX512 proc inputf:dword,weightsf:dword,ptr_d:dword
 		xor eax,eax
 finish_2:
 		mov BYTE PTR[ecx],al
-		
+
 		vzeroupper
-		
+
 		ret
 		
 computeNetwork0_i16_AVX512 endp
@@ -228,6 +228,9 @@ computeNetwork0_i16_AVX512 endp
 computeNetwork0new_AVX512 proc datai:dword,weights:dword,ptr_d:dword
 
 	public computeNetwork0new_AVX512
+
+		local SAVE_YMM0:YMMWORD
+		local SAVE_YMM1:YMMWORD
 
 		mov ecx,datai
 		mov eax,weights
@@ -248,8 +251,8 @@ computeNetwork0new_AVX512 proc datai:dword,weights:dword,ptr_d:dword
 		vpaddd zmm2,zmm2,zmm6
 		vpaddd zmm3,zmm3,zmm7
 
-		vmovdqa YMMWORD ptr SAVE_ZMM0,ymm0
-		vmovdqa YMMWORD ptr SAVE_ZMM1,ymm1
+		vmovdqu SAVE_YMM0,ymm0
+		vmovdqu SAVE_YMM1,ymm1
 		
 		vextracti32x8 ymm6,zmm0,1
 		vextracti32x8 ymm5,zmm1,1
@@ -257,14 +260,14 @@ computeNetwork0new_AVX512 proc datai:dword,weights:dword,ptr_d:dword
 		vextracti32x8 ymm4,zmm3,1
 
 		vpunpckhqdq ymm0,ymm6,ymm5
-		vpunpckhqdq ymm1,ymm2,ymm4
+		vpunpckhqdq ymm1,ymm7,ymm4
 		vpunpcklqdq ymm6,ymm6,ymm5
 		vpunpcklqdq ymm7,ymm7,ymm4
 		vpaddd ymm6,ymm6,ymm0
 		vpaddd ymm7,ymm7,ymm1
 
-		vmovdqa ymm0,YMMWORD ptr SAVE_ZMM0
-		vmovdqa ymm1,YMMWORD ptr SAVE_ZMM1
+		vmovdqu ymm0,SAVE_YMM0
+		vmovdqu ymm1,SAVE_YMM1
 
 		vpunpckhqdq ymm4,ymm0,ymm1
 		vpunpckhqdq ymm5,ymm2,ymm3
@@ -443,6 +446,258 @@ finish_1a:
 		ret
 
 computeNetwork0_AVX512 endp
+
+
+processLine0_AVX512_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
+
+    public processLine0_AVX512_ASM
+	
+		push ebx
+		push edi
+		push esi
+		push ebp
+		
+		mov eax,tempu
+		mov ebx,src3p
+		mov ecx,width_
+		mov edx,src_pitch
+		mov esi,dstp
+		lea edi,[ebx+edx*4]
+		mov ebp,val_min_max
+		
+		vpxord zmm6,zmm6,zmm6
+		vpxord zmm7,zmm7,zmm7
+		
+xloop:
+		vmovdqu64 zmm0,ZMMWORD PTR [ebx+edx*2]
+		vmovdqu64 zmm1,ZMMWORD PTR [edi]
+		vpunpckhbw zmm2,zmm0,zmm7
+		vpunpckhbw zmm3,zmm1,zmm7
+		vpunpcklbw zmm0,zmm0,zmm7		
+		vpunpcklbw zmm1,zmm1,zmm7
+		vpaddw zmm0,zmm0,zmm1
+		vpaddw zmm2,zmm2,zmm3
+		vpmullw zmm0,zmm0,ZMMWORD PTR w_19
+		vpmullw zmm2,zmm2,ZMMWORD PTR w_19
+
+		vmovdqu64 zmm1,ZMMWORD PTR [ebx]
+		vmovdqu64 zmm3,ZMMWORD PTR [edi+edx*2]
+		vpunpckhbw zmm4,zmm1,zmm7
+		vpunpckhbw zmm5,zmm3,zmm7
+		vpunpcklbw zmm1,zmm1,zmm7		
+		vpunpcklbw zmm3,zmm3,zmm7
+		vpaddw zmm1,zmm1,zmm3
+		vpaddw zmm4,zmm4,zmm5
+		vpmullw zmm1,zmm1,ZMMWORD PTR w_3
+		vpmullw zmm4,zmm4,ZMMWORD PTR w_3
+
+		vmovdqu64 zmm5,ZMMWORD PTR [eax]
+		vpsubusw zmm0,zmm0,zmm1
+		vpsubusw zmm2,zmm2,zmm4
+		vpxord zmm5,zmm5,ZMMWORD PTR ub_1
+		vpaddusw zmm0,zmm0,ZMMWORD PTR uw_16
+		vpaddusw zmm2,zmm2,ZMMWORD PTR uw_16
+		vpsadbw zmm5,zmm5,zmm7
+		vpsraw zmm0,zmm0,5		
+		vpsraw zmm2,zmm2,5		
+
+		vmovdqa64 zmm3,zmm5		
+		vpmaxuw zmm0,zmm0,ZMMWORD PTR[ebp]
+		vpsrldq zmm5,zmm5,8
+		vpmaxuw zmm2,zmm2,ZMMWORD PTR[ebp]
+		vpaddusw zmm5,zmm5,zmm3
+		vpminuw zmm0,zmm0,ZMMWORD PTR[ebp+64]
+		vpminuw zmm2,zmm2,ZMMWORD PTR[ebp+64]
+
+		vextracti32x8 ymm1,zmm5,1
+		
+		vextracti128 xmm3,ymm5,1
+		vextracti128 xmm4,ymm1,1
+		
+		vpackuswb zmm0,zmm0,zmm2
+		
+		vpaddusw xmm5,xmm5,xmm3
+		vpaddusw xmm1,xmm1,xmm4
+		
+		vmovdqu64 ZMMWORD PTR [esi],zmm0
+
+		vpaddusw xmm6,xmm6,xmm5
+		vpaddusw xmm6,xmm6,xmm1
+		
+		add ebx,64
+		add edi,64
+		add eax,64
+		add esi,64
+		sub ecx,64
+		jnz xloop
+			
+		pop ebp
+		pop esi
+		pop edi
+		pop ebx
+		
+		vmovd eax,xmm6
+		
+		vzeroupper
+		
+		ret
+		
+processLine0_AVX512_ASM endp
+
+
+processLine0_AVX512_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
+
+    public processLine0_AVX512_ASM_16
+	
+		push ebx
+		push edi
+		push esi
+		push ebp
+				
+		mov eax,tempu
+		mov ebx,src3p
+		mov ecx,width_
+		mov edx,src_pitch
+		mov esi,dstp
+		lea edi,[ebx+edx*4]
+		mov ebp,val_min_max
+
+		vpxord zmm6,zmm6,zmm6
+		vpxord zmm7,zmm7,zmm7
+
+xloop_16:
+		vmovdqa64 zmm0,ZMMWORD ptr[ebx+edx*2]
+		vmovdqa64 zmm1,ZMMWORD ptr[edi]
+		vpunpckhwd zmm2,zmm0,zmm7
+		vpunpckhwd zmm3,zmm1,zmm7
+		vpunpcklwd zmm0,zmm0,zmm7		
+		vpunpcklwd zmm1,zmm1,zmm7
+		vpaddd zmm0,zmm0,zmm1
+		vpaddd zmm2,zmm2,zmm3
+		vpmulld zmm0,zmm0,ZMMWORD ptr d_19
+		vpmulld zmm2,zmm2,ZMMWORD ptr d_19
+
+		vmovdqa64 zmm1,ZMMWORD ptr[ebx]
+		vmovdqa64 zmm3,ZMMWORD ptr[edi+edx*2]
+		vpunpckhwd zmm4,zmm1,zmm7
+		vpunpckhwd zmm5,zmm3,zmm7
+		vpunpcklwd zmm1,zmm1,zmm7
+		vpunpcklwd zmm3,zmm3,zmm7
+		vpaddd zmm1,zmm1,zmm3
+		vpaddd zmm4,zmm4,zmm5
+		vpmulld zmm1,zmm1,ZMMWORD ptr d_3
+		vpmulld zmm4,zmm4,ZMMWORD ptr d_3
+
+		vmovdqa ymm5,YMMWORD ptr [eax]
+		vpsubd zmm0,zmm0,zmm1
+		vpsubd zmm2,zmm2,zmm4
+		vpxor ymm5,ymm5,YMMWORD ptr ub_1
+		vpaddd zmm0,zmm0,ZMMWORD ptr ud_16
+		vpaddd zmm2,zmm2,ZMMWORD ptr ud_16
+		vpsadbw ymm5,ymm5,ymm7
+		vpsrad zmm0,zmm0,5
+		vpsrad zmm2,zmm2,5
+		vmovdqa ymm3,ymm5
+
+		vpackusdw zmm0,zmm0,zmm2
+		vpsrldq ymm5,ymm5,8
+		vpmaxuw zmm0,zmm0,ZMMWORD ptr[ebp]
+		vpaddusw ymm5,ymm5,ymm3
+		vpminuw zmm0,zmm0,ZMMWORD ptr[ebp+64]
+
+		vextracti128 xmm3,ymm5,1
+		vmovdqa64 ZMMWORD ptr [esi],zmm0
+
+		vpaddusw xmm5,xmm5,xmm3
+		vpaddusw xmm6,xmm6,xmm5
+		
+		add ebx,64
+		add edi,64
+		add eax,32
+		add esi,64
+		sub ecx,32
+		jnz xloop_16
+			
+		pop ebp
+		pop esi
+		pop edi
+		pop ebx
+		
+		vmovd eax,xmm6
+		
+		vzeroupper
+		
+		ret
+		
+processLine0_AVX512_ASM_16 endp
+
+
+processLine0_AVX512_ASM_32 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword
+
+    public processLine0_AVX512_ASM_32
+	
+		push ebx
+		push edi
+		push esi
+
+		mov eax,tempu
+		mov ebx,src3p
+		mov ecx,width_
+		mov edx,src_pitch
+		mov esi,dstp
+		lea edi,[ebx+edx*4]
+
+		vpxord zmm5,zmm5,zmm5
+		vpxord zmm6,zmm6,zmm6		
+		
+xloop_32:		
+		vmovdqa xmm4,XMMWORD ptr [eax]
+		vmovaps zmm2,ZMMWORD ptr[ebx]		
+		vmovaps zmm0,ZMMWORD ptr[ebx+edx*2]
+		vpunpckhbw xmm7,xmm4,xmm6
+		vpunpcklbw xmm4,xmm4,xmm6
+
+		vmovaps zmm1,ZMMWORD ptr[edi]
+		vmovaps zmm3,ZMMWORD ptr[edi+edx*2]		
+		vaddps zmm0,zmm0,zmm1
+		vpxor xmm4,xmm4,XMMWORD ptr uw_1
+		vpxor xmm7,xmm7,XMMWORD ptr uw_1
+		vaddps zmm2,zmm2,zmm3		
+		vpsadbw xmm4,xmm4,xmm6
+		vpsadbw xmm7,xmm7,xmm6
+
+		vmulps zmm0,zmm0,ZMMWORD ptr f_19
+		vmovdqa xmm3,xmm4
+		vmovdqa xmm1,xmm7
+		vmulps zmm2,zmm2,ZMMWORD ptr f_3
+		vpsrldq xmm4,xmm4,8
+		vpsrldq xmm7,xmm7,8
+		vpaddusw xmm4,xmm4,xmm3
+		vpaddusw xmm7,xmm7,xmm1
+		vsubps zmm0,zmm0,zmm2	
+
+		vpaddusw xmm4,xmm4,xmm7
+		vmovaps ZMMWORD ptr[esi],zmm0
+		vpaddusw xmm5,xmm5,xmm4
+
+		add ebx,64
+		add edi,64
+		add eax,16
+		add esi,64
+		sub ecx,16
+		jnz xloop_32
+				
+		pop esi
+		pop edi
+		pop ebx
+		
+		vmovd eax,xmm5
+		
+		vzeroupper
+		
+		ret
+		
+processLine0_AVX512_ASM_32 endp
 
 
 ; From FMA3
@@ -948,6 +1203,149 @@ aloop_4:
 		ret
 		
 dotProd_m64_m16_i16_AVX512 endp
+
+
+; From FMA3
+e0_m16_AVX512 proc ptr_s:dword,n:dword
+
+	public e0_m16_AVX512
+	
+		mov eax,ptr_s
+		mov ecx,n
+		
+		vmovaps zmm2,ZMMWORD ptr exp_hi
+		vmovaps zmm3,ZMMWORD ptr exp_lo
+		vmovaps zmm4,ZMMWORD ptr e0_mult
+		vmovaps zmm5,ZMMWORD ptr e0_bias
+		
+eloop16_2:
+		vmovaps zmm0,ZMMWORD ptr [eax]
+		vmovaps zmm1,ZMMWORD ptr [eax+64]
+		vminps zmm0,zmm0,zmm2
+		vminps zmm1,zmm1,zmm2
+		vmaxps zmm0,zmm0,zmm3
+		vmaxps zmm1,zmm1,zmm3
+		
+		vfmadd213ps zmm0,zmm4,zmm5
+		vfmadd213ps zmm1,zmm4,zmm5
+		
+		vcvtps2dq zmm0,zmm0
+		vcvtps2dq zmm1,zmm1
+		vmovaps ZMMWORD ptr [eax],zmm0
+		vmovaps ZMMWORD ptr [eax+64],zmm1
+
+		add eax,128
+		sub ecx,32
+		
+		jnz short eloop16_2
+		
+		vzeroupper
+		
+		ret
+
+e0_m16_AVX512 endp
+
+
+e1_m16_AVX512 proc ptr_s:dword,n:dword
+
+	public e1_m16_AVX512
+
+		mov eax,ptr_s
+		mov ecx,n
+eloop8:
+		vmovaps zmm0,ZMMWORD ptr [eax]
+		vminps zmm0,zmm0,ZMMWORD ptr exp_hi
+		vmaxps zmm0,zmm0,ZMMWORD ptr exp_lo
+		vmulps zmm0,zmm0,ZMMWORD ptr e1_scale
+		vmovaps zmm1,zmm0
+		vaddps zmm0,zmm0,ZMMWORD ptr e1_bias
+		vpslld zmm2,zmm0,23
+		vsubps zmm0,zmm0,ZMMWORD ptr e1_bias
+		vsubps zmm1,zmm1,zmm0
+		vmulps zmm0,zmm1,ZMMWORD ptr e1_c1
+		vmulps zmm1,zmm1,zmm1
+		vmulps zmm1,zmm1,ZMMWORD ptr e1_c2
+		vaddps zmm0,zmm0,ZMMWORD ptr e1_c0
+		vaddps zmm0,zmm0,zmm1
+		vpaddd zmm0,zmm0,zmm2
+		vmovaps ZMMWORD ptr [eax],zmm0
+		add eax,64
+		sub ecx,16
+		jnz eloop8
+		
+		vzeroupper
+		
+		ret
+		
+e1_m16_AVX512 endp
+
+
+e2_m16_AVX512 proc ptr_s:dword,n:dword
+
+	public e2_m16_AVX512
+
+		mov eax,ptr_s
+		mov ecx,n
+eloop4:
+		vmovaps zmm0,ZMMWORD ptr [eax]
+		vminps zmm0,zmm0,ZMMWORD ptr exp_hi
+		vmaxps zmm0,zmm0,ZMMWORD ptr exp_lo
+		vmulps zmm1,zmm0,ZMMWORD ptr exp_rln2
+		vxorps zmm2,zmm2,zmm2
+		vaddps zmm1,zmm1,ZMMWORD ptr am_0p5
+		
+		vextractf32x8 ymm3,zmm1,1		
+		vextractf32x8 ymm4,zmm2,1		
+		vcmpnltps ymm2,ymm2,ymm1
+		vcmpnltps ymm4,ymm4,ymm3
+		vinsertf32x8 zmm2,zmm2,ymm4,1
+		
+		vpandd zmm2,zmm2,ZMMWORD ptr epi32_1
+		vcvttps2dq zmm1,zmm1
+		vpsubd zmm1,zmm1,zmm2
+		vmovaps zmm5,ZMMWORD ptr exp_c1
+		vcvtdq2ps zmm3,zmm1
+		vmulps zmm4,zmm3,ZMMWORD ptr exp_c2
+		vmulps zmm5,zmm5,zmm3
+		vsubps zmm0,zmm0,zmm4
+		vsubps zmm0,zmm0,zmm5
+		vpaddd zmm1,zmm1,ZMMWORD ptr epi32_0x7f
+		vmovaps zmm2,zmm0
+		vmulps zmm0,zmm0,zmm0
+		vmulps zmm6,zmm0,ZMMWORD ptr exp_q0
+		vmulps zmm4,zmm0,ZMMWORD ptr exp_p0
+		vaddps zmm6,zmm6,ZMMWORD ptr exp_q1
+		vaddps zmm4,zmm4,ZMMWORD ptr exp_p1
+		vmulps zmm6,zmm6,zmm0
+		vmulps zmm4,zmm4,zmm0
+		vaddps zmm6,zmm6,ZMMWORD ptr exp_q2
+		vmulps zmm4,zmm4,zmm2
+		vmulps zmm6,zmm6,zmm0
+		vaddps zmm2,zmm2,zmm4
+		vaddps zmm6,zmm6,ZMMWORD ptr exp_q3
+		vpslld zmm1,zmm1,23
+		vsubps zmm6,zmm6,zmm2
+		
+		vextractf32x8 ymm5,zmm6,1		
+		vrcpps ymm6,ymm6
+		vrcpps ymm5,ymm5
+		vinsertf32x8 zmm6,zmm6,ymm5,1
+		
+		vmulps zmm2,zmm2,zmm6
+		vaddps zmm2,zmm2,zmm2
+		vaddps zmm0,zmm2,ZMMWORD ptr am_1
+		vmulps zmm0,zmm0,zmm1
+		vmovaps ZMMWORD ptr [eax],zmm0
+
+		add eax,64
+		sub ecx,16
+		jnz eloop4
+		
+		vzeroupper
+		
+		ret
+		
+e2_m16_AVX512 endp
 
 
 end

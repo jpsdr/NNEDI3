@@ -1313,11 +1313,11 @@ xloop_AVX:
 		vpsadbw xmm5,xmm5,xmm7
 		vpsraw xmm0,xmm0,5
 		vpsraw xmm2,xmm2,5
-		vpmaxsw xmm0,xmm0,XMMWORD ptr[ebp]
-		vpmaxsw xmm2,xmm2,XMMWORD ptr[ebp]
+		vpmaxuw xmm0,xmm0,XMMWORD ptr[ebp]
+		vpmaxuw xmm2,xmm2,XMMWORD ptr[ebp]
 		vpsrldq xmm3,xmm5,8
-		vpminsw xmm0,xmm0,XMMWORD ptr[ebp+64]
-		vpminsw xmm2,xmm2,XMMWORD ptr[ebp+64]
+		vpminuw xmm0,xmm0,XMMWORD ptr[ebp+64]
+		vpminuw xmm2,xmm2,XMMWORD ptr[ebp+64]
 		vpaddusw xmm5,xmm3,xmm5
 		vpackuswb xmm0,xmm0,xmm2
 		vmovdqa XMMWORD ptr [esi],xmm0
@@ -4081,10 +4081,10 @@ e0_m16_SSE2 proc ptr_s:dword,n:dword
 		mov eax,ptr_s
 		mov ecx,n
 		
-		movdqa xmm4,oword ptr exp_hi
-		movdqa xmm5,oword ptr exp_lo
-		movdqa xmm6,oword ptr e0_mult
-		movdqa xmm7,oword ptr e0_bias
+		movaps xmm4,XMMWORD ptr exp_hi
+		movaps xmm5,XMMWORD ptr exp_lo
+		movaps xmm6,XMMWORD ptr e0_mult
+		movaps xmm7,XMMWORD ptr e0_bias
 		
 eloop16:
 		movaps xmm0,[eax]
@@ -4132,10 +4132,10 @@ e0_m16_AVX proc ptr_s:dword,n:dword
 		mov eax,ptr_s
 		mov ecx,n
 		
-		vmovdqa xmm4,XMMWORD ptr exp_hi
-		vmovdqa xmm5,XMMWORD ptr exp_lo
-		vmovdqa xmm6,XMMWORD ptr e0_mult
-		vmovdqa xmm7,XMMWORD ptr e0_bias
+		vmovaps xmm4,XMMWORD ptr exp_hi
+		vmovaps xmm5,XMMWORD ptr exp_lo
+		vmovaps xmm6,XMMWORD ptr e0_mult
+		vmovaps xmm7,XMMWORD ptr e0_bias
 		
 eloop16_AVX:
 		vmovaps xmm0,XMMWORD ptr[eax]

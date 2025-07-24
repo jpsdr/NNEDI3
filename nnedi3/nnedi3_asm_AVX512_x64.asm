@@ -273,24 +273,18 @@ computeNetwork0new_AVX512 proc public frame
 		vpaddd zmm1,zmm1,zmm5
 		vpaddd zmm2,zmm2,zmm6
 		vpaddd zmm3,zmm3,zmm7
-
-		vmovdqa ymm8,ymm0
-		vmovdqa ymm9,ymm1
 		
 		vextracti32x8 ymm6,zmm0,1
 		vextracti32x8 ymm5,zmm1,1
 		vextracti32x8 ymm7,zmm2,1
 		vextracti32x8 ymm4,zmm3,1
 
-		vpunpckhqdq ymm0,ymm6,ymm5
-		vpunpckhqdq ymm1,ymm2,ymm4
+		vpunpckhqdq ymm8,ymm6,ymm5
+		vpunpckhqdq ymm9,ymm7,ymm4
 		vpunpcklqdq ymm6,ymm6,ymm5
 		vpunpcklqdq ymm7,ymm7,ymm4
-		vpaddd ymm6,ymm6,ymm0
-		vpaddd ymm7,ymm7,ymm1
-
-		vmovdqa ymm0,ymm8
-		vmovdqa ymm1,ymm9
+		vpaddd ymm6,ymm6,ymm8
+		vpaddd ymm7,ymm7,ymm9
 
 		vpunpckhqdq ymm4,ymm0,ymm1
 		vpunpckhqdq ymm5,ymm2,ymm3
@@ -480,6 +474,400 @@ finish_1a:
 		ret
 
 computeNetwork0_AVX512 endp
+
+
+;processLine0_AVX512_ASM proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
+; tempu = rcx
+; width_ = edx
+; dstp = r8
+; src3p = r9
+
+processLine0_AVX512_ASM proc public frame
+
+src_pitch equ dword ptr[rbp+48]
+val_min_max equ qword ptr[rbp+56]
+
+	push rbp
+	.pushreg rbp
+	mov rbp,rsp
+	push rbx
+	.pushreg rbx
+	push rsi
+	.pushreg rsi
+	push rdi
+	.pushreg rdi
+	sub rsp,128
+	.allocstack 128
+	vmovdqu XMMWORD ptr[rsp],xmm6
+	.savexmm128 xmm6,0
+	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	.savexmm128 xmm7,16
+	vmovdqu XMMWORD ptr[rsp+32],xmm8
+	.savexmm128 xmm8,32
+	vmovdqu XMMWORD ptr[rsp+48],xmm9
+	.savexmm128 xmm9,48
+	vmovdqu XMMWORD ptr[rsp+64],xmm10
+	.savexmm128 xmm10,64
+	vmovdqu XMMWORD ptr[rsp+80],xmm11
+	.savexmm128 xmm11,80
+	vmovdqu XMMWORD ptr[rsp+96],xmm12
+	.savexmm128 xmm12,96
+	vmovdqu XMMWORD ptr[rsp+112],xmm13
+	.savexmm128 xmm13,112
+	.endprolog
+			
+		mov rax,rcx
+		mov rbx,r9
+		xor rcx,rcx
+		mov ecx,edx
+		movsxd rdx,src_pitch
+		mov rsi,r8
+		mov r8,64
+		mov r10,val_min_max
+		
+		lea rdi,[rbx+rdx*4]
+		
+		vmovdqa64 zmm8,ZMMWORD ptr w_19
+		vmovdqa64 zmm9,ZMMWORD ptr w_3
+		vmovdqa64 zmm10,ZMMWORD ptr ub_1
+		vmovdqa64 zmm11,ZMMWORD ptr uw_16		
+		vmovdqa64 zmm12,ZMMWORD ptr[r10]
+		vmovdqa64 zmm13,ZMMWORD ptr[r10+r8]
+		vpxord zmm6,zmm6,zmm6
+		vpxord zmm7,zmm7,zmm7
+		
+xloop:
+		vmovdqu64 zmm0,ZMMWORD PTR [rbx+rdx*2]
+		vmovdqu64 zmm1,ZMMWORD PTR [rdi]
+		vpunpckhbw zmm2,zmm0,zmm7
+		vpunpckhbw zmm3,zmm1,zmm7
+		vpunpcklbw zmm0,zmm0,zmm7
+		vpunpcklbw zmm1,zmm1,zmm7
+		vpaddw zmm0,zmm0,zmm1
+		vpaddw zmm2,zmm2,zmm3
+		vpmullw zmm0,zmm0,zmm8
+		vpmullw zmm2,zmm2,zmm8
+
+		vmovdqu64 zmm1,ZMMWORD PTR [rbx]
+		vmovdqu64 zmm3,ZMMWORD PTR [rdi+rdx*2]
+		vpunpckhbw zmm4,zmm1,zmm7
+		vpunpckhbw zmm5,zmm3,zmm7
+		vpunpcklbw zmm1,zmm1,zmm7
+		vpunpcklbw zmm3,zmm3,zmm7
+		vpaddw zmm1,zmm1,zmm3
+		vpaddw zmm4,zmm4,zmm5
+		vpmullw zmm1,zmm1,zmm9
+		vpmullw zmm4,zmm4,zmm9
+
+		vmovdqu64 zmm5,ZMMWORD PTR [rax]
+		vpsubusw zmm0,zmm0,zmm1
+		vpsubusw zmm2,zmm2,zmm4
+		vpxord zmm5,zmm5,zmm10
+		vpaddusw zmm0,zmm0,zmm11
+		vpaddusw zmm2,zmm2,zmm11
+		vpsadbw zmm5,zmm5,zmm7		
+		vpsraw zmm0,zmm0,5
+		vpsraw zmm2,zmm2,5
+
+		vmovdqa64 zmm3,zmm5
+		vpminuw zmm0,zmm0,zmm13
+		vpsrldq zmm5,zmm5,8
+		vpminuw zmm2,zmm2,zmm13
+		vpaddusw zmm5,zmm5,zmm3
+		vpmaxuw zmm0,zmm0,zmm12
+		vpmaxuw zmm2,zmm2,zmm12
+
+		vextracti32x8 ymm1,zmm5,1
+
+		vextracti128 xmm3,ymm5,1
+		vextracti128 xmm4,ymm1,1
+
+		vpackuswb zmm0,zmm0,zmm2
+
+		vpaddusw xmm5,xmm5,xmm3
+		vpaddusw xmm1,xmm1,xmm4
+
+		vmovdqu64 ZMMWORD PTR [rsi],zmm0
+
+		vpaddusw xmm6,xmm6,xmm5		
+		vpaddusw xmm6,xmm6,xmm1
+		
+		add rbx,r8
+		add rdi,r8
+		add rax,r8
+		add rsi,r8
+		sub rcx,r8
+		jnz xloop
+					
+		xor  rax,rax
+		vmovd eax,xmm6		
+		
+	vmovdqu xmm13,XMMWORD ptr[rsp+112]
+	vmovdqu xmm12,XMMWORD ptr[rsp+96]
+	vmovdqu xmm11,XMMWORD ptr[rsp+80]
+	vmovdqu xmm10,XMMWORD ptr[rsp+64]
+	vmovdqu xmm9,XMMWORD ptr[rsp+48]
+	vmovdqu xmm8,XMMWORD ptr[rsp+32]
+	vmovdqu xmm7,XMMWORD ptr[rsp+16]
+	vmovdqu xmm6,XMMWORD ptr[rsp]	
+	add rsp,128
+	pop rdi
+	pop rsi
+	pop rbx
+	pop rbp
+	
+	vzeroupper
+	
+		ret
+		
+processLine0_AVX512_ASM endp
+
+
+;processLine0_AVX512_ASM_16 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword,val_min_max:dword
+; tempu = rcx
+; width_ = edx
+; dstp = r8
+; src3p = r9
+
+processLine0_AVX512_ASM_16 proc public frame
+
+src_pitch equ dword ptr[rbp+48]
+val_min_max equ qword ptr[rbp+56]
+
+	push rbp
+	.pushreg rbp
+	mov rbp,rsp
+	push rbx
+	.pushreg rbx
+	push rsi
+	.pushreg rsi
+	push rdi
+	.pushreg rdi
+	sub rsp,128
+	.allocstack 128
+	vmovdqu XMMWORD ptr[rsp],xmm6
+	.savexmm128 xmm6,0
+	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	.savexmm128 xmm7,16
+	vmovdqu XMMWORD ptr[rsp+32],xmm8
+	.savexmm128 xmm8,32
+	vmovdqu XMMWORD ptr[rsp+48],xmm9
+	.savexmm128 xmm9,48
+	vmovdqu XMMWORD ptr[rsp+64],xmm10
+	.savexmm128 xmm10,64
+	vmovdqu XMMWORD ptr[rsp+80],xmm11
+	.savexmm128 xmm11,80
+	vmovdqu XMMWORD ptr[rsp+96],xmm12
+	.savexmm128 xmm12,96
+	vmovdqu XMMWORD ptr[rsp+112],xmm13
+	.savexmm128 xmm13,112
+	.endprolog
+		
+		mov rax,rcx
+		mov rbx,r9
+		xor rcx,rcx
+		mov ecx,edx
+		movsxd rdx,src_pitch
+		mov rsi,r8
+		mov r8,64
+		mov r9,32
+		mov r10,val_min_max
+			
+		lea rdi,[rbx+rdx*4]
+		
+		vmovdqa64 zmm8,ZMMWORD ptr d_19
+		vmovdqa64 zmm9,ZMMWORD ptr d_3
+		vmovdqa ymm10,YMMWORD ptr ub_1
+		vmovdqa64 zmm11,ZMMWORD ptr ud_16
+		vmovdqa64 zmm12,ZMMWORD ptr[r10]
+		vmovdqa64 zmm13,ZMMWORD ptr[r10+r8]
+
+		vpxord zmm6,zmm6,zmm6
+		vpxord zmm7,zmm7,zmm7
+		
+xloop_16:
+		vmovdqa64 zmm0,ZMMWORD ptr[rbx+rdx*2]
+		vmovdqa64 zmm1,ZMMWORD ptr[rdi]
+		vpunpckhwd zmm2,zmm0,zmm7
+		vpunpckhwd zmm3,zmm1,zmm7
+		vpunpcklwd zmm0,zmm0,zmm7
+		vpunpcklwd zmm1,zmm1,zmm7
+		vpaddd zmm0,zmm0,zmm1
+		vpaddd zmm2,zmm2,zmm3
+		vpmulld zmm0,zmm0,zmm8
+		vpmulld zmm2,zmm2,zmm8
+
+		vmovdqa64 zmm1,ZMMWORD ptr[rbx]
+		vmovdqa64 zmm3,ZMMWORD ptr[rdi+rdx*2]
+		vpunpckhwd zmm4,zmm1,zmm7
+		vpunpckhwd zmm5,zmm3,zmm7
+		vpunpcklwd zmm1,zmm1,zmm7
+		vpunpcklwd zmm3,zmm3,zmm7
+		vpaddd zmm1,zmm1,zmm3
+		vpaddd zmm4,zmm4,zmm5
+		vpmulld zmm1,zmm1,zmm9
+		vpmulld zmm4,zmm4,zmm9
+
+		vmovdqa ymm5,YMMWORD ptr [rax]
+		vpsubd zmm0,zmm0,zmm1
+		vpsubd zmm2,zmm2,zmm4
+		vpxor ymm5,ymm5,ymm10
+		vpaddd zmm0,zmm0,zmm11
+		vpaddd zmm2,zmm2,zmm11
+		vpsadbw ymm5,ymm5,ymm7
+		vpsrad zmm0,zmm0,5		
+		vpsrad zmm2,zmm2,5
+		vmovdqa ymm3,ymm5
+
+		vpackusdw zmm0,zmm0,zmm2
+		vpsrldq ymm5,ymm5,8
+		vpminuw zmm0,zmm0,zmm13
+		vpaddusw ymm5,ymm5,ymm3
+		vpmaxuw zmm0,zmm0,zmm12
+
+		vextracti128 xmm3,ymm5,1
+		vmovdqa64 ZMMWORD ptr [rsi],zmm0
+
+		vpaddusw xmm5,xmm5,xmm3
+		vpaddusw xmm6,xmm6,xmm5
+		
+		add rbx,r8
+		add rdi,r8
+		add rax,r9
+		add rsi,r8
+		sub rcx,r9
+		jnz xloop_16
+					
+		xor  rax,rax
+		vmovd eax,xmm6		
+		
+	vmovdqu xmm13,XMMWORD ptr[rsp+112]
+	vmovdqu xmm12,XMMWORD ptr[rsp+96]
+	vmovdqu xmm11,XMMWORD ptr[rsp+80]
+	vmovdqu xmm10,XMMWORD ptr[rsp+64]
+	vmovdqu xmm9,XMMWORD ptr[rsp+48]
+	vmovdqu xmm8,XMMWORD ptr[rsp+32]
+	vmovdqu xmm7,XMMWORD ptr[rsp+16]
+	vmovdqu xmm6,XMMWORD ptr[rsp]	
+	add rsp,128	
+	pop rdi
+	pop rsi
+	pop rbx
+	pop rbp
+	
+	vzeroupper
+	
+		ret
+		
+processLine0_AVX512_ASM_16 endp
+
+
+;processLine0_AVX512_ASM_32 proc tempu:dword,width_:dword,dstp:dword,src3p:dword,src_pitch:dword
+; tempu = rcx
+; width_ = edx
+; dstp = r8
+; src3p = r9
+
+processLine0_AVX512_ASM_32 proc public frame
+
+src_pitch equ dword ptr[rbp+48]
+
+	push rbp
+	.pushreg rbp
+	mov rbp,rsp
+	push rbx
+	.pushreg rbx
+	push rsi
+	.pushreg rsi
+	push rdi
+	.pushreg rdi
+	sub rsp,80
+	.allocstack 80
+	vmovdqu XMMWORD ptr[rsp],xmm6
+	.savexmm128 xmm6,0
+	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	.savexmm128 xmm7,16
+	vmovdqu XMMWORD ptr[rsp+32],xmm8
+	.savexmm128 xmm8,32
+	vmovdqu XMMWORD ptr[rsp+48],xmm9
+	.savexmm128 xmm9,48
+	vmovdqu XMMWORD ptr[rsp+64],xmm10
+	.savexmm128 xmm9,64
+	.endprolog
+
+		mov rax,rcx
+		mov rbx,r9
+		xor rcx,rcx
+		mov ecx,edx
+		movsxd rdx,src_pitch
+		mov rsi,r8
+		mov r8,64
+		mov r9,16
+		
+		lea rdi,[rbx+rdx*4]
+
+		vpxord zmm5,zmm5,zmm5
+		vpxord zmm6,zmm6,zmm6
+		vmovaps zmm7,ZMMWORD ptr f_19
+		vmovaps zmm8,ZMMWORD ptr f_3
+		vmovdqa xmm9,XMMWORD ptr uw_1
+		
+xloop_32:
+		vmovdqa xmm4,XMMWORD ptr [rax]
+		vmovaps zmm2,ZMMWORD ptr[rbx]		
+		vmovaps zmm0,ZMMWORD ptr[rbx+rdx*2]
+		vpunpckhbw xmm10,xmm4,xmm6
+		vpunpcklbw xmm4,xmm4,xmm6
+
+		vmovaps zmm1,ZMMWORD ptr[rdi]
+		vmovaps zmm3,ZMMWORD ptr[rdi+rdx*2]		
+		vaddps zmm0,zmm0,zmm1
+		vpxor xmm4,xmm4,xmm9		
+		vpxor xmm10,xmm10,xmm9		
+		vaddps zmm2,zmm2,zmm3		
+		vpsadbw xmm4,xmm4,xmm6
+		vpsadbw xmm10,xmm10,xmm6
+
+		vmulps zmm0,zmm0,zmm7
+		vmovdqa xmm3,xmm4
+		vmovdqa xmm1,xmm10
+		vmulps zmm2,zmm2,zmm8
+		vpsrldq xmm4,xmm4,8
+		vpsrldq xmm10,xmm10,8
+		vpaddusw xmm4,xmm4,xmm3
+		vpaddusw xmm10,xmm10,xmm1
+		vsubps zmm0,zmm0,zmm2
+
+		vpaddusw xmm4,xmm4,xmm10
+		vmovaps ZMMWORD ptr[rsi],zmm0
+		vpaddusw xmm5,xmm5,xmm4
+
+		add rbx,r8
+		add rdi,r8
+		add rax,r9
+		add rsi,r8
+		sub rcx,r9
+		jnz xloop_32
+				
+		xor  rax,rax
+		vmovd eax,xmm5
+		
+	vmovdqu xmm10,XMMWORD ptr[rsp+64]
+	vmovdqu xmm9,XMMWORD ptr[rsp+48]
+	vmovdqu xmm8,XMMWORD ptr[rsp+32]
+	vmovdqu xmm7,XMMWORD ptr[rsp+16]
+	vmovdqu xmm6,XMMWORD ptr[rsp]	
+	add rsp,80
+	pop rdi
+	pop rsi
+	pop rbx
+	pop rbp
+			
+	vzeroupper		
+			
+		ret
+		
+processLine0_AVX512_ASM_32 endp
 
 
 ; From FMA3
@@ -1195,5 +1583,242 @@ aloop_4:
 
 dotProd_m64_m16_i16_AVX512 endp
 
+
+; From FMA3
+;e0_m16_AVX512 proc ptr_s:dword,n:dword
+; ptr_s = rcx
+; n = edx
+
+e0_m16_AVX512 proc public frame
+
+	.endprolog
+	
+		mov rax,rcx
+		xor rcx,rcx
+		mov ecx,edx
+		
+		vmovaps zmm2,ZMMWORD ptr exp_hi
+		vmovaps zmm3,ZMMWORD ptr exp_lo
+		vmovaps zmm4,ZMMWORD ptr e0_mult
+		vmovaps zmm5,ZMMWORD ptr e0_bias
+				
+		mov rdx,32
+		mov r8,64
+		mov r10,128
+		
+eloop16_2:
+		vmovaps zmm0,ZMMWORD ptr[rax]
+		vmovaps zmm1,ZMMWORD ptr[rax+r8]
+		vminps zmm0,zmm0,zmm2
+		vminps zmm1,zmm1,zmm2
+		vmaxps zmm0,zmm0,zmm3
+		vmaxps zmm1,zmm1,zmm3
+		
+		vfmadd213ps zmm0,zmm4,zmm5
+		vfmadd213ps zmm1,zmm4,zmm5
+				
+		vcvtps2dq zmm0,zmm0
+		vcvtps2dq zmm1,zmm1
+		vmovaps ZMMWORD ptr[rax],zmm0
+		vmovaps ZMMWORD ptr[rax+r8],zmm1
+
+		add rax,r10
+		sub rcx,rdx
+		
+		jnz short eloop16_2		
+		
+		vzeroupper
+		
+		ret
+
+e0_m16_AVX512 endp
+
+
+;e1_m16_AVX512 proc ptr_s:dword,n:dword
+; ptr_s = rcx
+; n = edx
+
+e1_m16_AVX512 proc public frame
+
+	sub rsp,64
+	.allocstack 64
+	vmovdqu XMMWORD ptr[rsp],xmm6
+	.savexmm128 xmm6,0
+	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	.savexmm128 xmm7,16
+	vmovdqu XMMWORD ptr[rsp+32],xmm8
+	.savexmm128 xmm8,32
+	vmovdqu XMMWORD ptr[rsp+48],xmm9
+	.savexmm128 xmm9,48
+	.endprolog
+	
+		mov rax,rcx
+		xor rcx,rcx
+		mov ecx,edx
+		
+		vmovaps zmm3,ZMMWORD ptr exp_hi
+		vmovaps zmm4,ZMMWORD ptr exp_lo
+		vmovaps zmm5,ZMMWORD ptr e1_scale
+		vmovaps zmm6,ZMMWORD ptr e1_bias
+		vmovaps zmm7,ZMMWORD ptr e1_c1
+		vmovaps zmm8,ZMMWORD ptr e1_c2
+		vmovaps zmm9,ZMMWORD ptr e1_c0
+		
+		mov rdx,16
+		mov r8,64
+		
+eloop8:
+		vmovaps zmm0,ZMMWORD ptr[rax]
+		vminps zmm0,zmm0,zmm3
+		vmaxps zmm0,zmm0,zmm4
+		vmulps zmm0,zmm0,zmm5
+		vmovaps zmm1,zmm0
+		vaddps zmm0,zmm0,zmm6
+		vpslld zmm2,zmm0,23
+		vsubps zmm0,zmm0,zmm6
+		vsubps zmm1,zmm1,zmm0
+		vmulps zmm0,zmm1,zmm7
+		vmulps zmm1,zmm1,zmm1
+		vmulps zmm1,zmm1,zmm8
+		vaddps zmm0,zmm0,zmm9
+		vaddps zmm0,zmm0,zmm1
+		vpaddd zmm0,zmm0,zmm2
+		vmovaps ZMMWORD ptr[rax],zmm0
+		add rax,r8
+		sub rcx,rdx
+		jnz short eloop8
+		
+	vmovdqu xmm9,XMMWORD ptr[rsp+48]
+	vmovdqu xmm8,XMMWORD ptr[rsp+32]
+	vmovdqu xmm7,XMMWORD ptr[rsp+16]
+	vmovdqu xmm6,XMMWORD ptr[rsp]	
+	add rsp,64
+		
+	vzeroupper
+		
+		ret
+		
+e1_m16_AVX512 endp
+
+
+;e2_m16_AVX512 proc ptr_s:dword,n:dword
+; ptr_s = rcx
+; n = edx
+
+e2_m16_AVX512 proc public frame
+
+	sub rsp,160
+	.allocstack 160
+	vmovdqu XMMWORD ptr[rsp],xmm6
+	.savexmm128 xmm6,0
+	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	.savexmm128 xmm7,16
+	vmovdqu XMMWORD ptr[rsp+32],xmm8
+	.savexmm128 xmm8,32
+	vmovdqu XMMWORD ptr[rsp+48],xmm9
+	.savexmm128 xmm9,48
+	vmovdqu XMMWORD ptr[rsp+64],xmm10
+	.savexmm128 xmm10,64
+	vmovdqu XMMWORD ptr[rsp+80],xmm11
+	.savexmm128 xmm11,80
+	vmovdqu XMMWORD ptr[rsp+96],xmm12
+	.savexmm128 xmm12,96
+	vmovdqu XMMWORD ptr[rsp+112],xmm13
+	.savexmm128 xmm13,112
+	vmovdqu XMMWORD ptr[rsp+128],xmm14
+	.savexmm128 xmm14,128
+	vmovdqu XMMWORD ptr[rsp+144],xmm15
+	.savexmm128 xmm15,144
+	.endprolog
+	
+		mov rax,rcx
+		xor rcx,rcx
+		mov ecx,edx
+		
+		vmovaps zmm7,ZMMWORD ptr exp_hi
+		vmovaps zmm8,ZMMWORD ptr exp_lo
+		vmovaps zmm9,ZMMWORD ptr exp_rln2
+		vmovaps zmm10,ZMMWORD ptr am_0p5
+		vmovaps zmm11,ZMMWORD ptr epi32_1
+		vmovaps zmm12,ZMMWORD ptr exp_c2
+		vmovaps zmm13,ZMMWORD ptr exp_c1
+		vmovaps zmm14,ZMMWORD ptr exp_q0
+		vmovaps zmm15,ZMMWORD ptr am_1
+		
+		mov rdx,16
+		mov r8,64
+
+eloop4:
+		vmovaps zmm0,ZMMWORD ptr[rax]		
+		vminps zmm0,zmm0,zmm7
+		vmaxps zmm0,zmm0,zmm8
+		vmulps zmm1,zmm0,zmm9
+		vxorps zmm2,zmm2,zmm2
+		vaddps zmm1,zmm1,zmm10
+
+		vextractf32x8 ymm3,zmm1,1		
+		vextractf32x8 ymm4,zmm2,1		
+		vcmpnltps ymm2,ymm2,ymm1
+		vcmpnltps ymm4,ymm4,ymm3
+		vinsertf32x8 zmm2,zmm2,ymm4,1
+
+		vpandd zmm2,zmm2,zmm11
+		vcvttps2dq zmm1,zmm1
+		vpsubd zmm1,zmm1,zmm2
+		vmovaps zmm5,zmm13
+		vcvtdq2ps zmm3,zmm1
+		vmulps zmm4,zmm3,zmm12
+		vmulps zmm5,zmm5,zmm3
+		vsubps zmm0,zmm0,zmm4
+		vsubps zmm0,zmm0,zmm5
+		vpaddd zmm1,zmm1,ZMMWORD ptr epi32_0x7f
+		vmovaps zmm2,zmm0
+		vmulps zmm0,zmm0,zmm0
+		vmulps zmm6,zmm0,zmm14
+		vmulps zmm4,zmm0,ZMMWORD ptr exp_p0
+		vaddps zmm6,zmm6,ZMMWORD ptr exp_q1
+		vaddps zmm4,zmm4,ZMMWORD ptr exp_p1
+		vmulps zmm6,zmm6,zmm0
+		vmulps zmm4,zmm4,zmm0
+		vaddps zmm6,zmm6,ZMMWORD ptr exp_q2
+		vmulps zmm4,zmm4,zmm2
+		vmulps zmm6,zmm6,zmm0
+		vaddps zmm2,zmm2,zmm4
+		vaddps zmm6,zmm6,ZMMWORD ptr exp_q3
+		vpslld zmm1,zmm1,23
+		vsubps zmm6,zmm6,zmm2
+
+		vextractf32x8 ymm5,zmm6,1		
+		vrcpps ymm6,ymm6
+		vrcpps ymm5,ymm5
+		vinsertf32x8 zmm6,zmm6,ymm5,1
+
+		vmulps zmm2,zmm2,zmm6
+		vaddps zmm2,zmm2,zmm2
+		vaddps zmm0,zmm2,zmm15
+		vmulps zmm0,zmm0,zmm1		
+		vmovaps ZMMWORD ptr[rax],zmm0
+
+		add rax,r8
+		sub rcx,rdx
+		jnz eloop4
+		
+	vmovdqu xmm15,XMMWORD ptr[rsp+144]
+	vmovdqu xmm14,XMMWORD ptr[rsp+128]
+	vmovdqu xmm13,XMMWORD ptr[rsp+112]
+	vmovdqu xmm12,XMMWORD ptr[rsp+96]
+	vmovdqu xmm11,XMMWORD ptr[rsp+80]
+	vmovdqu xmm10,XMMWORD ptr[rsp+64]
+	vmovdqu xmm9,XMMWORD ptr[rsp+48]
+	vmovdqu xmm8,XMMWORD ptr[rsp+32]
+	vmovdqu xmm7,XMMWORD ptr[rsp+16]
+	vmovdqu xmm6,XMMWORD ptr[rsp]	
+	add rsp,160		
+		
+	vzeroupper
+		
+		ret
+		
+e2_m16_AVX512 endp
 
 end

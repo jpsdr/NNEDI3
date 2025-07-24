@@ -1526,11 +1526,11 @@ xloop_AVX:
 		vpsadbw xmm5,xmm5,xmm7
 		vpsraw xmm0,xmm0,5
 		vpsraw xmm2,xmm2,5
-		vpminsw xmm0,xmm0,xmm12
-		vpminsw xmm2,xmm2,xmm12
+		vpminuw xmm0,xmm0,xmm12
+		vpminuw xmm2,xmm2,xmm12
 		vpsrldq xmm3,xmm5,8
-		vpmaxsw xmm0,xmm0,xmm13
-		vpmaxsw xmm2,xmm2,xmm13
+		vpmaxuw xmm0,xmm0,xmm13
+		vpmaxuw xmm2,xmm2,xmm13
 		vpaddusw xmm5,xmm3,xmm5
 		vpackuswb xmm0,xmm0,xmm2
 		vmovdqa XMMWORD ptr [rsi],xmm0
@@ -5229,9 +5229,9 @@ e0_m16_SSE2 proc public frame
 
 	sub rsp,32
 	.allocstack 32
-	movdqu oword ptr[rsp],xmm6
+	movdqu XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqu XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -5239,10 +5239,10 @@ e0_m16_SSE2 proc public frame
 		xor rcx,rcx
 		mov ecx,edx
 		
-		movdqa xmm4,oword ptr exp_hi
-		movdqa xmm5,oword ptr exp_lo
-		movdqa xmm6,oword ptr e0_mult
-		movdqa xmm7,oword ptr e0_bias
+		movaps xmm4,XMMWORD ptr exp_hi
+		movaps xmm5,XMMWORD ptr exp_lo
+		movaps xmm6,XMMWORD ptr e0_mult
+		movaps xmm7,XMMWORD ptr e0_bias
 		
 		mov rdx,16
 		mov r8,32
@@ -5283,8 +5283,8 @@ eloop16:
 		
 		jnz eloop16
 		
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
+	movdqu xmm7,XMMWORD ptr[rsp+16]
+	movdqu xmm6,XMMWORD ptr[rsp]	
 	add rsp,32			
 		
 		ret
@@ -5310,10 +5310,10 @@ e0_m16_AVX proc public frame
 		xor rcx,rcx
 		mov ecx,edx
 		
-		vmovdqa xmm4,XMMWORD ptr exp_hi
-		vmovdqa xmm5,XMMWORD ptr exp_lo
-		vmovdqa xmm6,XMMWORD ptr e0_mult
-		vmovdqa xmm7,XMMWORD ptr e0_bias
+		vmovaps xmm4,XMMWORD ptr exp_hi
+		vmovaps xmm5,XMMWORD ptr exp_lo
+		vmovaps xmm6,XMMWORD ptr e0_mult
+		vmovaps xmm7,XMMWORD ptr e0_bias
 		
 		mov rdx,16
 		mov r8,32
@@ -5371,21 +5371,21 @@ e1_m16_SSE2 proc public frame
 
 	sub rsp,128
 	.allocstack 128
-	movdqu oword ptr[rsp],xmm6
+	movdqu XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqu XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	movdqu oword ptr[rsp+32],xmm8
+	movdqu XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	movdqu oword ptr[rsp+48],xmm9
+	movdqu XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	movdqu oword ptr[rsp+64],xmm10
+	movdqu XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	movdqu oword ptr[rsp+80],xmm11
+	movdqu XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	movdqu oword ptr[rsp+96],xmm12
+	movdqu XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	movdqu oword ptr[rsp+112],xmm13
+	movdqu XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
 	
@@ -5393,13 +5393,13 @@ e1_m16_SSE2 proc public frame
 		xor rcx,rcx
 		mov ecx,edx
 		
-		movdqa xmm7,oword ptr exp_hi
-		movdqa xmm8,oword ptr exp_lo
-		movdqa xmm9,oword ptr e1_scale
-		movdqa xmm10,oword ptr e1_bias
-		movdqa xmm11,oword ptr e1_c1
-		movdqa xmm12,oword ptr e1_c2
-		movdqa xmm13,oword ptr e1_c0
+		movaps xmm7,XMMWORD ptr exp_hi
+		movaps xmm8,XMMWORD ptr exp_lo
+		movaps xmm9,XMMWORD ptr e1_scale
+		movaps xmm10,XMMWORD ptr e1_bias
+		movaps xmm11,XMMWORD ptr e1_c1
+		movaps xmm12,XMMWORD ptr e1_c2
+		movaps xmm13,XMMWORD ptr e1_c0
 		
 		mov rdx,8
 		mov r8,16
@@ -5446,14 +5446,14 @@ eloop8:
 		sub rcx,rdx
 		jnz eloop8
 		
-	movdqu xmm13,oword ptr[rsp+112]
-	movdqu xmm12,oword ptr[rsp+96]
-	movdqu xmm11,oword ptr[rsp+80]
-	movdqu xmm10,oword ptr[rsp+64]
-	movdqu xmm9,oword ptr[rsp+48]
-	movdqu xmm8,oword ptr[rsp+32]
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
+	movdqu xmm13,XMMWORD ptr[rsp+112]
+	movdqu xmm12,XMMWORD ptr[rsp+96]
+	movdqu xmm11,XMMWORD ptr[rsp+80]
+	movdqu xmm10,XMMWORD ptr[rsp+64]
+	movdqu xmm9,XMMWORD ptr[rsp+48]
+	movdqu xmm8,XMMWORD ptr[rsp+32]
+	movdqu xmm7,XMMWORD ptr[rsp+16]
+	movdqu xmm6,XMMWORD ptr[rsp]	
 	add rsp,128
 		
 		ret
@@ -5491,13 +5491,13 @@ e1_m16_AVX proc public frame
 		xor rcx,rcx
 		mov ecx,edx
 		
-		vmovdqa xmm7,XMMWORD ptr exp_hi
-		vmovdqa xmm8,XMMWORD ptr exp_lo
-		vmovdqa xmm9,XMMWORD ptr e1_scale
-		vmovdqa xmm10,XMMWORD ptr e1_bias
-		vmovdqa xmm11,XMMWORD ptr e1_c1
-		vmovdqa xmm12,XMMWORD ptr e1_c2
-		vmovdqa xmm13,XMMWORD ptr e1_c0
+		vmovaps xmm7,XMMWORD ptr exp_hi
+		vmovaps xmm8,XMMWORD ptr exp_lo
+		vmovaps xmm9,XMMWORD ptr e1_scale
+		vmovaps xmm10,XMMWORD ptr e1_bias
+		vmovaps xmm11,XMMWORD ptr e1_c1
+		vmovaps xmm12,XMMWORD ptr e1_c2
+		vmovaps xmm13,XMMWORD ptr e1_c0
 		
 		mov rdx,8
 		mov r8,16
@@ -5564,25 +5564,25 @@ e2_m16_SSE2 proc public frame
 
 	sub rsp,160
 	.allocstack 160
-	movdqu oword ptr[rsp],xmm6
+	movdqu XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqu XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	movdqu oword ptr[rsp+32],xmm8
+	movdqu XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	movdqu oword ptr[rsp+48],xmm9
+	movdqu XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	movdqu oword ptr[rsp+64],xmm10
+	movdqu XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	movdqu oword ptr[rsp+80],xmm11
+	movdqu XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	movdqu oword ptr[rsp+96],xmm12
+	movdqu XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	movdqu oword ptr[rsp+112],xmm13
+	movdqu XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
-	movdqu oword ptr[rsp+128],xmm14
+	movdqu XMMWORD ptr[rsp+128],xmm14
 	.savexmm128 xmm14,128
-	movdqu oword ptr[rsp+144],xmm15
+	movdqu XMMWORD ptr[rsp+144],xmm15
 	.savexmm128 xmm15,144
 	.endprolog
 	
@@ -5590,15 +5590,15 @@ e2_m16_SSE2 proc public frame
 		xor rcx,rcx
 		mov ecx,edx
 		
-		movdqa xmm7,oword ptr exp_hi
-		movdqa xmm8,oword ptr exp_lo
-		movdqa xmm9,oword ptr exp_rln2
-		movdqa xmm10,oword ptr am_0p5
-		movdqa xmm11,oword ptr epi32_1
-		movdqa xmm12,oword ptr exp_c2
-		movdqa xmm13,oword ptr exp_c1
-		movdqa xmm14,oword ptr exp_q0
-		movdqa xmm15,oword ptr exp_p0
+		movaps xmm7,XMMWORD ptr exp_hi
+		movaps xmm8,XMMWORD ptr exp_lo
+		movaps xmm9,XMMWORD ptr exp_rln2
+		movaps xmm10,XMMWORD ptr am_0p5
+		movaps xmm11,XMMWORD ptr epi32_1
+		movaps xmm12,XMMWORD ptr exp_c2
+		movaps xmm13,XMMWORD ptr exp_c1
+		movaps xmm14,XMMWORD ptr exp_q0
+		movaps xmm15,XMMWORD ptr exp_p0
 		
 		mov rdx,4
 		mov r8,16
@@ -5651,16 +5651,16 @@ eloop4:
 		sub rcx,rdx
 		jnz eloop4
 		
-	movdqu xmm15,oword ptr[rsp+144]
-	movdqu xmm14,oword ptr[rsp+128]
-	movdqu xmm13,oword ptr[rsp+112]
-	movdqu xmm12,oword ptr[rsp+96]
-	movdqu xmm11,oword ptr[rsp+80]
-	movdqu xmm10,oword ptr[rsp+64]
-	movdqu xmm9,oword ptr[rsp+48]
-	movdqu xmm8,oword ptr[rsp+32]
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
+	movdqu xmm15,XMMWORD ptr[rsp+144]
+	movdqu xmm14,XMMWORD ptr[rsp+128]
+	movdqu xmm13,XMMWORD ptr[rsp+112]
+	movdqu xmm12,XMMWORD ptr[rsp+96]
+	movdqu xmm11,XMMWORD ptr[rsp+80]
+	movdqu xmm10,XMMWORD ptr[rsp+64]
+	movdqu xmm9,XMMWORD ptr[rsp+48]
+	movdqu xmm8,XMMWORD ptr[rsp+32]
+	movdqu xmm7,XMMWORD ptr[rsp+16]
+	movdqu xmm6,XMMWORD ptr[rsp]	
 	add rsp,160		
 		
 		ret
@@ -5702,15 +5702,15 @@ e2_m16_AVX proc public frame
 		xor rcx,rcx
 		mov ecx,edx
 		
-		vmovdqa xmm7,XMMWORD ptr exp_hi
-		vmovdqa xmm8,XMMWORD ptr exp_lo
-		vmovdqa xmm9,XMMWORD ptr exp_rln2
-		vmovdqa xmm10,XMMWORD ptr am_0p5
-		vmovdqa xmm11,XMMWORD ptr epi32_1
-		vmovdqa xmm12,XMMWORD ptr exp_c2
-		vmovdqa xmm13,XMMWORD ptr exp_c1
-		vmovdqa xmm14,XMMWORD ptr exp_q0
-		vmovdqa xmm15,XMMWORD ptr exp_p0
+		vmovaps xmm7,XMMWORD ptr exp_hi
+		vmovaps xmm8,XMMWORD ptr exp_lo
+		vmovaps xmm9,XMMWORD ptr exp_rln2
+		vmovaps xmm10,XMMWORD ptr am_0p5
+		vmovaps xmm11,XMMWORD ptr epi32_1
+		vmovaps xmm12,XMMWORD ptr exp_c2
+		vmovaps xmm13,XMMWORD ptr exp_c1
+		vmovaps xmm14,XMMWORD ptr exp_q0
+		vmovaps xmm15,XMMWORD ptr exp_p0
 		
 		mov rdx,4
 		mov r8,16

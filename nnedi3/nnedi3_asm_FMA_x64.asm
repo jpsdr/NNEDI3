@@ -560,6 +560,7 @@ xloop:
 		vpaddw ymm2,ymm2,ymm3
 		vpmullw ymm0,ymm0,ymm8
 		vpmullw ymm2,ymm2,ymm8
+
 		vmovdqa ymm1,YMMWORD PTR [rbx]
 		vmovdqa ymm3,YMMWORD PTR [rdi+rdx*2]
 		vpunpckhbw ymm4,ymm1,ymm7
@@ -570,6 +571,7 @@ xloop:
 		vpaddw ymm4,ymm4,ymm5
 		vpmullw ymm1,ymm1,ymm9
 		vpmullw ymm4,ymm4,ymm9
+
 		vmovdqa ymm5,YMMWORD PTR [rax]
 		vpsubusw ymm0,ymm0,ymm1
 		vpsubusw ymm2,ymm2,ymm4
@@ -579,6 +581,7 @@ xloop:
 		vpsadbw ymm5,ymm5,ymm7		
 		vpsraw ymm0,ymm0,5
 		vpsraw ymm2,ymm2,5
+
 		vmovdqa ymm3,ymm5
 		vpminsw ymm0,ymm0,ymm13
 		vpsrldq ymm5,ymm5,8
@@ -586,6 +589,7 @@ xloop:
 		vpaddusw ymm5,ymm5,ymm3
 		vpmaxsw ymm0,ymm0,ymm12
 		vpmaxsw ymm2,ymm2,ymm12
+
 		vextracti128 xmm3,ymm5,1
 		vpackuswb ymm0,ymm0,ymm2
 		vpaddusw xmm5,xmm5,xmm3
@@ -795,6 +799,7 @@ src_pitch equ dword ptr[rbp+48]
 		mov r9,8
 		
 		lea rdi,[rbx+rdx*4]
+
 		vpxor ymm5,ymm5,ymm5
 		vpxor ymm6,ymm6,ymm6
 		vmovaps ymm7,YMMWORD ptr f_19
@@ -805,21 +810,25 @@ xloop_32:
 		vmovq xmm4,qword ptr [rax]
 		vmovaps ymm2,YMMWORD ptr[rbx]		
 		vmovaps ymm0,YMMWORD ptr[rbx+rdx*2]
-		vpunpcklbw xmm4,xmm4,xmm6		
+		vpunpcklbw xmm4,xmm4,xmm6
+
 		vmovaps ymm1,YMMWORD ptr[rdi]
 		vmovaps ymm3,YMMWORD ptr[rdi+rdx*2]		
 		vaddps ymm0,ymm0,ymm1
 		vpxor xmm4,xmm4,xmm9		
 		vaddps ymm2,ymm2,ymm3		
 		vpsadbw xmm4,xmm4,xmm6
+
 		vmulps ymm0,ymm0,ymm7
 		vmovdqa xmm3,xmm4
 		vmulps ymm2,ymm2,ymm8
 		vpsrldq xmm4,xmm4,8
 		vsubps ymm0,ymm0,ymm2	
 		vpaddusw xmm4,xmm4,xmm3
+
 		vmovaps YMMWORD ptr[rsi],ymm0
-		vpaddusw xmm5,xmm5,xmm4		
+		vpaddusw xmm5,xmm5,xmm4
+
 		add rbx,r8
 		add rdi,r8
 		add rax,r9
@@ -4870,10 +4879,10 @@ e0_m16_AVX2 proc public frame
 		xor rcx,rcx
 		mov ecx,edx
 		
-		vmovdqa ymm2,YMMWORD ptr exp_hi
-		vmovdqa ymm3,YMMWORD ptr exp_lo
-		vmovdqa ymm4,YMMWORD ptr e0_mult
-		vmovdqa ymm5,YMMWORD ptr e0_bias
+		vmovaps ymm2,YMMWORD ptr exp_hi
+		vmovaps ymm3,YMMWORD ptr exp_lo
+		vmovaps ymm4,YMMWORD ptr e0_mult
+		vmovaps ymm5,YMMWORD ptr e0_bias
 		
 		mov rdx,16
 		mov r8,32
@@ -4918,10 +4927,10 @@ e0_m16_FMA3 proc public frame
 		xor rcx,rcx
 		mov ecx,edx
 		
-		vmovdqa ymm2,YMMWORD ptr exp_hi
-		vmovdqa ymm3,YMMWORD ptr exp_lo
-		vmovdqa ymm4,YMMWORD ptr e0_mult
-		vmovdqa ymm5,YMMWORD ptr e0_bias
+		vmovaps ymm2,YMMWORD ptr exp_hi
+		vmovaps ymm3,YMMWORD ptr exp_lo
+		vmovaps ymm4,YMMWORD ptr e0_mult
+		vmovaps ymm5,YMMWORD ptr e0_bias
 				
 		mov rdx,16
 		mov r8,32
@@ -4966,10 +4975,10 @@ e0_m16_FMA4 proc public frame
 		xor rcx,rcx
 		mov ecx,edx
 		
-		vmovdqa ymm2,YMMWORD ptr exp_hi
-		vmovdqa ymm3,YMMWORD ptr exp_lo
-		vmovdqa ymm4,YMMWORD ptr e0_mult
-		vmovdqa ymm5,YMMWORD ptr e0_bias
+		vmovaps ymm2,YMMWORD ptr exp_hi
+		vmovaps ymm3,YMMWORD ptr exp_lo
+		vmovaps ymm4,YMMWORD ptr e0_mult
+		vmovaps ymm5,YMMWORD ptr e0_bias
 				
 		mov rdx,16
 		mov r8,32
@@ -5018,20 +5027,19 @@ e1_m16_AVX2 proc public frame
 	.savexmm128 xmm8,32
 	vmovdqu XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	vmovdqu XMMWORD ptr[rsp+64],xmm10
 	.endprolog
 	
 		mov rax,rcx
 		xor rcx,rcx
 		mov ecx,edx
 		
-		vmovdqa ymm3,YMMWORD ptr exp_hi
-		vmovdqa ymm4,YMMWORD ptr exp_lo
-		vmovdqa ymm5,YMMWORD ptr e1_scale
-		vmovdqa ymm6,YMMWORD ptr e1_bias
-		vmovdqa ymm7,YMMWORD ptr e1_c1
-		vmovdqa ymm8,YMMWORD ptr e1_c2
-		vmovdqa ymm9,YMMWORD ptr e1_c0
+		vmovaps ymm3,YMMWORD ptr exp_hi
+		vmovaps ymm4,YMMWORD ptr exp_lo
+		vmovaps ymm5,YMMWORD ptr e1_scale
+		vmovaps ymm6,YMMWORD ptr e1_bias
+		vmovaps ymm7,YMMWORD ptr e1_c1
+		vmovaps ymm8,YMMWORD ptr e1_c2
+		vmovaps ymm9,YMMWORD ptr e1_c0
 		
 		mov rdx,8
 		mov r9,32	
@@ -5104,15 +5112,15 @@ e2_m16_AVX2 proc public frame
 		xor rcx,rcx
 		mov ecx,edx
 		
-		vmovdqa ymm7,YMMWORD ptr exp_hi
-		vmovdqa ymm8,YMMWORD ptr exp_lo
-		vmovdqa ymm9,YMMWORD ptr exp_rln2
-		vmovdqa ymm10,YMMWORD ptr am_0p5
-		vmovdqa ymm11,YMMWORD ptr epi32_1
-		vmovdqa ymm12,YMMWORD ptr exp_c2
-		vmovdqa ymm13,YMMWORD ptr exp_c1
-		vmovdqa ymm14,YMMWORD ptr exp_q0
-		vmovdqa ymm15,YMMWORD ptr am_1
+		vmovaps ymm7,YMMWORD ptr exp_hi
+		vmovaps ymm8,YMMWORD ptr exp_lo
+		vmovaps ymm9,YMMWORD ptr exp_rln2
+		vmovaps ymm10,YMMWORD ptr am_0p5
+		vmovaps ymm11,YMMWORD ptr epi32_1
+		vmovaps ymm12,YMMWORD ptr exp_c2
+		vmovaps ymm13,YMMWORD ptr exp_c1
+		vmovaps ymm14,YMMWORD ptr exp_q0
+		vmovaps ymm15,YMMWORD ptr am_1
 		
 		mov rdx,8
 		mov r8,32
