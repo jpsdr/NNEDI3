@@ -20,7 +20,7 @@
 **   Modified by JPSDR
 */
 
-#include "./nnedi3.h"
+#include "nnedi3.h"
 
 // VS 2015
 #if _MSC_VER >= 1900
@@ -462,7 +462,7 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		}
 
 		char buf[512];
-		sprintf_s(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,CPUF);
+		snprintf(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,CPUF);
 		OutputDebugString(buf);
 	}
 	else
@@ -4704,8 +4704,13 @@ AVSValue __cdecl Create_nnedi3_rpow2(AVSValue args, void* user_data, IScriptEnvi
 
 const AVS_Linkage *AVS_linkage = nullptr;
 
+#ifdef _MSC_VER
+#define EXPORT extern "C" __declspec(dllexport)
+#else
+#define EXPORT extern "C" __stdcall
+#endif
 
-extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
+EXPORT const char* AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
 	AVS_linkage = vectors;
 
