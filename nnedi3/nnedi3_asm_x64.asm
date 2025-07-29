@@ -93,11 +93,11 @@ sse_half real4 4 dup(0.5)
 
 computeNetwork0_SSE2 proc public frame
 
-	sub rsp,32
-	.allocstack 32
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqa oword ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -325,9 +325,9 @@ computeNetwork0_SSE2 proc public frame
 finish_1:
 		mov BYTE PTR[rcx],al
 		
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]
-	add rsp,32		
+	movdqa xmm7,oword ptr[rsp+16]
+	movdqa xmm6,oword ptr[rsp]
+	add rsp,40
 		
 		ret
 
@@ -341,11 +341,11 @@ computeNetwork0_SSE2 endp
 
 computeNetwork0_AVX proc public frame
 
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -535,9 +535,9 @@ computeNetwork0_AVX proc public frame
 finish_1_AVX:
 		mov BYTE PTR[rcx],al
 		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]
-	add rsp,32		
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]
+	add rsp,40
 		
 		ret
 
@@ -551,11 +551,11 @@ computeNetwork0_AVX endp
 
 computeNetwork0_i16_SSE2 proc public frame
 
-	sub rsp,32
-	.allocstack 32
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqa oword ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 
@@ -707,9 +707,9 @@ computeNetwork0_i16_SSE2 proc public frame
 finish_2:
 		mov BYTE PTR[rcx],al
 		
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]
-	add rsp,32		
+	movdqa xmm7,oword ptr[rsp+16]
+	movdqa xmm6,oword ptr[rsp]
+	add rsp,40
 		
 		ret
 		
@@ -723,11 +723,11 @@ computeNetwork0_i16_SSE2 endp
 
 computeNetwork0_i16_AVX proc public frame
 
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 
@@ -859,9 +859,9 @@ computeNetwork0_i16_AVX proc public frame
 finish_2_AVX:
 		mov BYTE PTR[rcx],al
 		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]
-	add rsp,32		
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]
+	add rsp,40
 		
 		ret
 		
@@ -875,9 +875,9 @@ computeNetwork0_i16_AVX endp
 
 uc2f48_SSE2 proc public frame
 
-	sub rsp,16
-	.allocstack 16
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,24
+	.allocstack 24
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	.endprolog
 
@@ -943,8 +943,8 @@ uc2f48_SSE2 proc public frame
 		movaps [rdx+160],xmm3
 		movaps [rdx+176],xmm5
 		
-	movdqu xmm6,oword ptr[rsp]
-	add rsp,16				
+	movdqa xmm6,oword ptr[rsp]
+	add rsp,24
 		
 		ret
 		
@@ -958,9 +958,9 @@ uc2f48_SSE2 endp
 
 uc2f48_AVX proc public frame
 
-	sub rsp,16
-	.allocstack 16
-	vmovdqu XMMWORD ptr [rsp],xmm6
+	sub rsp,24
+	.allocstack 24
+	vmovdqa XMMWORD ptr [rsp],xmm6
 	.savexmm128 xmm6,0
 	.endprolog
 
@@ -1031,8 +1031,8 @@ uc2f48_AVX proc public frame
 		vmovaps XMMWORD ptr [rdx+160],xmm3
 		vmovaps XMMWORD ptr [rdx+176],xmm5
 		
-	vmovdqu xmm6,XMMWORD ptr[rsp]
-	add rsp,16				
+	vmovdqa xmm6,XMMWORD ptr[rsp]
+	add rsp,24				
 		
 		ret
 		
@@ -1046,9 +1046,9 @@ uc2f48_AVX endp
 
 uc2f48_SSE2_16 proc public frame
 
-	sub rsp,16
-	.allocstack 16
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,24
+	.allocstack 24
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
 	.endprolog
 
@@ -1110,8 +1110,8 @@ uc2f48_SSE2_16 proc public frame
 		movaps [rdx+160],xmm4
 		movaps [rdx+176],xmm5
 		
-	movdqu xmm6,oword ptr[rsp]
-	add rsp,16				
+	movdqa xmm6,oword ptr[rsp]
+	add rsp,24
 		
 		ret
 		
@@ -1125,9 +1125,9 @@ uc2f48_SSE2_16 endp
 
 uc2f48_AVX_16 proc public frame
 
-	sub rsp,16
-	.allocstack 16
-	vmovdqu XMMWORD ptr [rsp],xmm6
+	sub rsp,24
+	.allocstack 24
+	vmovdqa XMMWORD ptr [rsp],xmm6
 	.savexmm128 xmm6,0
 	.endprolog
 
@@ -1191,8 +1191,8 @@ uc2f48_AVX_16 proc public frame
 		vmovaps XMMWORD ptr [rdx+160],xmm4
 		vmovaps XMMWORD ptr [rdx+176],xmm5
 		
-	vmovdqu xmm6,XMMWORD ptr [rsp]
-	add rsp,16				
+	vmovdqa xmm6,XMMWORD ptr [rsp]
+	add rsp,24
 		
 		ret
 		
@@ -1206,11 +1206,11 @@ uc2f48_AVX_16 endp
 
 uc2s48_SSE2 proc public frame
 
-	sub rsp,32
-	.allocstack 32
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqa oword ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 
@@ -1242,9 +1242,9 @@ uc2s48_SSE2 proc public frame
 		movdqa [r8+64],xmm5
 		movdqa [r8+80],xmm7
 		
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]
-	add rsp,32				
+	movdqa xmm7,oword ptr[rsp+16]
+	movdqa xmm6,oword ptr[rsp]
+	add rsp,40
 		
 		ret
 
@@ -1258,11 +1258,11 @@ uc2s48_SSE2 endp
 
 uc2s48_AVX proc public frame
 
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr [rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr [rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr [rsp+16],xmm7
+	vmovdqa XMMWORD ptr [rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 
@@ -1294,9 +1294,9 @@ uc2s48_AVX proc public frame
 		vmovdqa XMMWORD ptr [r8+64],xmm5
 		vmovdqa XMMWORD ptr [r8+80],xmm7
 		
-	vmovdqu xmm7,XMMWORD ptr [rsp+16]
-	vmovdqu xmm6,XMMWORD ptr [rsp]
-	add rsp,32				
+	vmovdqa xmm7,XMMWORD ptr [rsp+16]
+	vmovdqa xmm6,XMMWORD ptr [rsp]
+	add rsp,40
 		
 		ret
 
@@ -1323,23 +1323,23 @@ val_min_max equ qword ptr[rbp+56]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	sub rsp,128
-	.allocstack 128
-	movdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,136
+	.allocstack 136
+	movdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu XMMWORD ptr[rsp+16],xmm7
+	movdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	movdqu XMMWORD ptr[rsp+32],xmm8
+	movdqa XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	movdqu XMMWORD ptr[rsp+48],xmm9
+	movdqa XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	movdqu XMMWORD ptr[rsp+64],xmm10
+	movdqa XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	movdqu XMMWORD ptr[rsp+80],xmm11
+	movdqa XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	movdqu XMMWORD ptr[rsp+96],xmm12
+	movdqa XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	movdqu XMMWORD ptr[rsp+112],xmm13
+	movdqa XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
 	
@@ -1416,15 +1416,15 @@ xloop:
 		xor  rax,rax
 		movd eax,xmm6
 		
-	movdqu xmm13,XMMWORD ptr[rsp+112]
-	movdqu xmm12,XMMWORD ptr[rsp+96]
-	movdqu xmm11,XMMWORD ptr[rsp+80]
-	movdqu xmm10,XMMWORD ptr[rsp+64]
-	movdqu xmm9,XMMWORD ptr[rsp+48]
-	movdqu xmm8,XMMWORD ptr[rsp+32]
-	movdqu xmm7,XMMWORD ptr[rsp+16]
-	movdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,128
+	movdqa xmm13,XMMWORD ptr[rsp+112]
+	movdqa xmm12,XMMWORD ptr[rsp+96]
+	movdqa xmm11,XMMWORD ptr[rsp+80]
+	movdqa xmm10,XMMWORD ptr[rsp+64]
+	movdqa xmm9,XMMWORD ptr[rsp+48]
+	movdqa xmm8,XMMWORD ptr[rsp+32]
+	movdqa xmm7,XMMWORD ptr[rsp+16]
+	movdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,136
 	pop rdi
 	pop rsi
 	pop rbx
@@ -1455,23 +1455,23 @@ val_min_max equ qword ptr[rbp+56]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	sub rsp,128
-	.allocstack 128
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,136
+	.allocstack 136
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	vmovdqu XMMWORD ptr[rsp+32],xmm8
+	vmovdqa XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	vmovdqu XMMWORD ptr[rsp+48],xmm9
+	vmovdqa XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	vmovdqu XMMWORD ptr[rsp+64],xmm10
+	vmovdqa XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	vmovdqu XMMWORD ptr[rsp+80],xmm11
+	vmovdqa XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	vmovdqu XMMWORD ptr[rsp+96],xmm12
+	vmovdqa XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	vmovdqu XMMWORD ptr[rsp+112],xmm13
+	vmovdqa XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
 	
@@ -1545,15 +1545,15 @@ xloop_AVX:
 		xor  rax,rax
 		vmovd eax,xmm6
 		
-	vmovdqu xmm13,XMMWORD ptr[rsp+112]
-	vmovdqu xmm12,XMMWORD ptr[rsp+96]
-	vmovdqu xmm11,XMMWORD ptr[rsp+80]
-	vmovdqu xmm10,XMMWORD ptr[rsp+64]
-	vmovdqu xmm9,XMMWORD ptr[rsp+48]
-	vmovdqu xmm8,XMMWORD ptr[rsp+32]
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,128
+	vmovdqa xmm13,XMMWORD ptr[rsp+112]
+	vmovdqa xmm12,XMMWORD ptr[rsp+96]
+	vmovdqa xmm11,XMMWORD ptr[rsp+80]
+	vmovdqa xmm10,XMMWORD ptr[rsp+64]
+	vmovdqa xmm9,XMMWORD ptr[rsp+48]
+	vmovdqa xmm8,XMMWORD ptr[rsp+32]
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,136
 	pop rdi
 	pop rsi
 	pop rbx
@@ -1584,23 +1584,23 @@ val_min_max equ qword ptr[rbp+56]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	sub rsp,128
-	.allocstack 128
-	movdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,136
+	.allocstack 136
+	movdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu XMMWORD ptr[rsp+16],xmm7
+	movdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	movdqu XMMWORD ptr[rsp+32],xmm8
+	movdqa XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	movdqu XMMWORD ptr[rsp+48],xmm9
+	movdqa XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	movdqu XMMWORD ptr[rsp+64],xmm10
+	movdqa XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	movdqu XMMWORD ptr[rsp+80],xmm11
+	movdqa XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	movdqu XMMWORD ptr[rsp+96],xmm12
+	movdqa XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	movdqu XMMWORD ptr[rsp+112],xmm13
+	movdqa XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
 	
@@ -1677,15 +1677,15 @@ xloop_16:
 		xor  rax,rax
 		movd eax,xmm6
 		
-	movdqu xmm13,XMMWORD ptr[rsp+112]
-	movdqu xmm12,XMMWORD ptr[rsp+96]
-	movdqu xmm11,XMMWORD ptr[rsp+80]
-	movdqu xmm10,XMMWORD ptr[rsp+64]
-	movdqu xmm9,XMMWORD ptr[rsp+48]
-	movdqu xmm8,XMMWORD ptr[rsp+32]
-	movdqu xmm7,XMMWORD ptr[rsp+16]
-	movdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,128
+	movdqa xmm13,XMMWORD ptr[rsp+112]
+	movdqa xmm12,XMMWORD ptr[rsp+96]
+	movdqa xmm11,XMMWORD ptr[rsp+80]
+	movdqa xmm10,XMMWORD ptr[rsp+64]
+	movdqa xmm9,XMMWORD ptr[rsp+48]
+	movdqa xmm8,XMMWORD ptr[rsp+32]
+	movdqa xmm7,XMMWORD ptr[rsp+16]
+	movdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,136
 	pop rdi
 	pop rsi
 	pop rbx
@@ -1716,23 +1716,23 @@ val_min_max equ qword ptr[rbp+56]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	sub rsp,128
-	.allocstack 128
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,136
+	.allocstack 136
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	vmovdqu XMMWORD ptr[rsp+32],xmm8
+	vmovdqa XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	vmovdqu XMMWORD ptr[rsp+48],xmm9
+	vmovdqa XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	vmovdqu XMMWORD ptr[rsp+64],xmm10
+	vmovdqa XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	vmovdqu XMMWORD ptr[rsp+80],xmm11
+	vmovdqa XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	vmovdqu XMMWORD ptr[rsp+96],xmm12
+	vmovdqa XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	vmovdqu XMMWORD ptr[rsp+112],xmm13
+	vmovdqa XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
 	
@@ -1804,15 +1804,15 @@ xloop_16_AVX:
 		xor  rax,rax
 		vmovd eax,xmm6
 		
-	vmovdqu xmm13,XMMWORD ptr[rsp+112]
-	vmovdqu xmm12,XMMWORD ptr[rsp+96]
-	vmovdqu xmm11,XMMWORD ptr[rsp+80]
-	vmovdqu xmm10,XMMWORD ptr[rsp+64]
-	vmovdqu xmm9,XMMWORD ptr[rsp+48]
-	vmovdqu xmm8,XMMWORD ptr[rsp+32]
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,128
+	vmovdqa xmm13,XMMWORD ptr[rsp+112]
+	vmovdqa xmm12,XMMWORD ptr[rsp+96]
+	vmovdqa xmm11,XMMWORD ptr[rsp+80]
+	vmovdqa xmm10,XMMWORD ptr[rsp+64]
+	vmovdqa xmm9,XMMWORD ptr[rsp+48]
+	vmovdqa xmm8,XMMWORD ptr[rsp+32]
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,136
 	pop rdi
 	pop rsi
 	pop rbx
@@ -1842,15 +1842,15 @@ src_pitch equ dword ptr[rbp+48]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	sub rsp,64
-	.allocstack 64
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,72
+	.allocstack 72
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqa oword ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	movdqu oword ptr[rsp+32],xmm8
+	movdqa oword ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	movdqu oword ptr[rsp+48],xmm9
+	movdqa oword ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
 	.endprolog
 
@@ -1901,11 +1901,11 @@ xloop_32:
 		xor  rax,rax
 		movd eax,xmm5
 		
-	movdqu xmm9,oword ptr[rsp+48]
-	movdqu xmm8,oword ptr[rsp+32]
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
-	add rsp,64
+	movdqa xmm9,oword ptr[rsp+48]
+	movdqa xmm8,oword ptr[rsp+32]
+	movdqa xmm7,oword ptr[rsp+16]
+	movdqa xmm6,oword ptr[rsp]	
+	add rsp,72
 	pop rdi
 	pop rsi
 	pop rbx
@@ -1935,15 +1935,15 @@ src_pitch equ dword ptr[rbp+48]
 	.pushreg rsi
 	push rdi
 	.pushreg rdi
-	sub rsp,64
-	.allocstack 64
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,72
+	.allocstack 72
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	vmovdqu XMMWORD ptr[rsp+32],xmm8
+	vmovdqa XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	vmovdqu XMMWORD ptr[rsp+48],xmm9
+	vmovdqa XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
 	.endprolog
 
@@ -1993,11 +1993,11 @@ xloop_32_AVX:
 		xor  rax,rax
 		vmovd eax,xmm5
 		
-	vmovdqu xmm9,XMMWORD ptr[rsp+48]
-	vmovdqu xmm8,XMMWORD ptr[rsp+32]
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,64
+	vmovdqa xmm9,XMMWORD ptr[rsp+48]
+	vmovdqa xmm8,XMMWORD ptr[rsp+32]
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,72
 	pop rdi
 	pop rsi
 	pop rbx
@@ -3549,11 +3549,11 @@ istd equ qword ptr[rbp+56]
 	.pushreg r14
 	push r15
 	.pushreg r15
-	sub rsp,32
-	.allocstack 32
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqa oword ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 		
@@ -3730,9 +3730,9 @@ aloop:
 		sub rdx,r11
 		jnz short aloop
 		
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
-	add rsp,32	
+	movdqa xmm7,oword ptr[rsp+16]
+	movdqa xmm6,oword ptr[rsp]	
+	add rsp,40
 		
 	pop r15
 	pop r14
@@ -3776,11 +3776,11 @@ istd equ qword ptr[rbp+56]
 	.pushreg r14
 	push r15
 	.pushreg r15
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 		
@@ -3930,9 +3930,9 @@ aloop_AVX:
 		sub rdx,r11
 		jnz short aloop_AVX
 		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,32	
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,40
 		
 	pop r15
 	pop r14
@@ -3976,11 +3976,11 @@ istd equ qword ptr[rbp+56]
 	.pushreg r14
 	push r15
 	.pushreg r15
-	sub rsp,32
-	.allocstack 32
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqa oword ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 		
@@ -4210,9 +4210,9 @@ aloop_2:
 		sub rdx,r11
 		jnz short aloop_2
 		
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
-	add rsp,32	
+	movdqa xmm7,oword ptr[rsp+16]
+	movdqa xmm6,oword ptr[rsp]	
+	add rsp,40
 		
 	pop r15
 	pop r14
@@ -4256,11 +4256,11 @@ istd equ qword ptr[rbp+56]
 	.pushreg r14
 	push r15
 	.pushreg r15
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 		
@@ -4451,9 +4451,9 @@ aloop_2_AVX:
 		sub rdx,r11
 		jnz short aloop_2_AVX
 		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,32	
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,40
 		
 	pop r15
 	pop r14
@@ -4497,11 +4497,11 @@ istd equ qword ptr[rbp+56]
 	.pushreg r14
 	push r15
 	.pushreg r15
-	sub rsp,32
-	.allocstack 32
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqa oword ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 		
@@ -4635,9 +4635,9 @@ aloop_3:
 		sub rdx,r11
 		jnz short aloop_3
 		
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
-	add rsp,32	
+	movdqa xmm7,oword ptr[rsp+16]
+	movdqa xmm6,oword ptr[rsp]	
+	add rsp,40
 		
 	pop r15
 	pop r14
@@ -4681,11 +4681,11 @@ istd equ qword ptr[rbp+56]
 	.pushreg r14
 	push r15
 	.pushreg r15
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 		
@@ -4804,9 +4804,9 @@ aloop_3_AVX:
 		sub rdx,r11
 		jnz aloop_3_AVX
 		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,32	
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,40
 		
 	pop r15
 	pop r14
@@ -4850,11 +4850,11 @@ istd equ qword ptr[rbp+56]
 	.pushreg r14
 	push r15
 	.pushreg r15
-	sub rsp,32
-	.allocstack 32
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqa oword ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 		
@@ -5014,9 +5014,9 @@ aloop_4:
 		sub rdx,r11
 		jnz short aloop_4
 		
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
-	add rsp,32	
+	movdqa xmm7,oword ptr[rsp+16]
+	movdqa xmm6,oword ptr[rsp]	
+	add rsp,40
 		
 	pop r15
 	pop r14
@@ -5060,11 +5060,11 @@ istd equ qword ptr[rbp+56]
 	.pushreg r14
 	push r15
 	.pushreg r15
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 		
@@ -5203,9 +5203,9 @@ aloop_4:
 		sub rdx,r11
 		jnz aloop_4
 		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,32	
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,40	
 		
 	pop r15
 	pop r14
@@ -5227,11 +5227,11 @@ dotProd_m48_m16_i16_AVX endp
 
 e0_m16_SSE2 proc public frame
 
-	sub rsp,32
-	.allocstack 32
-	movdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu XMMWORD ptr[rsp+16],xmm7
+	movdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -5283,9 +5283,9 @@ eloop16:
 		
 		jnz eloop16
 		
-	movdqu xmm7,XMMWORD ptr[rsp+16]
-	movdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,32			
+	movdqa xmm7,XMMWORD ptr[rsp+16]
+	movdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,40
 		
 		ret
 
@@ -5298,11 +5298,11 @@ e0_m16_SSE2 endp
 
 e0_m16_AVX proc public frame
 
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -5354,9 +5354,9 @@ eloop16_AVX:
 		
 		jnz eloop16_AVX
 		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,32			
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,40
 		
 		ret
 
@@ -5369,23 +5369,23 @@ e0_m16_AVX endp
 
 e1_m16_SSE2 proc public frame
 
-	sub rsp,128
-	.allocstack 128
-	movdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,136
+	.allocstack 136
+	movdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu XMMWORD ptr[rsp+16],xmm7
+	movdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	movdqu XMMWORD ptr[rsp+32],xmm8
+	movdqa XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	movdqu XMMWORD ptr[rsp+48],xmm9
+	movdqa XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	movdqu XMMWORD ptr[rsp+64],xmm10
+	movdqa XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	movdqu XMMWORD ptr[rsp+80],xmm11
+	movdqa XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	movdqu XMMWORD ptr[rsp+96],xmm12
+	movdqa XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	movdqu XMMWORD ptr[rsp+112],xmm13
+	movdqa XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
 	
@@ -5446,15 +5446,15 @@ eloop8:
 		sub rcx,rdx
 		jnz eloop8
 		
-	movdqu xmm13,XMMWORD ptr[rsp+112]
-	movdqu xmm12,XMMWORD ptr[rsp+96]
-	movdqu xmm11,XMMWORD ptr[rsp+80]
-	movdqu xmm10,XMMWORD ptr[rsp+64]
-	movdqu xmm9,XMMWORD ptr[rsp+48]
-	movdqu xmm8,XMMWORD ptr[rsp+32]
-	movdqu xmm7,XMMWORD ptr[rsp+16]
-	movdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,128
+	movdqa xmm13,XMMWORD ptr[rsp+112]
+	movdqa xmm12,XMMWORD ptr[rsp+96]
+	movdqa xmm11,XMMWORD ptr[rsp+80]
+	movdqa xmm10,XMMWORD ptr[rsp+64]
+	movdqa xmm9,XMMWORD ptr[rsp+48]
+	movdqa xmm8,XMMWORD ptr[rsp+32]
+	movdqa xmm7,XMMWORD ptr[rsp+16]
+	movdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,136
 		
 		ret
 		
@@ -5467,23 +5467,23 @@ e1_m16_SSE2 endp
 
 e1_m16_AVX proc public frame
 
-	sub rsp,128
-	.allocstack 128
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,136
+	.allocstack 136
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	vmovdqu XMMWORD ptr[rsp+32],xmm8
+	vmovdqa XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	vmovdqu XMMWORD ptr[rsp+48],xmm9
+	vmovdqa XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	vmovdqu XMMWORD ptr[rsp+64],xmm10
+	vmovdqa XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	vmovdqu XMMWORD ptr[rsp+80],xmm11
+	vmovdqa XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	vmovdqu XMMWORD ptr[rsp+96],xmm12
+	vmovdqa XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	vmovdqu XMMWORD ptr[rsp+112],xmm13
+	vmovdqa XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
 	.endprolog
 	
@@ -5541,15 +5541,15 @@ eloop8_AVX:
 		sub rcx,rdx
 		jnz eloop8_AVX
 		
-	vmovdqu xmm13,XMMWORD ptr[rsp+112]
-	vmovdqu xmm12,XMMWORD ptr[rsp+96]
-	vmovdqu xmm11,XMMWORD ptr[rsp+80]
-	vmovdqu xmm10,XMMWORD ptr[rsp+64]
-	vmovdqu xmm9,XMMWORD ptr[rsp+48]
-	vmovdqu xmm8,XMMWORD ptr[rsp+32]
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,128
+	vmovdqa xmm13,XMMWORD ptr[rsp+112]
+	vmovdqa xmm12,XMMWORD ptr[rsp+96]
+	vmovdqa xmm11,XMMWORD ptr[rsp+80]
+	vmovdqa xmm10,XMMWORD ptr[rsp+64]
+	vmovdqa xmm9,XMMWORD ptr[rsp+48]
+	vmovdqa xmm8,XMMWORD ptr[rsp+32]
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,136
 		
 		ret
 		
@@ -5562,27 +5562,27 @@ e1_m16_AVX endp
 
 e2_m16_SSE2 proc public frame
 
-	sub rsp,160
-	.allocstack 160
-	movdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,168
+	.allocstack 168
+	movdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu XMMWORD ptr[rsp+16],xmm7
+	movdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	movdqu XMMWORD ptr[rsp+32],xmm8
+	movdqa XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	movdqu XMMWORD ptr[rsp+48],xmm9
+	movdqa XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	movdqu XMMWORD ptr[rsp+64],xmm10
+	movdqa XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	movdqu XMMWORD ptr[rsp+80],xmm11
+	movdqa XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	movdqu XMMWORD ptr[rsp+96],xmm12
+	movdqa XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	movdqu XMMWORD ptr[rsp+112],xmm13
+	movdqa XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
-	movdqu XMMWORD ptr[rsp+128],xmm14
+	movdqa XMMWORD ptr[rsp+128],xmm14
 	.savexmm128 xmm14,128
-	movdqu XMMWORD ptr[rsp+144],xmm15
+	movdqa XMMWORD ptr[rsp+144],xmm15
 	.savexmm128 xmm15,144
 	.endprolog
 	
@@ -5651,17 +5651,17 @@ eloop4:
 		sub rcx,rdx
 		jnz eloop4
 		
-	movdqu xmm15,XMMWORD ptr[rsp+144]
-	movdqu xmm14,XMMWORD ptr[rsp+128]
-	movdqu xmm13,XMMWORD ptr[rsp+112]
-	movdqu xmm12,XMMWORD ptr[rsp+96]
-	movdqu xmm11,XMMWORD ptr[rsp+80]
-	movdqu xmm10,XMMWORD ptr[rsp+64]
-	movdqu xmm9,XMMWORD ptr[rsp+48]
-	movdqu xmm8,XMMWORD ptr[rsp+32]
-	movdqu xmm7,XMMWORD ptr[rsp+16]
-	movdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,160		
+	movdqa xmm15,XMMWORD ptr[rsp+144]
+	movdqa xmm14,XMMWORD ptr[rsp+128]
+	movdqa xmm13,XMMWORD ptr[rsp+112]
+	movdqa xmm12,XMMWORD ptr[rsp+96]
+	movdqa xmm11,XMMWORD ptr[rsp+80]
+	movdqa xmm10,XMMWORD ptr[rsp+64]
+	movdqa xmm9,XMMWORD ptr[rsp+48]
+	movdqa xmm8,XMMWORD ptr[rsp+32]
+	movdqa xmm7,XMMWORD ptr[rsp+16]
+	movdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,168
 		
 		ret
 		
@@ -5674,27 +5674,27 @@ e2_m16_SSE2 endp
 
 e2_m16_AVX proc public frame
 
-	sub rsp,160
-	.allocstack 160
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,168
+	.allocstack 168
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
-	vmovdqu XMMWORD ptr[rsp+32],xmm8
+	vmovdqa XMMWORD ptr[rsp+32],xmm8
 	.savexmm128 xmm8,32
-	vmovdqu XMMWORD ptr[rsp+48],xmm9
+	vmovdqa XMMWORD ptr[rsp+48],xmm9
 	.savexmm128 xmm9,48
-	vmovdqu XMMWORD ptr[rsp+64],xmm10
+	vmovdqa XMMWORD ptr[rsp+64],xmm10
 	.savexmm128 xmm10,64
-	vmovdqu XMMWORD ptr[rsp+80],xmm11
+	vmovdqa XMMWORD ptr[rsp+80],xmm11
 	.savexmm128 xmm11,80
-	vmovdqu XMMWORD ptr[rsp+96],xmm12
+	vmovdqa XMMWORD ptr[rsp+96],xmm12
 	.savexmm128 xmm12,96
-	vmovdqu XMMWORD ptr[rsp+112],xmm13
+	vmovdqa XMMWORD ptr[rsp+112],xmm13
 	.savexmm128 xmm13,112
-	vmovdqu XMMWORD ptr[rsp+128],xmm14
+	vmovdqa XMMWORD ptr[rsp+128],xmm14
 	.savexmm128 xmm14,128
-	vmovdqu XMMWORD ptr[rsp+144],xmm15
+	vmovdqa XMMWORD ptr[rsp+144],xmm15
 	.savexmm128 xmm15,144
 	.endprolog
 	
@@ -5763,17 +5763,17 @@ eloop4_AVX:
 		sub rcx,rdx
 		jnz eloop4_AVX
 		
-	vmovdqu xmm15,XMMWORD ptr[rsp+144]
-	vmovdqu xmm14,XMMWORD ptr[rsp+128]
-	vmovdqu xmm13,XMMWORD ptr[rsp+112]
-	vmovdqu xmm12,XMMWORD ptr[rsp+96]
-	vmovdqu xmm11,XMMWORD ptr[rsp+80]
-	vmovdqu xmm10,XMMWORD ptr[rsp+64]
-	vmovdqu xmm9,XMMWORD ptr[rsp+48]
-	vmovdqu xmm8,XMMWORD ptr[rsp+32]
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,160		
+	vmovdqa xmm15,XMMWORD ptr[rsp+144]
+	vmovdqa xmm14,XMMWORD ptr[rsp+128]
+	vmovdqa xmm13,XMMWORD ptr[rsp+112]
+	vmovdqa xmm12,XMMWORD ptr[rsp+96]
+	vmovdqa xmm11,XMMWORD ptr[rsp+80]
+	vmovdqa xmm10,XMMWORD ptr[rsp+64]
+	vmovdqa xmm9,XMMWORD ptr[rsp+48]
+	vmovdqa xmm8,XMMWORD ptr[rsp+32]
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,168
 		
 		ret
 		
@@ -6126,11 +6126,11 @@ castScale_AVX_16 endp
 
 uc2s64_SSE2 proc public frame
 	
-	sub rsp,32
-	.allocstack 32
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqa oword ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -6163,9 +6163,9 @@ uc2s64_SSE2 proc public frame
 		movdqa [r8+96],xmm6
 		movdqa [r8+112],xmm0
 		
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
-	add rsp,32		
+	movdqa xmm7,oword ptr[rsp+16]
+	movdqa xmm6,oword ptr[rsp]	
+	add rsp,40
 		
 		ret
 		
@@ -6179,11 +6179,11 @@ uc2s64_SSE2 endp
 
 uc2s64_AVX proc public frame
 	
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 	
@@ -6216,9 +6216,9 @@ uc2s64_AVX proc public frame
 		vmovdqa XMMWORD ptr[r8+96],xmm6
 		vmovdqa XMMWORD ptr[r8+112],xmm0
 		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,32		
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,40
 		
 		ret
 		
@@ -6232,11 +6232,11 @@ uc2s64_AVX endp
 
 computeNetwork0new_SSE2 proc public frame
 
-	sub rsp,32
-	.allocstack 32
-	movdqu oword ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	movdqa oword ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	movdqu oword ptr[rsp+16],xmm7
+	movdqa oword ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 
@@ -6384,9 +6384,9 @@ computeNetwork0new_SSE2 proc public frame
 		and eax,001010101h
 		mov [rcx],eax
 		
-	movdqu xmm7,oword ptr[rsp+16]
-	movdqu xmm6,oword ptr[rsp]	
-	add rsp,32				
+	movdqa xmm7,oword ptr[rsp+16]
+	movdqa xmm6,oword ptr[rsp]	
+	add rsp,40
 		
 		ret
 		
@@ -6400,11 +6400,11 @@ computeNetwork0new_SSE2 endp
 
 computeNetwork0new_AVX proc public frame
 
-	sub rsp,32
-	.allocstack 32
-	vmovdqu XMMWORD ptr[rsp],xmm6
+	sub rsp,40
+	.allocstack 40
+	vmovdqa XMMWORD ptr[rsp],xmm6
 	.savexmm128 xmm6,0
-	vmovdqu XMMWORD ptr[rsp+16],xmm7
+	vmovdqa XMMWORD ptr[rsp+16],xmm7
 	.savexmm128 xmm7,16
 	.endprolog
 
@@ -6525,9 +6525,9 @@ computeNetwork0new_AVX proc public frame
 		and eax,001010101h
 		mov [rcx],eax
 		
-	vmovdqu xmm7,XMMWORD ptr[rsp+16]
-	vmovdqu xmm6,XMMWORD ptr[rsp]	
-	add rsp,32				
+	vmovdqa xmm7,XMMWORD ptr[rsp+16]
+	vmovdqa xmm6,XMMWORD ptr[rsp]	
+	add rsp,40
 		
 		ret
 		

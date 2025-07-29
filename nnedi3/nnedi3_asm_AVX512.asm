@@ -19,7 +19,7 @@
 ;
 ;   Modified by JPSDR
 ;
-; AVX512F,AVX512BW,AVX512DQ
+; AVX512F,AVX512BW,AVX512DQ,AVX512VL
 
 .xmm
 .model flat,c

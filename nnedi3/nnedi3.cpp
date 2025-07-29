@@ -425,7 +425,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		const int CPUF=env->GetCPUFlags();
 
 #ifdef AVX512_BUILD_POSSIBLE
-		if (((CPUF & CPUF_AVX512F)!=0) && ((CPUF & CPUF_AVX512DQ)!=0) && ((CPUF & CPUF_AVX512BW)!=0))
+		if (((CPUF & CPUF_AVX512F)!=0) && ((CPUF & CPUF_AVX512DQ)!=0)
+			&& ((CPUF & CPUF_AVX512BW)!=0) && ((CPUF & CPUF_AVX512VL)!=0))
 		{
 			AVX512=true;
 			opt=6;
@@ -462,7 +463,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		}
 
 		char buf[512];
-		sprintf_s(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,CPUF);
+		if (AVX512) sprintf_s(buf,512,"nnedi3: auto-detected opt setting = 8 (%d)\n",CPUF);
+		else sprintf_s(buf,512,"nnedi3: auto-detected opt setting = %d (%d)\n",opt,CPUF);
 		OutputDebugString(buf);
 	}
 	else
@@ -3006,8 +3008,8 @@ void evalFunc_2(void *ps)
 				}
 			}
 		}
-#endif
 		else
+#endif
 		{
 			if (opt>=4)
 			{
@@ -3454,8 +3456,8 @@ void evalFunc_2_16(void *ps)
 				}
 			}
 		}
-#endif
 		else
+#endif
 		{
 			if (opt>=4)
 			{
@@ -3772,8 +3774,8 @@ void evalFunc_2_32(void *ps)
 				}
 			}
 		}
-#endif
 		else
+#endif
 		{
 			if (opt>=4)
 			{
