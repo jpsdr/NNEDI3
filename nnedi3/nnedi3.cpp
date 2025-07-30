@@ -418,8 +418,8 @@ nnedi3::nnedi3(PClip _child,int _field,bool _dh,bool _Y,bool _U,bool _V,bool _A,
 		env->ThrowError("nnedi3: Error while allocating planar dstPF!");
 	}
 	
-	AVX512=false;
-
+	bool AVX512 = false;
+	
 	if (opt==0)
 	{
 		const int CPUF=env->GetCPUFlags();
@@ -2348,7 +2348,7 @@ void evalFunc_1_16(void *ps)
 			if (opt>=4) processLine0=processLine0_AVX_16;
 			else
 			{
-				if (opt>1) processLine0=processLine0_SSE2_16;
+				if (opt>=3) processLine0=processLine0_SSE2_16;
 				else processLine0=processLine0_C_16;
 			}
 		}

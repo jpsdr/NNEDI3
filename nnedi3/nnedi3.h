@@ -73,7 +73,6 @@ protected:
 	bool dh,Y,U,V,A;
 	int pscrn;
 	int field,opt,nns,etype;
-	bool AVX512;
 	int *lcount[PLANE_MAX],qual,nsize,fapprox;
 	PlanarFrame *srcPF,*dstPF;
 	PS_INFO pssInfo[MAX_MT_THREADS];
