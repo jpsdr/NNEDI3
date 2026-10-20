@@ -62,8 +62,12 @@
 // 202608xx  V13 New pixel formats: YUV(A) 4:4:0, 4:1:1, 4:1:0 at all bit depths, YA (Y plus alpha)
 //               CS_GENERIC_YUV440/411/410, CS_GENERIC_YA and CS_xxx constants
 //               New VideoInfo::Is440, IsYA, Is410, Is411
-// 202610xx  V13.1 CACHE_USER_FORWARD_BEGIN..CACHE_USER_FORWARD_END CachePolicyHint range: passed upstream through
+// 20261018  V13.1 CACHE_USER_FORWARD_BEGIN..CACHE_USER_FORWARD_END CachePolicyHint range: passed upstream through
 //               the core's cache/MT guard/Prefetch/OnCPU/OnCUDA wrappers (#521)
+//               CS_xxx_CHROMA_PLACEMENT (AvsChromaPlacement) marked deprecated: never implemented, use _ChromaLocation
+// 20261019  V14 AVSValue::AsFunction exported (was internal): get the PFunction of an 'n' type value
+//               for Invoke3/Invoke3Try.
+//               C API V14 additions in parallel (see avisynth_c.h)
 
 // http://avisynth.nl
 
@@ -100,8 +104,8 @@
 // graphical user interfaces.
 
 
-#ifndef __AVISYNTH_13_H__
-#define __AVISYNTH_13_H__
+#ifndef __AVISYNTH_14_H__
+#define __AVISYNTH_14_H__
 
 #include "avs/config.h"
 #include "avs/capi.h"
@@ -134,8 +138,8 @@ enum AvsVersion {
   AVISYNTH_CLASSIC_INTERFACE_VERSION_25 = 3,
   AVISYNTH_CLASSIC_INTERFACE_VERSION_26BETA = 5,
   AVISYNTH_CLASSIC_INTERFACE_VERSION = 6,
-  AVISYNTH_INTERFACE_VERSION = 13,
-  AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION = 1 // reset to zero whenever the normal interface version bumps
+  AVISYNTH_INTERFACE_VERSION = 14,
+  AVISYNTHPLUS_INTERFACE_BUGFIX_VERSION = 0 // reset to zero whenever the normal interface version bumps
 };
 
 /* Compiler-specific crap */
@@ -491,9 +495,12 @@ struct AVS_Linkage {
   bool          (VideoInfo::*Is410)() const;
   bool          (VideoInfo::*Is411)() const;
 
+  // V14
+  PFunction     (AVSValue::*AVSValue_AsFunction)() const;
+
   /**********************************************************************/
   // Reserve pointer space for Avisynth+
-  void          (VideoInfo::* reserved2[64 - 35])();
+  void          (VideoInfo::* reserved2[64 - 36])();
   /**********************************************************************/
 
   // AviSynth Neo additions
@@ -675,7 +682,7 @@ struct VideoInfo {
     for packed RGB(A): only 8 and 16 bits are valid
     
     Other YV12 specific (will never be used)
-      C  20-23 Chroma Placement values 0-4; see CS_xxx_CHROMA_PLACEMENT
+      C  20-23 Chroma Placement values 0-4; see CS_xxx_CHROMA_PLACEMENT (deprecated, unused)
     
     Color family and layout
                            Packed      Planar               Planar  Planar
@@ -949,7 +956,8 @@ struct VideoInfo {
     IT_NEXT_AVAILABLE = 1 << 23
   };
 
-  // Chroma placement bits 20 -> 23  ::FIXME:: Really want a Class to support this
+  // DEPRECATED, do not use. Classic 2.6 leftover, never implemented: pixel_type bits 20 -> 23
+  // are neither set nor read anywhere. Use the _ChromaLocation frame property instead.
   enum AvsChromaPlacement {
     CS_UNKNOWN_CHROMA_PLACEMENT = 0 << 20,
     CS_MPEG1_CHROMA_PLACEMENT   = 1 << 20,
@@ -1486,7 +1494,9 @@ public:
   double AsFloat(float def) const AVS_BakedCode( return AVS_LinkCall(AsFloat2)(def) )
   float AsFloatf(float def) const AVS_BakedCode( return float( AVS_LinkCall(AsFloat2)(def) ) )
   const char* AsString(const char* def) const AVS_BakedCode( return AVS_LinkCall(AsString2)(def) )
-  PFunction AsFunction() const; // internal use only
+  // V14: function value ('n' type) for Invoke3/Invoke3Try. Check IsFunction() first.
+  // Empty PFunction on a runtime older than V14. Plugin-side body is after class PFunction (needs complete type).
+  PFunction AsFunction() const;
 
   int ArraySize() const AVS_BakedCode( return AVS_LinkCall(ArraySize)() )
 
@@ -1557,7 +1567,6 @@ public:
 #endif
 }; // end class AVSValue
 
-
 // instantiable null filter
 class GenericVideoFilter : public IClip {
 protected:
@@ -1605,6 +1614,11 @@ public:
   void DESTRUCTOR();
 #endif
 };
+
+#if !defined(BUILDING_AVSCORE) && !defined(AVS_STATIC_LIB)
+// V14, out of class AVSValue: PFunction must be a complete type here
+inline PFunction AVSValue::AsFunction() const { return AVS_LinkCallOptDefault(AVSValue_AsFunction, PFunction()); }
+#endif
 
 
 #undef CALL_MEMBER_FN
@@ -2140,4 +2154,4 @@ AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version = AVISYNTH_
 
 #pragma pack(pop)
 
-#endif //__AVISYNTH_13_H__
+#endif //__AVISYNTH_14_H__
